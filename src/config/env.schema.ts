@@ -10,6 +10,10 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   DATABASE_POOL_MIN: z.coerce.number().default(2),
   DATABASE_POOL_MAX: z.coerce.number().default(10),
+  DATABASE_SSL: z
+    .enum(['true', 'false'])
+    .transform(v => v === 'true')
+    .default('false'),
 
   // Redis
   REDIS_HOST: z.string().default('localhost'),

@@ -6,5 +6,5 @@ export const databaseConfig = {
     min: getConfig().DATABASE_POOL_MIN,
     max: getConfig().DATABASE_POOL_MAX,
   },
-  ssl: getConfig().NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+  ssl: getConfig().DATABASE_SSL ? { rejectUnauthorized: false } : undefined,
 } as const;
