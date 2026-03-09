@@ -41,6 +41,29 @@ export class MetricsCollector {
     );
     this.registerMetric('cache_hits_total', 'counter', 'Total number of cache hits');
     this.registerMetric('cache_misses_total', 'counter', 'Total number of cache misses');
+    this.registerMetric(
+      'storage_upload_duration_seconds',
+      'histogram',
+      'Storage upload duration in seconds'
+    );
+    this.registerMetric('storage_upload_bytes_total', 'counter', 'Total bytes uploaded to storage');
+    this.registerMetric(
+      'storage_upload_success_total',
+      'counter',
+      'Total successful storage uploads'
+    );
+    this.registerMetric('storage_upload_failure_total', 'counter', 'Total failed storage uploads');
+    this.registerMetric(
+      'storage_delete_duration_seconds',
+      'histogram',
+      'Storage delete duration in seconds'
+    );
+    this.registerMetric(
+      'storage_delete_success_total',
+      'counter',
+      'Total successful storage deletes'
+    );
+    this.registerMetric('storage_delete_failure_total', 'counter', 'Total failed storage deletes');
   }
 
   /**
@@ -240,6 +263,31 @@ export class MetricsCollector {
       this.counter('cache_hits_total', 1, { cache });
     } else {
       this.counter('cache_misses_total', 1, { cache });
+    }
+  }
+
+  /**
+   * Record storage upload operation
+   */
+  recordStorageUpload(provider: string, duration: number, size: number, success: boolean): void {
+    this.histogram('storage_upload_duration_seconds', duration / 1000, { provider });
+    this.counter('storage_upload_bytes_total', size, { provider });
+    if (success) {
+      this.counter('storage_upload_success_total', 1, { provider });
+    } else {
+      this.counter('storage_upload_failure_total', 1, { provider });
+    }
+  }
+
+  /**
+   * Record storage delete operation
+   */
+  recordStorageDelete(provider: string, duration: number, success: boolean): void {
+    this.histogram('storage_delete_duration_seconds', duration / 1000, { provider });
+    if (success) {
+      this.counter('storage_delete_success_total', 1, { provider });
+    } else {
+      this.counter('storage_delete_failure_total', 1, { provider });
     }
   }
 
