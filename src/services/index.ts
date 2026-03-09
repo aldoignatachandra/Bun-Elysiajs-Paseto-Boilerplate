@@ -5,5 +5,7 @@
  */
 
 export * from './auth.service';
+export * from './users.service';
 export * from './interfaces/auth.service.interface';
+export * from './interfaces/users.service.interface';
 export * from './constants';
