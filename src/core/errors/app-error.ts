@@ -15,6 +15,7 @@ export enum HttpStatusCode {
   NOT_FOUND = 404,
   CONFLICT = 409,
   UNPROCESSABLE_ENTITY = 422,
+  PAYLOAD_TOO_LARGE = 413,
   TOO_MANY_REQUESTS = 429,
   INTERNAL_SERVER_ERROR = 500,
   SERVICE_UNAVAILABLE = 503,
@@ -157,6 +158,16 @@ export class TooManyRequestsError extends AppError {
     super(message, {
       code: 'TOO_MANY_REQUESTS',
       status: HttpStatusCode.TOO_MANY_REQUESTS,
+      details,
+    });
+  }
+}
+
+export class PayloadTooLargeError extends AppError {
+  constructor(message: string = 'Payload too large', details?: unknown) {
+    super(message, {
+      code: 'PAYLOAD_TOO_LARGE',
+      status: HttpStatusCode.PAYLOAD_TOO_LARGE,
       details,
     });
   }
