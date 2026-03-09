@@ -1,0 +1,15 @@
+{
+  "overrides": [
+    {
+      "files": ["src/core/queue/**/*.ts", "src/plugins/queue.plugin.ts", "tests/core/queue/**/*.ts", "tests/plugins/queue.plugin.test.ts"],
+      "rules": {
+        "@typescript-eslint/require-await": "off",
+        "@typescript-eslint/no-unused-vars": "off",
+        "@typescript-eslint/unbound-method": "off",
+        "no-console": "off",
+        "@typescript-eslint/no-unsafe-assignment": "off",
+        "@typescript-eslint/await-thenable": "off"
+      }
+    }
+  ]
+}

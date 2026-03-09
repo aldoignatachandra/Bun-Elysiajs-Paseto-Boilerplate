@@ -5,8 +5,10 @@ import { tracingPlugin } from './tracing.plugin';
 import { compressionPlugin } from './compression.plugin';
 import { cachingPlugin } from './caching.plugin';
 import { versioningPlugin } from './versioning.plugin';
+import { queuePlugin } from './queue.plugin';
 import type { CachingPluginOptions } from './caching.plugin';
 import type { VersioningPluginOptions } from './versioning.plugin';
+import type { QueuePluginOptions } from './queue.plugin';
 
 /**
  * Plugin configuration interface
@@ -44,6 +46,12 @@ export interface PluginConfig {
   versioning?: boolean;
 
   /**
+   * Enable queue plugin (default: false)
+   * Requires queueOptions to be provided
+   */
+  queue?: boolean;
+
+  /**
    * Caching plugin options (required if caching is enabled)
    */
   cachingOptions?: CachingPluginOptions;
@@ -52,6 +60,11 @@ export interface PluginConfig {
    * Versioning plugin options (optional)
    */
   versioningOptions?: VersioningPluginOptions;
+
+  /**
+   * Queue plugin options (required if queue is enabled)
+   */
+  queueOptions?: QueuePluginOptions;
 }
 
 /**
@@ -105,6 +118,11 @@ export function registerPlugins(app: Elysia, config: PluginConfig = {}): Elysia 
     app.use(versioningPlugin(config.versioningOptions));
   }
 
+  // Queue plugin is opt-in
+  if (config.queue && config.queueOptions) {
+    app.use(queuePlugin(config.queueOptions));
+  }
+
   return app;
 }
 
@@ -116,3 +134,4 @@ export * from './security-headers.plugin';
 export * from './compression.plugin';
 export * from './caching.plugin';
 export * from './versioning.plugin';
+export * from './queue.plugin';
