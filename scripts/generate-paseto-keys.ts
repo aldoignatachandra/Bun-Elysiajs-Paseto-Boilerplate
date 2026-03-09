@@ -14,6 +14,7 @@
  * - Generate keys once per environment (dev, staging, prod)
  * - Keep k4.secret and k4.local safe - anyone with them can create tokens!
  */
+/* eslint-disable no-console */
 import { generateKeys } from 'paseto-ts/v4';
 
 console.log('🔐 PASETO Key Generator (Hybrid v4.local + v4.public)');
