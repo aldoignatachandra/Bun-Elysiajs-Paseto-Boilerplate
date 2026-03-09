@@ -47,11 +47,11 @@ This document defines the testing standards and best practices used across the a
 
 ### Test Categories
 
-| Category | Purpose | Speed | Example |
-|----------|---------|-------|---------|
-| **Unit Tests** | Test isolated functions/classes | Fast | `passwordService.hash()` |
-| **Integration Tests** | Test multiple components together | Medium | `POST /api/auth/register` |
-| **E2E Tests** | Test complete workflows | Slow | User registration to login flow |
+| Category              | Purpose                           | Speed  | Example                         |
+| --------------------- | --------------------------------- | ------ | ------------------------------- |
+| **Unit Tests**        | Test isolated functions/classes   | Fast   | `passwordService.hash()`        |
+| **Integration Tests** | Test multiple components together | Medium | `POST /api/auth/register`       |
+| **E2E Tests**         | Test complete workflows           | Slow   | User registration to login flow |
 
 ---
 
@@ -326,7 +326,7 @@ describe('Auth Routes Integration Tests', () => {
       const response = await app.request('/api/users/me', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -339,7 +339,7 @@ describe('Auth Routes Integration Tests', () => {
       const response = await app.request('/api/users/me', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -450,10 +450,7 @@ export class UserBuilder {
 }
 
 // Usage
-const adminUser = new UserBuilder()
-  .withEmail('admin@example.com')
-  .asAdmin()
-  .build();
+const adminUser = new UserBuilder().withEmail('admin@example.com').asAdmin().build();
 ```
 
 ---
@@ -582,8 +579,8 @@ it('should throw on duplicate email', async () => {
 
 // ❌ Bad: Not awaiting promises
 it('should create user (bad)', () => {
-  userService.create(userData);  // Missing await
-  expect(true).toBe(true);  // Race condition
+  userService.create(userData); // Missing await
+  expect(true).toBe(true); // Race condition
 });
 ```
 
@@ -593,11 +590,11 @@ it('should create user (bad)', () => {
 
 ### Coverage Targets
 
-| Metric | Target | Tool |
-|--------|--------|------|
-| **Line Coverage** | ≥ 80% | bun test --coverage |
-| **Branch Coverage** | ≥ 75% | bun test --coverage |
-| **Function Coverage** | ≥ 85% | bun test --coverage |
+| Metric                | Target | Tool                |
+| --------------------- | ------ | ------------------- |
+| **Line Coverage**     | ≥ 80%  | bun test --coverage |
+| **Branch Coverage**   | ≥ 75%  | bun test --coverage |
+| **Function Coverage** | ≥ 85%  | bun test --coverage |
 
 ### Running Coverage
 
@@ -730,11 +727,13 @@ export class MockUserRepository implements IUserRepository {
 export class MockPasetoService implements IPasetoService {
   createAccessToken = mockFn((userId: string) => Promise.resolve(`token-${userId}`));
   createRefreshToken = mockFn((userId: string) => Promise.resolve(`refresh-${userId}`));
-  validateAndDecodeToken = mockFn((token: string) => Promise.resolve({
-    valid: true,
-    payload: { sub: 'user-123', type: 'access' },
-    error: null,
-  }));
+  validateAndDecodeToken = mockFn((token: string) =>
+    Promise.resolve({
+      valid: true,
+      payload: { sub: 'user-123', type: 'access' },
+      error: null,
+    })
+  );
 
   // Helper for setup
   withValidToken(token: string, payload: TokenPayload): MockPasetoService {

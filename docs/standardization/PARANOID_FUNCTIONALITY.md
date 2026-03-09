@@ -32,13 +32,13 @@ The paranoid functionality provides soft delete capabilities with the following 
 
 ### Benefits
 
-| Benefit | Description |
-|---------|-------------|
-| **Data Recovery** | Accidental deletions can be undone |
-| **Audit Trail** | Complete history of data changes |
-| **Compliance** | Meets data retention requirements |
-| **User Experience** | "Undo delete" functionality |
-| **Analytics** | Historical data analysis possible |
+| Benefit             | Description                        |
+| ------------------- | ---------------------------------- |
+| **Data Recovery**   | Accidental deletions can be undone |
+| **Audit Trail**     | Complete history of data changes   |
+| **Compliance**      | Meets data retention requirements  |
+| **User Experience** | "Undo delete" functionality        |
+| **Analytics**       | Historical data analysis possible  |
 
 ---
 
@@ -66,13 +66,13 @@ The paranoid functionality provides soft delete capabilities with the following 
 
 ### Component Responsibilities
 
-| Component | Responsibility |
-|-----------|---------------|
-| **Routes** | Handle paranoid query parameters |
-| **Controllers** | Validate paranoid options, format responses |
-| **Services** | Business logic with paranoid awareness |
-| **Repositories** | Database queries with paranoid filtering |
-| **Query Builder** | Generate paranoid-aware SQL queries |
+| Component         | Responsibility                              |
+| ----------------- | ------------------------------------------- |
+| **Routes**        | Handle paranoid query parameters            |
+| **Controllers**   | Validate paranoid options, format responses |
+| **Services**      | Business logic with paranoid awareness      |
+| **Repositories**  | Database queries with paranoid filtering    |
+| **Query Builder** | Generate paranoid-aware SQL queries         |
 
 ---
 
@@ -119,18 +119,18 @@ CREATE INDEX idx_users_active_deleted ON users(is_active, deleted_at);
 #### List Users with Paranoid Options
 
 ```typescript
-GET /api/admin/users
+GET / api / admin / users;
 ```
 
 **Query Parameters:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `page` | number | 1 | Page number for pagination |
-| `limit` | number | 20 | Items per page |
-| `includeDeleted` | boolean | false | Include soft-deleted records |
-| `onlyDeleted` | boolean | false | Only return deleted records |
-| `search` | string | - | Search by email or name |
+| Parameter        | Type    | Default | Description                  |
+| ---------------- | ------- | ------- | ---------------------------- |
+| `page`           | number  | 1       | Page number for pagination   |
+| `limit`          | number  | 20      | Items per page               |
+| `includeDeleted` | boolean | false   | Include soft-deleted records |
+| `onlyDeleted`    | boolean | false   | Only return deleted records  |
+| `search`         | string  | -       | Search by email or name      |
 
 **Example:**
 
@@ -156,17 +156,17 @@ GET /api/admin/users/:id
 
 **Query Parameters:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `includeDeleted` | boolean | false | Include soft-deleted user |
+| Parameter        | Type    | Default | Description               |
+| ---------------- | ------- | ------- | ------------------------- |
+| `includeDeleted` | boolean | false   | Include soft-deleted user |
 
 **Response Codes:**
 
-| Code | Scenario |
-|------|----------|
-| 200 | User found |
-| 404 | User not found (or deleted without `includeDeleted`) |
-| 410 | User is soft deleted (Gone) |
+| Code | Scenario                                             |
+| ---- | ---------------------------------------------------- |
+| 200  | User found                                           |
+| 404  | User not found (or deleted without `includeDeleted`) |
+| 410  | User is soft deleted (Gone)                          |
 
 #### Delete User
 
@@ -176,9 +176,9 @@ DELETE /api/admin/users/:id
 
 **Query Parameters:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `force` | boolean | false | Hard delete when true |
+| Parameter | Type    | Default | Description           |
+| --------- | ------- | ------- | --------------------- |
+| `force`   | boolean | false   | Hard delete when true |
 
 **Behavior:**
 
@@ -228,18 +228,15 @@ POST /api/products/:id/restore
 // src/repositories/base.repository.ts
 export interface ParanoidOptions {
   includeDeleted?: boolean; // Include both active and deleted records
-  onlyDeleted?: boolean;    // Only deleted records
-  onlyActive?: boolean;     // Only active records (default)
+  onlyDeleted?: boolean; // Only deleted records
+  onlyActive?: boolean; // Only active records (default)
 }
 
 export abstract class ParanoidRepository<T> extends BaseRepository {
   /**
    * Find by ID with paranoid options
    */
-  async findById(
-    id: string,
-    options: ParanoidOptions = {}
-  ): Promise<T | null> {
+  async findById(id: string, options: ParanoidOptions = {}): Promise<T | null> {
     const query = this.db.select().from(this.tableName).where(eq(this.tableName.id, id));
 
     // Apply paranoid filtering
@@ -298,11 +295,9 @@ export abstract class ParanoidRepository<T> extends BaseRepository {
 ```typescript
 // src/core/validation/paranoid.validation.ts
 export function validateParanoidOptions(options: ParanoidOptions): void {
-  const activeCount = [
-    options.includeDeleted,
-    options.onlyDeleted,
-    options.onlyActive,
-  ].filter(Boolean).length;
+  const activeCount = [options.includeDeleted, options.onlyDeleted, options.onlyActive].filter(
+    Boolean
+  ).length;
 
   if (activeCount > 1) {
     throw new InvalidParanoidOptionsError(
@@ -531,9 +526,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 export async function up(db: Database) {
   await db.schema
     .alterTable('users')
-    .addColumn('deletedAt', 'timestamp with time zone', (column) =>
-      column.default(null).null()
-    );
+    .addColumn('deletedAt', 'timestamp with time zone', column => column.default(null).null());
 }
 
 export async function down(db: Database) {

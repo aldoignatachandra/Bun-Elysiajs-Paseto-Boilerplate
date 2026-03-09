@@ -57,8 +57,8 @@ class EmailService {
 class UserServiceBad {
   async createUser(dto: CreateUserDto): Promise<User> {
     const user = await this.repo.create(dto);
-    await this.emailService.sendEmail(user);  // Wrong responsibility
-    await this.analytics.trackUserCreated(user);  // Wrong responsibility
+    await this.emailService.sendEmail(user); // Wrong responsibility
+    await this.analytics.trackUserCreated(user); // Wrong responsibility
     return user;
   }
 }
@@ -151,13 +151,13 @@ class UserServiceBad {
 
 ### Layer Responsibilities
 
-| Layer | Responsibility | Should Not |
-|-------|---------------|------------|
-| **Routes** | HTTP concerns, parsing, middleware | Business logic |
-| **Controllers** | Request orchestration, response formatting | Domain logic |
-| **Services** | Business rules, use cases | HTTP, database details |
-| **Repositories** | Data access, queries | Business rules |
-| **Infrastructure** | External systems, I/O | Domain logic |
+| Layer              | Responsibility                             | Should Not             |
+| ------------------ | ------------------------------------------ | ---------------------- |
+| **Routes**         | HTTP concerns, parsing, middleware         | Business logic         |
+| **Controllers**    | Request orchestration, response formatting | Domain logic           |
+| **Services**       | Business rules, use cases                  | HTTP, database details |
+| **Repositories**   | Data access, queries                       | Business rules         |
+| **Infrastructure** | External systems, I/O                      | Domain logic           |
 
 ### Request Flow
 
@@ -211,11 +211,7 @@ class UserRepository implements IUserRepository {
   constructor(private db: Database) {}
 
   async findById(id: string): Promise<User | null> {
-    const result = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.id, id))
-      .limit(1);
+    const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
 
     return result[0] || null;
   }
@@ -394,13 +390,13 @@ src/
 
 ### Module Boundaries
 
-| Module | Public API | Internal |
-|--------|------------|----------|
-| **Core** | Interfaces, utilities | Implementation details |
-| **Database** | Connection, schema | Internal queries |
-| **Repositories** | Interfaces | Implementation |
-| **Services** | Interfaces | Business logic |
-| **Controllers** | N/A | All (internal to API layer) |
+| Module           | Public API            | Internal                    |
+| ---------------- | --------------------- | --------------------------- |
+| **Core**         | Interfaces, utilities | Implementation details      |
+| **Database**     | Connection, schema    | Internal queries            |
+| **Repositories** | Interfaces            | Implementation              |
+| **Services**     | Interfaces            | Business logic              |
+| **Controllers**  | N/A                   | All (internal to API layer) |
 
 ---
 

@@ -38,13 +38,13 @@ This document defines the API design standards and conventions used across the a
 
 ### Design Principles
 
-| Principle | Description | Example |
-|-----------|-------------|---------|
-| **Resource-Oriented** | URLs represent resources | `/api/users` not `/api/getUsers` |
-| **HTTP Verbs** | Use appropriate HTTP methods | GET, POST, PUT, DELETE |
-| **Stateless** | Each request contains all context | PASETO tokens in header |
-| **Uniform Interface** | Consistent patterns across endpoints | Standard response format |
-| **Cacheable** | Responses indicate cacheability | Cache-Control headers |
+| Principle             | Description                          | Example                          |
+| --------------------- | ------------------------------------ | -------------------------------- |
+| **Resource-Oriented** | URLs represent resources             | `/api/users` not `/api/getUsers` |
+| **HTTP Verbs**        | Use appropriate HTTP methods         | GET, POST, PUT, DELETE           |
+| **Stateless**         | Each request contains all context    | PASETO tokens in header          |
+| **Uniform Interface** | Consistent patterns across endpoints | Standard response format         |
+| **Cacheable**         | Responses indicate cacheability      | Cache-Control headers            |
 
 ---
 
@@ -79,13 +79,13 @@ POST   /api/users/:id/products/:id/reviews
 
 ### URL Naming Conventions
 
-| Rule | Correct | Incorrect |
-|------|---------|-----------|
-| **Plural nouns** | `/api/users` | `/api/user` |
-| **Kebab-case** | `/api/admin-users` | `/api/adminUsers` |
-| **Lowercase** | `/api/users` | `/api/Users` |
-| **No file extensions** | `/api/users` | `/api/users.json` |
-| **No trailing slashes** | `/api/users` | `/api/users/` |
+| Rule                    | Correct            | Incorrect         |
+| ----------------------- | ------------------ | ----------------- |
+| **Plural nouns**        | `/api/users`       | `/api/user`       |
+| **Kebab-case**          | `/api/admin-users` | `/api/adminUsers` |
+| **Lowercase**           | `/api/users`       | `/api/Users`      |
+| **No file extensions**  | `/api/users`       | `/api/users.json` |
+| **No trailing slashes** | `/api/users`       | `/api/users/`     |
 
 ### Query Parameters
 
@@ -115,13 +115,13 @@ GET /api/orders?from=2024-01-01&to=2024-12-31
 
 ### Method Matrix
 
-| Method | Safe | Idempotent | Purpose | Example |
-|--------|------|-----------|---------|---------|
-| **GET** | ✅ | ✅ | Retrieve resource | `GET /api/users/:id` |
-| **POST** | ❌ | ❌ | Create resource | `POST /api/users` |
-| **PUT** | ❌ | ✅ | Replace resource | `PUT /api/users/:id` |
-| **PATCH** | ❌ | ❌ | Update resource | `PATCH /api/users/:id` |
-| **DELETE** | ❌ | ✅ | Delete resource | `DELETE /api/users/:id` |
+| Method     | Safe | Idempotent | Purpose           | Example                 |
+| ---------- | ---- | ---------- | ----------------- | ----------------------- |
+| **GET**    | ✅   | ✅         | Retrieve resource | `GET /api/users/:id`    |
+| **POST**   | ❌   | ❌         | Create resource   | `POST /api/users`       |
+| **PUT**    | ❌   | ✅         | Replace resource  | `PUT /api/users/:id`    |
+| **PATCH**  | ❌   | ❌         | Update resource   | `PATCH /api/users/:id`  |
+| **DELETE** | ❌   | ✅         | Delete resource   | `DELETE /api/users/:id` |
 
 ### Method Usage Guidelines
 
@@ -159,32 +159,32 @@ POST /api/deleteUser/:id
 
 ### Success Codes
 
-| Code | Meaning | Usage |
-|------|---------|-------|
-| **200 OK** | Success | GET, PATCH successful |
-| **201 Created** | Resource created | POST successful |
-| **202 Accepted** | Request accepted | Async operation started |
-| **204 No Content** | Success, no body | DELETE successful |
+| Code               | Meaning          | Usage                   |
+| ------------------ | ---------------- | ----------------------- |
+| **200 OK**         | Success          | GET, PATCH successful   |
+| **201 Created**    | Resource created | POST successful         |
+| **202 Accepted**   | Request accepted | Async operation started |
+| **204 No Content** | Success, no body | DELETE successful       |
 
 ### Client Error Codes
 
-| Code | Meaning | Usage |
-|------|---------|-------|
-| **400 Bad Request** | Invalid request | Validation errors |
-| **401 Unauthorized** | Authentication required | Missing/invalid token |
-| **403 Forbidden** | Insufficient permissions | Valid token, not authorized |
-| **404 Not Found** | Resource not found | Resource doesn't exist |
-| **409 Conflict** | Resource conflict | Duplicate email, etc. |
-| **410 Gone** | Resource deleted | Soft-deleted resource |
-| **422 Unprocessable** | Semantic errors | Business rule violation |
-| **429 Too Many Requests** | Rate limit exceeded | Too many requests |
+| Code                      | Meaning                  | Usage                       |
+| ------------------------- | ------------------------ | --------------------------- |
+| **400 Bad Request**       | Invalid request          | Validation errors           |
+| **401 Unauthorized**      | Authentication required  | Missing/invalid token       |
+| **403 Forbidden**         | Insufficient permissions | Valid token, not authorized |
+| **404 Not Found**         | Resource not found       | Resource doesn't exist      |
+| **409 Conflict**          | Resource conflict        | Duplicate email, etc.       |
+| **410 Gone**              | Resource deleted         | Soft-deleted resource       |
+| **422 Unprocessable**     | Semantic errors          | Business rule violation     |
+| **429 Too Many Requests** | Rate limit exceeded      | Too many requests           |
 
 ### Server Error Codes
 
-| Code | Meaning | Usage |
-|------|---------|-------|
-| **500 Internal Server** | Unexpected error | Unhandled exceptions |
-| **503 Service Unavailable** | Service down | Maintenance mode |
+| Code                        | Meaning          | Usage                |
+| --------------------------- | ---------------- | -------------------- |
+| **500 Internal Server**     | Unexpected error | Unhandled exceptions |
+| **503 Service Unavailable** | Service down     | Maintenance mode     |
 
 ### Status Code Decision Tree
 
@@ -421,17 +421,17 @@ GET /api/users/me?token=v4.local.encrypted_token_here
 
 ### Common Error Codes
 
-| Code | Status | Description |
-|------|--------|-------------|
-| `VALIDATION_ERROR` | 400 | Request validation failed |
-| `INVALID_CREDENTIALS` | 401 | Login failed |
-| `TOKEN_EXPIRED` | 401 | PASETO token expired |
-| `INVALID_TOKEN` | 401 | Invalid token format |
-| `FORBIDDEN` | 403 | Insufficient permissions |
-| `USER_NOT_FOUND` | 404 | User doesn't exist |
-| `PRODUCT_NOT_FOUND` | 404 | Product doesn't exist |
-| `USER_EXISTS` | 409 | Email already registered |
-| `INTERNAL_ERROR` | 500 | Unexpected error |
+| Code                  | Status | Description               |
+| --------------------- | ------ | ------------------------- |
+| `VALIDATION_ERROR`    | 400    | Request validation failed |
+| `INVALID_CREDENTIALS` | 401    | Login failed              |
+| `TOKEN_EXPIRED`       | 401    | PASETO token expired      |
+| `INVALID_TOKEN`       | 401    | Invalid token format      |
+| `FORBIDDEN`           | 403    | Insufficient permissions  |
+| `USER_NOT_FOUND`      | 404    | User doesn't exist        |
+| `PRODUCT_NOT_FOUND`   | 404    | Product doesn't exist     |
+| `USER_EXISTS`         | 409    | Email already registered  |
+| `INTERNAL_ERROR`      | 500    | Unexpected error          |
 
 ---
 
@@ -452,10 +452,10 @@ Api-Version: 1.0
 
 ### Version Guidelines
 
-| Version | Stability | Changes |
-|---------|-----------|---------|
-| **v1** | Stable | No breaking changes |
-| **v2** | Beta | Breaking changes possible |
+| Version | Stability | Changes                   |
+| ------- | --------- | ------------------------- |
+| **v1**  | Stable    | No breaking changes       |
+| **v2**  | Beta      | Breaking changes possible |
 
 ### Backward Compatibility
 
@@ -514,12 +514,12 @@ const hasPrev = page > 1;
 
 ### Pagination Best Practices
 
-| Practice | Description |
-|----------|-------------|
-| **Default limit** | 20 items |
-| **Max limit** | 100 items |
-| **Zero-indexed** | Page starts at 1 |
-| **Include meta** | Always include pagination metadata |
+| Practice          | Description                        |
+| ----------------- | ---------------------------------- |
+| **Default limit** | 20 items                           |
+| **Max limit**     | 100 items                          |
+| **Zero-indexed**  | Page starts at 1                   |
+| **Include meta**  | Always include pagination metadata |
 
 ---
 

@@ -12,14 +12,14 @@ This directory contains comprehensive documentation covering all aspects of deve
 
 ## 📖 Available Documentation
 
-| Document | Description | Audience |
-|----------|-------------|----------|
-| [**PASETO_GUIDE.md**](./PASETO_GUIDE.md) | Deep dive into PASETO v4 authentication in Bun | All developers |
-| [**CODE_STYLE.md**](./CODE_STYLE.md) | Code formatting and style conventions | All developers |
-| [**ARCHITECTURE_STANDARDS.md**](./ARCHITECTURE_STANDARDS.md) | Architectural patterns and design principles | Senior developers |
-| [**API_DESIGN_STANDARDS.md**](./API_DESIGN_STANDARDS.md) | RESTful API design conventions | Backend developers |
-| [**PARANOID_FUNCTIONALITY.md**](./PARANOID_FUNCTIONALITY.md) | Soft delete implementation guide | Backend developers |
-| [**TESTING_STANDARDS.md**](./TESTING_STANDARDS.md) | Testing practices and conventions | All developers |
+| Document                                                     | Description                                    | Audience           |
+| ------------------------------------------------------------ | ---------------------------------------------- | ------------------ |
+| [**PASETO_GUIDE.md**](./PASETO_GUIDE.md)                     | Deep dive into PASETO v4 authentication in Bun | All developers     |
+| [**CODE_STYLE.md**](./CODE_STYLE.md)                         | Code formatting and style conventions          | All developers     |
+| [**ARCHITECTURE_STANDARDS.md**](./ARCHITECTURE_STANDARDS.md) | Architectural patterns and design principles   | Senior developers  |
+| [**API_DESIGN_STANDARDS.md**](./API_DESIGN_STANDARDS.md)     | RESTful API design conventions                 | Backend developers |
+| [**PARANOID_FUNCTIONALITY.md**](./PARANOID_FUNCTIONALITY.md) | Soft delete implementation guide               | Backend developers |
+| [**TESTING_STANDARDS.md**](./TESTING_STANDARDS.md)           | Testing practices and conventions              | All developers     |
 
 ---
 
@@ -101,30 +101,30 @@ All documents follow this structure:
 
 ### By Topic
 
-| Topic | Document | Section |
-|-------|----------|---------|
-| **Authentication** | PASETO_GUIDE.md | All sections |
-| **Code Formatting** | CODE_STYLE.md | Formatting Rules |
-| **TypeScript** | CODE_STYLE.md | TypeScript Standards |
-| **Naming** | CODE_STYLE.md | Naming Conventions |
-| **Architecture** | ARCHITECTURE_STANDARDS.md | Design Principles |
-| **Design Patterns** | ARCHITECTURE_STANDARDS.md | Design Patterns |
-| **API Design** | API_DESIGN_STANDARDS.md | RESTful Principles |
-| **HTTP Methods** | API_DESIGN_STANDARDS.md | Method Usage |
-| **Status Codes** | API_DESIGN_STANDARDS.md | Error Handling |
-| **Soft Delete** | PARANOID_FUNCTIONALITY.md | Overview |
-| **Testing** | TESTING_STANDARDS.md | Test Structure |
-| **Unit Testing** | TESTING_STANDARDS.md | Unit Testing |
-| **Integration Testing** | TESTING_STANDARDS.md | Integration Testing |
+| Topic                   | Document                  | Section              |
+| ----------------------- | ------------------------- | -------------------- |
+| **Authentication**      | PASETO_GUIDE.md           | All sections         |
+| **Code Formatting**     | CODE_STYLE.md             | Formatting Rules     |
+| **TypeScript**          | CODE_STYLE.md             | TypeScript Standards |
+| **Naming**              | CODE_STYLE.md             | Naming Conventions   |
+| **Architecture**        | ARCHITECTURE_STANDARDS.md | Design Principles    |
+| **Design Patterns**     | ARCHITECTURE_STANDARDS.md | Design Patterns      |
+| **API Design**          | API_DESIGN_STANDARDS.md   | RESTful Principles   |
+| **HTTP Methods**        | API_DESIGN_STANDARDS.md   | Method Usage         |
+| **Status Codes**        | API_DESIGN_STANDARDS.md   | Error Handling       |
+| **Soft Delete**         | PARANOID_FUNCTIONALITY.md | Overview             |
+| **Testing**             | TESTING_STANDARDS.md      | Test Structure       |
+| **Unit Testing**        | TESTING_STANDARDS.md      | Unit Testing         |
+| **Integration Testing** | TESTING_STANDARDS.md      | Integration Testing  |
 
 ### By Role
 
-| Role | Priority Documents |
-|------|-------------------|
-| **Junior Developer** | CODE_STYLE.md, TESTING_STANDARDS.md |
+| Role                  | Priority Documents                                 |
+| --------------------- | -------------------------------------------------- |
+| **Junior Developer**  | CODE_STYLE.md, TESTING_STANDARDS.md                |
 | **Backend Developer** | API_DESIGN_STANDARDS.md, PARANOID_FUNCTIONALITY.md |
-| **Senior Developer** | ARCHITECTURE_STANDARDS.md, PASETO_GUIDE.md |
-| **Tech Lead** | All documents |
+| **Senior Developer**  | ARCHITECTURE_STANDARDS.md, PASETO_GUIDE.md         |
+| **Tech Lead**         | All documents                                      |
 
 ---
 

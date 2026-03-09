@@ -31,13 +31,13 @@ PASETO (Platform-Agnostic Security Tokens) is a secure token format that address
 
 ### Key Features
 
-| Feature | Description |
-|---------|-------------|
-| **Version 4** | Uses modern cryptography (XChaCha20-Poly1305, Ed25519) |
-| **Local Purpose** | Symmetric encryption (both parties share secret) |
-| **Public Purpose** | Asymmetric signatures (public/private key pairs) |
-| **Payload Encryption** | Encrypts payload by default (not just signs) |
-| **Explicit Versioning** | Version number in token prevents ambiguity |
+| Feature                 | Description                                            |
+| ----------------------- | ------------------------------------------------------ |
+| **Version 4**           | Uses modern cryptography (XChaCha20-Poly1305, Ed25519) |
+| **Local Purpose**       | Symmetric encryption (both parties share secret)       |
+| **Public Purpose**      | Asymmetric signatures (public/private key pairs)       |
+| **Payload Encryption**  | Encrypts payload by default (not just signs)           |
+| **Explicit Versioning** | Version number in token prevents ambiguity             |
 
 ---
 
@@ -65,13 +65,13 @@ PASETO addresses critical JWT vulnerabilities:
 
 ### Real-World Impact
 
-| Attack Type | JWT Vulnerability | PASETO Protection |
-|-------------|-------------------|-------------------|
-| Algorithm Confusion | ⚠️ Vulnerable | ✅ Protected (version-specific) |
-| Key Confusion | ⚠️ Vulnerable | ✅ Protected (purpose-bound) |
-| None Algorithm | ⚠️ Vulnerable | ✅ Protected (no "none" option) |
-| Header Injection | ⚠️ Vulnerable | ✅ Protected (immutable header) |
-| Timing Attacks | ⚠️ Possible | ✅ Protected (constant-time operations) |
+| Attack Type         | JWT Vulnerability | PASETO Protection                       |
+| ------------------- | ----------------- | --------------------------------------- |
+| Algorithm Confusion | ⚠️ Vulnerable     | ✅ Protected (version-specific)         |
+| Key Confusion       | ⚠️ Vulnerable     | ✅ Protected (purpose-bound)            |
+| None Algorithm      | ⚠️ Vulnerable     | ✅ Protected (no "none" option)         |
+| Header Injection    | ⚠️ Vulnerable     | ✅ Protected (immutable header)         |
+| Timing Attacks      | ⚠️ Possible       | ✅ Protected (constant-time operations) |
 
 ---
 
@@ -79,16 +79,16 @@ PASETO addresses critical JWT vulnerabilities:
 
 ### Comparison Table
 
-| Feature | JWT | PASETO v4 |
-|---------|-----|-----------|
-| **Header** | Contains algorithm (mutable) | Version + purpose only (immutable) |
-| **Payload** | Base64 encoded (readable) | Encrypted (local) or signed (public) |
-| **Signature** | Optional algorithms | Version-specific (no choice) |
-| **Key Management** | Manual (error-prone) | Built-in key binding |
-| **Algorithm Confusion** | ⚠️ Vulnerable | ✅ Protected |
-| **Payload Encryption** | ❌ Not standard | ✅ Built-in (local tokens) |
-| **Versioning** | ❌ Not supported | ✅ Required (v1, v2, v3, v4) |
-| **Implementation** | Multiple options | Single correct way |
+| Feature                 | JWT                          | PASETO v4                            |
+| ----------------------- | ---------------------------- | ------------------------------------ |
+| **Header**              | Contains algorithm (mutable) | Version + purpose only (immutable)   |
+| **Payload**             | Base64 encoded (readable)    | Encrypted (local) or signed (public) |
+| **Signature**           | Optional algorithms          | Version-specific (no choice)         |
+| **Key Management**      | Manual (error-prone)         | Built-in key binding                 |
+| **Algorithm Confusion** | ⚠️ Vulnerable                | ✅ Protected                         |
+| **Payload Encryption**  | ❌ Not standard              | ✅ Built-in (local tokens)           |
+| **Versioning**          | ❌ Not supported             | ✅ Required (v1, v2, v3, v4)         |
+| **Implementation**      | Multiple options             | Single correct way                   |
 
 ### Token Format Comparison
 
@@ -274,21 +274,21 @@ bun -e "console.log(crypto.randomUUID().replace(/-/g, '').substring(0, 64))"
 ```typescript
 interface AccessTokenPayload {
   // Standard claims
-  iss: string;      // Issuer (e.g., "bun-elysia-paseto-boilerplate")
-  sub: string;      // Subject (user ID)
-  aud?: string;     // Audience (optional)
-  exp: number;      // Expiration (Unix timestamp)
-  iat: number;      // Issued at (Unix timestamp)
-  jti: string;      // Token ID (unique identifier)
-  type: 'access';   // Token type
+  iss: string; // Issuer (e.g., "bun-elysia-paseto-boilerplate")
+  sub: string; // Subject (user ID)
+  aud?: string; // Audience (optional)
+  exp: number; // Expiration (Unix timestamp)
+  iat: number; // Issued at (Unix timestamp)
+  jti: string; // Token ID (unique identifier)
+  type: 'access'; // Token type
 
   // Custom claims (application-specific)
-  email?: string;           // User email
-  role?: string;            // User role (ADMIN, USER)
-  permissions?: string[];   // User permissions
+  email?: string; // User email
+  role?: string; // User role (ADMIN, USER)
+  permissions?: string[]; // User permissions
 
   // Additional claims
-  [key: string]: unknown;   // Extension point
+  [key: string]: unknown; // Extension point
 }
 ```
 
@@ -305,7 +305,7 @@ interface RefreshTokenPayload {
   type: 'refresh';
 
   // Refresh-specific claims
-  tokenId: string;  // Reference to stored session
+  tokenId: string; // Reference to stored session
 
   // Note: Minimal payload for security
   // Additional claims retrieved from database
@@ -343,7 +343,7 @@ v4.local.k4ADQFYoRlDd69Xl7wQEi2aLkQp8h-mXcOq3NvY9ZJQvYG2w5sXHPb8nM...
 const localKey = process.env.PASETO_LOCAL_KEY;
 
 // ❌ Bad: Hardcoded key
-const localKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const localKey = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
 // ✅ Good: Use separate keys for environments
 // Development key != Production key
@@ -355,13 +355,13 @@ const localKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcd
 
 ```typescript
 // ✅ Good: Short-lived access tokens
-ACCESS_TOKEN_EXPIRY_MINUTES = 15  // 15 minutes
+ACCESS_TOKEN_EXPIRY_MINUTES = 15; // 15 minutes
 
 // ✅ Good: Longer-lived refresh tokens (with revocation)
-REFRESH_TOKEN_EXPIRY_DAYS = 7     // 7 days
+REFRESH_TOKEN_EXPIRY_DAYS = 7; // 7 days
 
 // ❌ Bad: Long-lived access tokens (no refresh mechanism)
-ACCESS_TOKEN_EXPIRY_DAYS = 365     // 1 year!
+ACCESS_TOKEN_EXPIRY_DAYS = 365; // 1 year!
 ```
 
 ### 3. Token Storage
@@ -416,7 +416,7 @@ async function validateToken(token: string) {
 async function validateTokenBad(token: string) {
   // Only checks if token can be decrypted
   const payload = await pasetoService.decrypt(token);
-  return payload;  // No additional checks!
+  return payload; // No additional checks!
 }
 ```
 
@@ -526,13 +526,13 @@ async function refreshToken(oldRefreshToken: string): Promise<TokenPair> {
 // ✅ Good: Bind token to specific context (optional)
 interface TokenPayload {
   // ... other claims
-  aud?: string;      // Audience (e.g., "api.example.com")
-  nonce?: string;    // Random nonce for additional binding
+  aud?: string; // Audience (e.g., "api.example.com")
+  nonce?: string; // Random nonce for additional binding
 }
 
 // Bind to client IP or user agent (optional, may affect UX)
 interface TokenBinding {
-  ip?: string;       // Client IP address
+  ip?: string; // Client IP address
   userAgent?: string; // Client user agent hash
 }
 
@@ -555,12 +555,14 @@ Error: Token validation failed
 ```
 
 **Possible Causes:**
+
 - Token has expired
 - Wrong key used for decryption
 - Token format corrupted
 - Version mismatch
 
 **Solutions:**
+
 ```typescript
 // Check token expiration
 const now = Math.floor(Date.now() / 1000);
@@ -571,7 +573,7 @@ if (payload.exp < now) {
 // Verify key configuration
 console.log('PASETO_VERSION:', config.paseto.version);
 console.log('PASETO_PURPOSE:', config.paseto.purpose);
-console.log('Key length:', config.paseto.localKey?.length);  // Should be 32 bytes (64 hex chars)
+console.log('Key length:', config.paseto.localKey?.length); // Should be 32 bytes (64 hex chars)
 
 // Validate token format
 if (!token.startsWith('v4.')) {
@@ -586,6 +588,7 @@ Error: PASETO key not initialized
 ```
 
 **Solutions:**
+
 ```bash
 # Check environment variables
 echo $PASETO_LOCAL_KEY
@@ -607,6 +610,7 @@ Error: Token too large for header
 ```
 
 **Solutions:**
+
 ```typescript
 // ✅ Good: Minimal payload
 interface AccessTokenPayload {
@@ -641,13 +645,14 @@ Error: Token not yet valid
 ```
 
 **Solutions:**
+
 ```typescript
 // ✅ Good: Allow small clock skew (leeway)
-const LEEWAY_SECONDS = 30;  // 30 seconds
+const LEEWAY_SECONDS = 30; // 30 seconds
 
 function isTokenExpired(exp: number): boolean {
   const now = Math.floor(Date.now() / 1000);
-  return (now + LEEWAY_SECONDS) >= exp;
+  return now + LEEWAY_SECONDS >= exp;
 }
 
 // Or use ntp to synchronize server time
@@ -660,11 +665,13 @@ Error: Failed to decrypt token
 ```
 
 **Possible Causes:**
+
 - Key mismatch between token generation and validation
 - Token corrupted during transmission
 - Version/purpose mismatch
 
 **Solutions:**
+
 ```typescript
 // Verify key consistency
 const keyUsedForSigning = config.paseto.localKey;
@@ -847,12 +854,14 @@ describe('Authentication Integration', () => {
 ### When to Migrate
 
 ✅ **Migrate to PASETO if:**
+
 - Starting a new project
 - Current JWT implementation has known vulnerabilities
 - Need payload encryption by default
 - Want simpler, more secure implementation
 
 ❌ **Keep JWT if:**
+
 - Deeply integrated with existing systems
 - Third-party services require JWT
 - Team has extensive JWT expertise
@@ -934,9 +943,7 @@ const refreshToken = await pasetoService.createRefreshToken(userId, tokenId);
 const result = await pasetoService.validateAndDecodeToken(token);
 
 // Extract token from Authorization header
-const token = await pasetoService.extractTokenFromHeader(
-  request.headers.get('Authorization')
-);
+const token = await pasetoService.extractTokenFromHeader(request.headers.get('Authorization'));
 
 // Create token pair
 const tokens = await pasetoService.createTokenPair(userId, {

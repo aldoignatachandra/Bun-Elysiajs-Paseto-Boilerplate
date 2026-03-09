@@ -25,27 +25,27 @@
 
 ## Senior-Level Features (Beyond Common Backend)
 
-| Feature | Why Senior-Level | Learning Outcome |
-|---------|------------------|------------------|
-| **Hybrid PASETO (v4.local + v4.public)** | Both symmetric & asymmetric crypto learning | Production-grade token architecture |
-| **Clean Architecture (Layers)** | Separation of concerns, testability | Architectural patterns, SOLID principles |
-| **Repository Pattern with Unit of Work** | Transactional consistency, testability | Data access patterns |
-| **Domain Events Pattern** | Decoupled business logic, future microservices ready | Event-driven architecture foundation |
-| **Request/Response Validation with Zod** | Type safety across boundaries | Defensive programming |
-| **Structured Logging with Correlation IDs** | Production debugging, observability | Distributed tracing concepts |
-| **Health Check Endpoints** | Production monitoring readiness | DevOps awareness |
-| **Graceful Shutdown** | Zero-downtime deployments | Production reliability |
-| **OpenAPI/Swagger Documentation** | API-first development, team collaboration | Documentation standards |
-| **Test Doubles (Spy/Mock/Stub) Patterns** | Proper unit testing, maintainable tests | Testing best practices |
-| **Environment Configuration Validation** | Fail fast on misconfiguration | Configuration management |
-| **Error Response Standardization** | Consistent client experience | API design standards |
-| **Repository Transaction Handling** | Data consistency patterns | Database transaction management |
-| **Elysia Plugin Architecture** | Modular, composable application design | Framework extensibility patterns |
-| **Prometheus Metrics Export** | Production monitoring, alerting | Observability and SRE practices |
-| **OpenTelemetry Tracing** | Distributed request tracing | Performance analysis |
-| **Circuit Breaker Pattern** | Resilience against cascading failures | Fault tolerance strategies |
-| **Background Job Processing** | Async task execution | Job queue patterns |
-| **API Versioning Strategy** | Backward compatibility, graceful evolution | API lifecycle management |
+| Feature                                     | Why Senior-Level                                     | Learning Outcome                         |
+| ------------------------------------------- | ---------------------------------------------------- | ---------------------------------------- |
+| **Hybrid PASETO (v4.local + v4.public)**    | Both symmetric & asymmetric crypto learning          | Production-grade token architecture      |
+| **Clean Architecture (Layers)**             | Separation of concerns, testability                  | Architectural patterns, SOLID principles |
+| **Repository Pattern with Unit of Work**    | Transactional consistency, testability               | Data access patterns                     |
+| **Domain Events Pattern**                   | Decoupled business logic, future microservices ready | Event-driven architecture foundation     |
+| **Request/Response Validation with Zod**    | Type safety across boundaries                        | Defensive programming                    |
+| **Structured Logging with Correlation IDs** | Production debugging, observability                  | Distributed tracing concepts             |
+| **Health Check Endpoints**                  | Production monitoring readiness                      | DevOps awareness                         |
+| **Graceful Shutdown**                       | Zero-downtime deployments                            | Production reliability                   |
+| **OpenAPI/Swagger Documentation**           | API-first development, team collaboration            | Documentation standards                  |
+| **Test Doubles (Spy/Mock/Stub) Patterns**   | Proper unit testing, maintainable tests              | Testing best practices                   |
+| **Environment Configuration Validation**    | Fail fast on misconfiguration                        | Configuration management                 |
+| **Error Response Standardization**          | Consistent client experience                         | API design standards                     |
+| **Repository Transaction Handling**         | Data consistency patterns                            | Database transaction management          |
+| **Elysia Plugin Architecture**              | Modular, composable application design               | Framework extensibility patterns         |
+| **Prometheus Metrics Export**               | Production monitoring, alerting                      | Observability and SRE practices          |
+| **OpenTelemetry Tracing**                   | Distributed request tracing                          | Performance analysis                     |
+| **Circuit Breaker Pattern**                 | Resilience against cascading failures                | Fault tolerance strategies               |
+| **Background Job Processing**               | Async task execution                                 | Job queue patterns                       |
+| **API Versioning Strategy**                 | Backward compatibility, graceful evolution           | API lifecycle management                 |
 
 ---
 
@@ -85,31 +85,34 @@ This boilerplate uses a **hybrid PASETO v4 approach** that combines both `v4.loc
 
 ### What You'll Learn
 
-| Concept | v4.local (Access) | v4.public (Refresh) |
-|---------|-------------------|---------------------|
-| **Cryptography Type** | Symmetric (shared key) | Asymmetric (public/private) |
-| **Algorithm** | XChaCha20-Poly1305 | Ed25519 |
-| **Operation** | Encrypt/Decrypt | Sign/Verify |
-| **Key Management** | Single secret key | Key pair (private + public) |
-| **Payload Security** | Hidden (encrypted) | Visible (tamper-proof) |
-| **Use Case** | Short-lived tokens | Long-lived tokens |
+| Concept                 | v4.local (Access)         | v4.public (Refresh)           |
+| ----------------------- | ------------------------- | ----------------------------- |
+| **Cryptography Type**   | Symmetric (shared key)    | Asymmetric (public/private)   |
+| **Algorithm**           | XChaCha20-Poly1305        | Ed25519                       |
+| **Operation**           | Encrypt/Decrypt           | Sign/Verify                   |
+| **Key Management**      | Single secret key         | Key pair (private + public)   |
+| **Payload Security**    | Hidden (encrypted)        | Visible (tamper-proof)        |
+| **Use Case**            | Short-lived tokens        | Long-lived tokens             |
 | **Microservices Ready** | No (requires key sharing) | Yes (public key distribution) |
 
 ### Why Both?
 
 **1. Maximum Learning Value**
+
 - ✅ Learn symmetric encryption (v4.local)
 - ✅ Learn asymmetric signing (v4.public)
 - ✅ Understand when to use each approach
 - ✅ Production-grade patterns
 
 **2. Production Best Practices**
+
 - Access tokens need encryption (hide sensitive data)
 - Refresh tokens need revocation capability
 - Public keys can be shared across services
 - Future-proof for microservices migration
 
 **3. Real-World Scenarios**
+
 ```
 Access Token (v4.local):
   - Contains: userId, email, role, permissions
@@ -129,13 +132,13 @@ Refresh Token (v4.public):
 
 We use `paseto-ts` instead of the official `paseto` package because:
 
-| Feature | Official `paseto` | `paseto-ts` |
-|---------|------------------|-------------|
-| v4.local support | ❌ No | ✅ Yes |
-| v4.public support | ✅ Yes | ✅ Yes |
-| TypeScript | Basic | Native, type-safe |
-| PASERK format | ❌ No | ✅ Yes (modern key format) |
-| Bun compatible | ✅ | ✅ |
+| Feature           | Official `paseto` | `paseto-ts`                |
+| ----------------- | ----------------- | -------------------------- |
+| v4.local support  | ❌ No             | ✅ Yes                     |
+| v4.public support | ✅ Yes            | ✅ Yes                     |
+| TypeScript        | Basic             | Native, type-safe          |
+| PASERK format     | ❌ No             | ✅ Yes (modern key format) |
+| Bun compatible    | ✅                | ✅                         |
 
 ### Environment Variables
 
@@ -173,13 +176,14 @@ This boilerplate uses **PASERK** (Platform-Agnostic SEcurity Keys) format - the 
 
 **Key Types:**
 
-| Prefix | Purpose | Key Type | Use Case |
-|--------|---------|----------|----------|
-| `k4.local.` | Symmetric | Secret key | v4.local encryption (access tokens) |
-| `k4.secret.` | Asymmetric | Private key | v4.public signing (create refresh tokens) |
-| `k4.public.` | Asymmetric | Public key | v4.public verification (validate refresh tokens) |
+| Prefix       | Purpose    | Key Type    | Use Case                                         |
+| ------------ | ---------- | ----------- | ------------------------------------------------ |
+| `k4.local.`  | Symmetric  | Secret key  | v4.local encryption (access tokens)              |
+| `k4.secret.` | Asymmetric | Private key | v4.public signing (create refresh tokens)        |
+| `k4.public.` | Asymmetric | Public key  | v4.public verification (validate refresh tokens) |
 
 **Example Keys:**
+
 ```
 k4.local.9wZIZXRl3RvX2tleV9mb3JfdjQubG9jYWw...
 k4.secret.XZGFzZXRvX3ByaXZhdGVfa2V5X2Zvcl92NC5wdWJ...
@@ -187,6 +191,7 @@ k4.public.YXNldG9fcHVibGljX2tleV9mb3JfdjQucHViaWM...
 ```
 
 **Why PASERK?**
+
 - ✅ Self-describing (version and purpose in prefix)
 - ✅ Standardized format across libraries
 - ✅ Easy key rotation
@@ -194,6 +199,7 @@ k4.public.YXNldG9fcHVibGljX2tleV9mb3JfdjQucHViaWM...
 - ✅ Prevents key confusion (can't use v4.local key for v4.public)
 
 **Important Security Notes:**
+
 1. **NEVER commit `k4.secret` keys to git**
 2. **DO share `k4.public` keys freely** (they're public!)
 3. **KEEP `k4.local` keys safe** (anyone with them can decrypt tokens)
@@ -347,6 +353,7 @@ bun-elysia-paseto-boilerplate/
 #### Task 1: Initialize Project and Base Configuration
 
 **Files:**
+
 - Create: `package.json`
 - Create: `tsconfig.json`
 - Create: `.eslintrc.json`
@@ -625,6 +632,7 @@ git commit -m "feat: initialize project with base configuration"
 #### Task 2: Setup Core Configuration System
 
 **Files:**
+
 - Create: `src/config/index.ts`
 - Create: `src/config/database.ts`
 - Create: `src/config/redis.ts`
@@ -665,18 +673,27 @@ const envSchema = z.object({
   REFRESH_TOKEN_EXPIRY_DAYS: z.coerce.number().default(7),
 
   // Rate Limiting
-  RATE_LIMIT_ENABLED: z.enum(['true', 'false']).transform(v => v === 'true').default('true'),
+  RATE_LIMIT_ENABLED: z
+    .enum(['true', 'false'])
+    .transform(v => v === 'true')
+    .default('true'),
   RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().default(60),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
 
   // Logging
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
-  LOG_PRETTY: z.enum(['true', 'false']).transform(v => v === 'true').default('true'),
+  LOG_PRETTY: z
+    .enum(['true', 'false'])
+    .transform(v => v === 'true')
+    .default('true'),
   LOG_FORMAT: z.enum(['json', 'pretty']).default('json'),
 
   // CORS
   CORS_ORIGIN: z.string().default('*'),
-  CORS_CREDENTIALS: z.enum(['true', 'false']).transform(v => v === 'true').default('true'),
+  CORS_CREDENTIALS: z
+    .enum(['true', 'false'])
+    .transform(v => v === 'true')
+    .default('true'),
   CORS_METHODS: z.string().default('GET,POST,PUT,DELETE,PATCH'),
   CORS_ALLOWED_HEADERS: z.string().default('Content-Type,Authorization'),
 
@@ -700,7 +717,9 @@ export function validateEnv(): Env {
   }
 
   if (!parsed.data.PASETO_PUBLIC_KEY || !parsed.data.PASETO_SECRET_KEY) {
-    throw new Error('PASETO_PUBLIC_KEY and PASETO_SECRET_KEY are required (format: k4.public/k4.secret)');
+    throw new Error(
+      'PASETO_PUBLIC_KEY and PASETO_SECRET_KEY are required (format: k4.public/k4.secret)'
+    );
   }
 
   return parsed.data;
@@ -840,6 +859,7 @@ git commit -m "feat: implement configuration system with Zod validation"
 #### Task 3: Implement Logging System
 
 **Files:**
+
 - Create: `src/core/logging/logger.ts`
 - Create: `src/core/logging/types.ts`
 - Create: `src/core/logging/middleware.ts`
@@ -924,7 +944,8 @@ class PinoLogger implements Logger {
   }
 
   error(message: string, error?: Error | unknown, context: LogContext = {}): void {
-    const errorContext = error instanceof Error ? { error: this.serializeError(error), ...context } : context;
+    const errorContext =
+      error instanceof Error ? { error: this.serializeError(error), ...context } : context;
     pinoLogger.error({ ...this.metadata, ...errorContext }, message);
   }
 
@@ -1052,6 +1073,7 @@ git commit -m "feat: implement structured logging with Pino"
 #### Task 4: Implement PASETO Core
 
 **Files:**
+
 - Create: `src/core/paseto/token.types.ts`
 - Create: `src/core/paseto/errors.ts`
 - Create: `src/core/paseto/paseto.service.ts`
@@ -1106,7 +1128,10 @@ export type TokenType = 'access' | 'refresh';
 ```typescript
 // src/core/paseto/errors.ts
 export class PasetoError extends Error {
-  constructor(message: string, public code: string) {
+  constructor(
+    message: string,
+    public code: string
+  ) {
     super(message);
     this.name = 'PasetoError';
   }
@@ -1192,7 +1217,9 @@ export function isTokenExpired(exp: number): boolean {
  * Ensures all required claims are present
  * @param payload - The payload to validate
  */
-export function validateTokenPayload(payload: unknown): asserts payload is import('./token.types').TokenPayload {
+export function validateTokenPayload(
+  payload: unknown
+): asserts payload is import('./token.types').TokenPayload {
   if (!payload || typeof payload !== 'object') {
     throw new InvalidTokenPayloadError('Payload must be an object');
   }
@@ -1323,7 +1350,10 @@ export class PasetoService {
    * @param additionalClaims - Optional additional claims
    * @returns Encrypted PASETO token (v4.local.xxx...)
    */
-  async createAccessToken(userId: string, additionalClaims: Partial<AccessTokenPayload> = {}): Promise<string> {
+  async createAccessToken(
+    userId: string,
+    additionalClaims: Partial<AccessTokenPayload> = {}
+  ): Promise<string> {
     const payload: AccessTokenPayload = {
       iss: 'bun-elysia-paseto-boilerplate',
       sub: userId,
@@ -1338,7 +1368,9 @@ export class PasetoService {
         addIat: true, // Add 'iat' claim (issued at)
       });
     } catch (error) {
-      throw new KeyConfigError(`Failed to create access token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new KeyConfigError(
+        `Failed to create access token: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -1370,7 +1402,9 @@ export class PasetoService {
         // 7 days expiry is handled by token implementation
       });
     } catch (error) {
-      throw new KeyConfigError(`Failed to create refresh token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new KeyConfigError(
+        `Failed to create refresh token: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -1384,7 +1418,10 @@ export class PasetoService {
    * @param additionalClaims - Optional additional claims for access token
    * @returns Token pair with access and refresh tokens
    */
-  async createTokenPair(userId: string, additionalClaims: Partial<AccessTokenPayload> = {}): Promise<TokenPair> {
+  async createTokenPair(
+    userId: string,
+    additionalClaims: Partial<AccessTokenPayload> = {}
+  ): Promise<TokenPair> {
     const [accessToken, refreshToken] = await Promise.all([
       this.createAccessToken(userId, additionalClaims),
       this.createRefreshToken(userId),
@@ -1875,6 +1912,7 @@ git commit -m "feat: implement hybrid PASETO (v4.local + v4.public) for maximum 
 **Why this task?** You need secure keys for both v4.local and v4.public. This script generates them in PASERK format (the modern key format for PASETO).
 
 **Files:**
+
 - Create: `scripts/generate-paseto-keys.ts`
 
 **Step 1: Create key generation script**
@@ -1965,6 +2003,7 @@ Add this to the `scripts` section in `package.json`:
 Run: `bun run generate:paseto-keys`
 
 Expected output:
+
 ```
 🔐 PASETO Key Generator (Hybrid v4.local + v4.public)
 ============================================================
@@ -2030,6 +2069,7 @@ git commit -m "feat: add PASETO key generation script"
 #### Task 5: Setup Drizzle ORM
 
 **Files:**
+
 - Create: `drizzle.config.ts`
 - Create: `src/database/connection.ts`
 - Create: `src/database/schema/users.schema.ts`
@@ -2210,6 +2250,7 @@ git commit -m "feat: generate initial database migrations"
 #### Task 7: Implement Base Repository and Unit of Work
 
 **Files:**
+
 - Create: `src/repositories/base.repository.ts`
 - Create: `src/repositories/unit-of-work.ts`
 - Create: `tests/unit/repositories/base.repository.test.ts`
@@ -2432,6 +2473,7 @@ git commit -m "feat: implement base repository and unit of work patterns"
 #### Task 8: Implement Users Repository
 
 **Files:**
+
 - Create: `src/repositories/users.repository.ts`
 
 **Step 1: Create users repository**
@@ -2451,11 +2493,7 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async findById(id: string): Promise<User | null> {
     try {
-      const result = await this.db
-        .select()
-        .from(users)
-        .where(eq(users.id, id))
-        .limit(1);
+      const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
 
       return result[0] || null;
     } catch (error) {
@@ -2466,11 +2504,7 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async findByEmail(email: string): Promise<User | null> {
     try {
-      const result = await this.db
-        .select()
-        .from(users)
-        .where(eq(users.email, email))
-        .limit(1);
+      const result = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
 
       return result[0] || null;
     } catch (error) {
@@ -2537,6 +2571,7 @@ git commit -m "feat: implement users repository with CRUD operations"
 #### Task 9: Implement Sessions Repository
 
 **Files:**
+
 - Create: `src/repositories/sessions.repository.ts`
 
 **Step 1: Create sessions repository**
@@ -2549,18 +2584,17 @@ import { sessions } from '../database/schema';
 import type { Session, NewSession } from '../database/schema';
 import { CRUDRepository } from './base.repository';
 
-export class SessionRepository extends CRUDRepository<Session, string> implements ISessionRepository {
+export class SessionRepository
+  extends CRUDRepository<Session, string>
+  implements ISessionRepository
+{
   get tableName() {
     return sessions;
   }
 
   async findById(id: string): Promise<Session | null> {
     try {
-      const result = await this.db
-        .select()
-        .from(sessions)
-        .where(eq(sessions.id, id))
-        .limit(1);
+      const result = await this.db.select().from(sessions).where(eq(sessions.id, id)).limit(1);
 
       return result[0] || null;
     } catch (error) {
@@ -2674,6 +2708,7 @@ git commit -m "feat: implement sessions repository with revocation"
 #### Task 10: Implement Password Hashing Service
 
 **Files:**
+
 - Create: `src/core/crypto/password.service.ts`
 - Create: `src/core/crypto/index.ts`
 - Create: `tests/unit/core/crypto/password.service.test.ts`
@@ -2692,7 +2727,7 @@ export class PasswordService {
     this.options = {
       type: argon2.argon2id,
       memoryCost: 65536, // 64 MB
-      timeCost: 3,       // 3 iterations
+      timeCost: 3, // 3 iterations
       parallelism: 4,
       hashLength: 32,
     };
@@ -2825,6 +2860,7 @@ git commit -m "feat: implement password hashing with Argon2"
 #### Task 11: Implement Authentication Service
 
 **Files:**
+
 - Create: `src/services/interfaces/auth.service.interface.ts`
 - Create: `src/services/auth.service.ts`
 - Create: `tests/unit/services/auth.service.test.ts`
@@ -2876,7 +2912,12 @@ export interface IAuthService {
 ```typescript
 // src/services/auth.service.ts
 import { injectable, inject } from 'tsyringe';
-import type { IAuthService, RegisterDto, LoginDto, AuthResponse } from './interfaces/auth.service.interface';
+import type {
+  IAuthService,
+  RegisterDto,
+  LoginDto,
+  AuthResponse,
+} from './interfaces/auth.service.interface';
 import type { IUserRepository, ISessionRepository } from '../repositories/unit-of-work';
 import type { UnitOfWork } from '../repositories/unit-of-work';
 import { RepositoryTokens } from './constants';
@@ -2887,9 +2928,7 @@ import { AppError } from '@core/errors/app-error';
 
 @injectable()
 export class AuthService implements IAuthService {
-  constructor(
-    @inject(RepositoryTokens.UnitOfWork) private uow: UnitOfWork,
-  ) {}
+  constructor(@inject(RepositoryTokens.UnitOfWork) private uow: UnitOfWork) {}
 
   async register(dto: RegisterDto): Promise<AuthResponse> {
     try {
@@ -3062,7 +3101,9 @@ export class AuthService implements IAuthService {
     }
   }
 
-  private async generateAuthResponse(user: import('../database/schema').User): Promise<AuthResponse> {
+  private async generateAuthResponse(
+    user: import('../database/schema').User
+  ): Promise<AuthResponse> {
     const pasetoService = getPasetoService();
     const tokenPair = await pasetoService.createTokenPairForUser(user.id);
 
@@ -3086,7 +3127,9 @@ export class AuthService implements IAuthService {
     };
   }
 
-  private mapToUserDto(user: import('../database/schema').User): import('./interfaces/auth.service.interface').UserDto {
+  private mapToUserDto(
+    user: import('../database/schema').User
+  ): import('./interfaces/auth.service.interface').UserDto {
     return {
       id: user.id,
       email: user.email,
@@ -3125,6 +3168,7 @@ git commit -m "feat: implement authentication service with PASETO tokens"
 #### Task 12: Implement Request/Response Validation
 
 **Files:**
+
 - Create: `src/core/validation/common.schema.ts`
 - Create: `src/core/validation/error.handler.ts`
 - Create: `src/core/validation/index.ts`
@@ -3295,6 +3339,7 @@ git commit -m "feat: implement request validation with Zod schemas"
 #### Task 13: Implement Authentication Middleware
 
 **Files:**
+
 - Create: `src/middlewares/auth.middleware.ts`
 
 **Step 1: Create auth middleware**
@@ -3404,6 +3449,7 @@ git commit -m "feat: implement PASETO authentication middleware"
 #### Task 14: Implement Rate Limiting Middleware
 
 **Files:**
+
 - Create: `src/middlewares/rate-limit.middleware.ts`
 - Create: `src/core/redis/connection.ts`
 
@@ -3490,7 +3536,12 @@ export async function checkRateLimit(
     const results = await pipeline.exec();
 
     if (!results) {
-      return { allowed: true, limit: maxRequests, remaining: maxRequests - 1, reset: now + windowSeconds };
+      return {
+        allowed: true,
+        limit: maxRequests,
+        remaining: maxRequests - 1,
+        reset: now + windowSeconds,
+      };
     }
 
     const currentCount = (results[1][1] as number) + 1; // +1 for the new request
@@ -3505,7 +3556,12 @@ export async function checkRateLimit(
   } catch (error) {
     logger.error('Rate limit check failed', error);
     // Fail open - allow request if Redis is down
-    return { allowed: true, limit: maxRequests, remaining: maxRequests - 1, reset: Math.floor(Date.now() / 1000) + windowSeconds };
+    return {
+      allowed: true,
+      limit: maxRequests,
+      remaining: maxRequests - 1,
+      reset: Math.floor(Date.now() / 1000) + windowSeconds,
+    };
   }
 }
 
@@ -3523,9 +3579,10 @@ export function createRateLimitMiddleware(options: {
       return;
     }
 
-    const ip = context.request.headers.get('x-forwarded-for') ||
-               context.request.headers.get('x-real-ip') ||
-               'unknown';
+    const ip =
+      context.request.headers.get('x-forwarded-for') ||
+      context.request.headers.get('x-real-ip') ||
+      'unknown';
     const path = new URL(context.request.url).pathname;
     const identifier = `${keyPrefix}:${path}:${ip}`;
 
@@ -3569,6 +3626,7 @@ git commit -m "feat: implement Redis-based rate limiting middleware"
 #### Task 15: Implement Auth Routes
 
 **Files:**
+
 - Create: `src/routes/auth.routes.ts`
 - Create: `src/controllers/auth.controller.ts`
 
@@ -3614,9 +3672,7 @@ import { logger } from '@core/logging/logger';
 
 @injectable()
 export class AuthController {
-  constructor(
-    @inject(RepositoryTokens.AuthService) private authService: IAuthService,
-  ) {}
+  constructor(@inject(RepositoryTokens.AuthService) private authService: IAuthService) {}
 
   async register(dto: RegisterDto) {
     try {
@@ -3865,6 +3921,7 @@ git commit -m "feat: implement authentication routes and controllers"
 #### Task 16: Implement User Service
 
 **Files:**
+
 - Create: `src/services/interfaces/users.service.interface.ts`
 - Create: `src/services/users.service.ts`
 - Create: `tests/unit/services/users.service.test.ts`
@@ -3944,7 +4001,14 @@ export interface UserDto {
 ```typescript
 // src/services/users.service.ts
 import { injectable, inject } from 'tsyringe';
-import type { IUsersService, UpdateProfileDto, UpdatePasswordDto, CreateUserDto, GetUsersDto, UserDto } from './interfaces/users.service.interface';
+import type {
+  IUsersService,
+  UpdateProfileDto,
+  UpdatePasswordDto,
+  CreateUserDto,
+  GetUsersDto,
+  UserDto,
+} from './interfaces/users.service.interface';
 import type { IUserRepository } from '../repositories/unit-of-work';
 import { RepositoryTokens } from './constants';
 import { getPasswordService } from '@core/crypto/password.service';
@@ -3954,9 +4018,7 @@ import type { UnitOfWork } from '../repositories/unit-of-work';
 
 @injectable()
 export class UsersService implements IUsersService {
-  constructor(
-    @inject(RepositoryTokens.UnitOfWork) private uow: UnitOfWork,
-  ) {}
+  constructor(@inject(RepositoryTokens.UnitOfWork) private uow: UnitOfWork) {}
 
   async getProfile(userId: string): Promise<UserDto> {
     const user = await this.uow.users.findById(userId);
@@ -4023,11 +4085,14 @@ export class UsersService implements IUsersService {
     if (dto.search) {
       const searchLower = dto.search.toLowerCase();
       return {
-        data: filtered.filter(u =>
-          u.email.toLowerCase().includes(searchLower) ||
-          u.firstName.toLowerCase().includes(searchLower) ||
-          u.lastName.toLowerCase().includes(searchLower)
-        ).slice(offset, offset + limit),
+        data: filtered
+          .filter(
+            u =>
+              u.email.toLowerCase().includes(searchLower) ||
+              u.firstName.toLowerCase().includes(searchLower) ||
+              u.lastName.toLowerCase().includes(searchLower)
+          )
+          .slice(offset, offset + limit),
         total: filtered.length,
         page,
         pageSize: limit,
@@ -4167,6 +4232,7 @@ git commit -m "feat: implement user management service"
 #### Task 17: Implement User Routes and Controllers
 
 **Files:**
+
 - Create: `src/routes/users.routes.ts`
 - Create: `src/controllers/users.controller.ts`
 - Create: `src/routes/dto/users.dto.ts`
@@ -4177,7 +4243,12 @@ git commit -m "feat: implement user management service"
 ```typescript
 // src/routes/dto/users.dto.ts
 import { z } from 'zod';
-import { emailSchema, passwordSchema, nameSchema, paginationSchema } from '@core/validation/common.schema';
+import {
+  emailSchema,
+  passwordSchema,
+  nameSchema,
+  paginationSchema,
+} from '@core/validation/common.schema';
 
 export const updateProfileSchema = z.object({
   firstName: nameSchema.optional(),
@@ -4242,7 +4313,12 @@ export const requireAdmin = requireRole(['ADMIN']);
 // src/controllers/users.controller.ts
 import { injectable, inject } from 'tsyringe';
 import type { IUsersService } from '../services/interfaces/users.service.interface';
-import type { UpdateProfileDto, UpdatePasswordDto, CreateUserDto, GetUsersDto } from '../routes/dto/users.dto';
+import type {
+  UpdateProfileDto,
+  UpdatePasswordDto,
+  CreateUserDto,
+  GetUsersDto,
+} from '../routes/dto/users.dto';
 import { successResponse } from '@core/validation/error.types';
 import { AppError } from '@core/errors/app-error';
 import { RepositoryTokens } from '../services/constants';
@@ -4250,9 +4326,7 @@ import { logger } from '@core/logging/logger';
 
 @injectable()
 export class UsersController {
-  constructor(
-    @inject(RepositoryTokens.UsersService) private usersService: IUsersService,
-  ) {}
+  constructor(@inject(RepositoryTokens.UsersService) private usersService: IUsersService) {}
 
   async getProfile(context: import('elysia').Context) {
     const user = context.user as import('../middlewares/auth.middleware').AuthContext | undefined;
@@ -4330,7 +4404,12 @@ export class UsersController {
 // src/routes/users.routes.ts
 import { Elysia, t } from 'elysia';
 import { UsersController } from '../controllers/users.controller';
-import { updateProfileSchema, updatePasswordSchema, createUserSchema, getUsersQuerySchema } from './dto/users.dto';
+import {
+  updateProfileSchema,
+  updatePasswordSchema,
+  createUserSchema,
+  getUsersQuerySchema,
+} from './dto/users.dto';
 import { requireAuth } from '../middlewares/auth.middleware';
 import { requireAdmin } from '../middlewares/role.middleware';
 import { rateLimit } from '../middlewares/rate-limit.middleware';
@@ -4340,95 +4419,97 @@ import { AppError } from '@core/errors/app-error';
 export function createUserRoutes(): Elysia {
   const controller = new UsersController();
 
-  return new Elysia({ prefix: '/users' })
-    .use(rateLimit)
-    // User Profile Routes
-    .get(
-      '/me',
-      async ({ set }) => {
-        try {
-          return await controller.getProfile;
-        } catch (error) {
-          if (error instanceof AppError) {
-            const { response, status } = handleAppError(error);
-            set.status = status;
-            return response;
+  return (
+    new Elysia({ prefix: '/users' })
+      .use(rateLimit)
+      // User Profile Routes
+      .get(
+        '/me',
+        async ({ set }) => {
+          try {
+            return await controller.getProfile;
+          } catch (error) {
+            if (error instanceof AppError) {
+              const { response, status } = handleAppError(error);
+              set.status = status;
+              return response;
+            }
+            throw error;
           }
-          throw error;
-        }
-      },
-      {
-        beforeHandle: [requireAuth],
-        detail: {
-          summary: 'Get current user profile',
-          tags: ['Users'],
         },
-      }
-    )
-    .patch(
-      '/me',
-      async ({ body, set }) => {
-        try {
-          const validated = updateProfileSchema.parse(body);
-          return await controller.updateProfile(undefined, validated);
-        } catch (error) {
-          if (error instanceof AppError) {
-            const { response, status } = handleAppError(error);
-            set.status = status;
-            return response;
-          }
-          if (error instanceof import('zod').ZodError) {
-            const response = handleZodError(error);
-            set.status = 400;
-            return response;
-          }
-          throw error;
+        {
+          beforeHandle: [requireAuth],
+          detail: {
+            summary: 'Get current user profile',
+            tags: ['Users'],
+          },
         }
-      },
-      {
-        beforeHandle: [requireAuth],
-        body: t.Object({
-          firstName: t.Optional(t.String()),
-          lastName: t.Optional(t.String()),
-        }),
-        detail: {
-          summary: 'Update current user profile',
-          tags: ['Users'],
+      )
+      .patch(
+        '/me',
+        async ({ body, set }) => {
+          try {
+            const validated = updateProfileSchema.parse(body);
+            return await controller.updateProfile(undefined, validated);
+          } catch (error) {
+            if (error instanceof AppError) {
+              const { response, status } = handleAppError(error);
+              set.status = status;
+              return response;
+            }
+            if (error instanceof import('zod').ZodError) {
+              const response = handleZodError(error);
+              set.status = 400;
+              return response;
+            }
+            throw error;
+          }
         },
-      }
-    )
-    .patch(
-      '/me/password',
-      async ({ body, set }) => {
-        try {
-          const validated = updatePasswordSchema.parse(body);
-          return await controller.updatePassword(undefined, validated);
-        } catch (error) {
-          if (error instanceof AppError) {
-            const { response, status } = handleAppError(error);
-            set.status = status;
-            return response;
-          }
-          if (error instanceof import('zod').ZodError) {
-            const response = handleZodError(error);
-            set.status = 400;
-            return response;
-          }
-          throw error;
+        {
+          beforeHandle: [requireAuth],
+          body: t.Object({
+            firstName: t.Optional(t.String()),
+            lastName: t.Optional(t.String()),
+          }),
+          detail: {
+            summary: 'Update current user profile',
+            tags: ['Users'],
+          },
         }
-      },
-      {
-        beforeHandle: [requireAuth],
-        body: t.Object({
-          currentPassword: t.String(),
-          newPassword: t.String(),
-        }),
-        detail: {
-          summary: 'Change current user password',
-          tags: ['Users'],
+      )
+      .patch(
+        '/me/password',
+        async ({ body, set }) => {
+          try {
+            const validated = updatePasswordSchema.parse(body);
+            return await controller.updatePassword(undefined, validated);
+          } catch (error) {
+            if (error instanceof AppError) {
+              const { response, status } = handleAppError(error);
+              set.status = status;
+              return response;
+            }
+            if (error instanceof import('zod').ZodError) {
+              const response = handleZodError(error);
+              set.status = 400;
+              return response;
+            }
+            throw error;
+          }
         },
-      }
-    );
+        {
+          beforeHandle: [requireAuth],
+          body: t.Object({
+            currentPassword: t.String(),
+            newPassword: t.String(),
+          }),
+          detail: {
+            summary: 'Change current user password',
+            tags: ['Users'],
+          },
+        }
+      )
+  );
 }
 
 export function createAdminUserRoutes(): Elysia {
@@ -4531,6 +4612,7 @@ git commit -m "feat: implement user management routes and controllers"
 #### Task 18: Implement Product Schema and Repository
 
 **Files:**
+
 - Create: `src/database/schema/products.schema.ts`
 - Create: `src/repositories/products.repository.ts`
 
@@ -4538,7 +4620,16 @@ git commit -m "feat: implement user management routes and controllers"
 
 ```typescript
 // src/database/schema/products.schema.ts
-import { boolean, pgTable, text, timestamp, uuid, numeric, integer, jsonb } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  numeric,
+  integer,
+  jsonb,
+} from 'drizzle-orm/pg-core';
 
 export const products = pgTable('products', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -4547,18 +4638,26 @@ export const products = pgTable('products', {
   description: text('description'),
   price: numeric('price', { precision: 10, scale: 2 }).notNull(),
   stock: integer('stock').notNull().default(0),
-  attributes: jsonb('attributes').$type<{
-    name: string;
-    values: string[];
-    displayOrder?: number;
-  }[]>().default([]),
-  variants: jsonb('variants').$type<{
-    sku: string;
-    price?: string;
-    stock?: number;
-    isActive?: boolean;
-    attributeValues: Record<string, string>;
-  }[]>().default([]),
+  attributes: jsonb('attributes')
+    .$type<
+      {
+        name: string;
+        values: string[];
+        displayOrder?: number;
+      }[]
+    >()
+    .default([]),
+  variants: jsonb('variants')
+    .$type<
+      {
+        sku: string;
+        price?: string;
+        stock?: number;
+        isActive?: boolean;
+        attributeValues: Record<string, string>;
+      }[]
+    >()
+    .default([]),
   isActive: boolean('is_active').notNull().default(true),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -4586,11 +4685,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
   async findById(id: string): Promise<Product | null> {
     try {
-      const result = await this.db
-        .select()
-        .from(products)
-        .where(eq(products.id, id))
-        .limit(1);
+      const result = await this.db.select().from(products).where(eq(products.id, id)).limit(1);
 
       return result[0] || null;
     } catch (error) {
@@ -4721,6 +4816,7 @@ git commit -m "feat: add product schema and repository"
 #### Task 19: Implement Product Service
 
 **Files:**
+
 - Create: `src/services/interfaces/products.service.interface.ts`
 - Create: `src/services/products.service.ts`
 
@@ -4820,7 +4916,13 @@ export interface IProductsService {
 ```typescript
 // src/services/products.service.ts
 import { injectable, inject } from 'tsyringe';
-import type { IProductsService, CreateProductDto, UpdateProductDto, GetProductsDto, ProductDto } from './interfaces/products.service.interface';
+import type {
+  IProductsService,
+  CreateProductDto,
+  UpdateProductDto,
+  GetProductsDto,
+  ProductDto,
+} from './interfaces/products.service.interface';
 import type { IProductRepository } from '../repositories/products.repository';
 import { AppError } from '@core/errors/app-error';
 import { logger } from '@core/logging/logger';
@@ -4828,9 +4930,7 @@ import type { UnitOfWork } from '../repositories/unit-of-work';
 
 @injectable()
 export class ProductsService implements IProductsService {
-  constructor(
-    @inject(RepositoryTokens.UnitOfWork) private uow: UnitOfWork,
-  ) {}
+  constructor(@inject(RepositoryTokens.UnitOfWork) private uow: UnitOfWork) {}
 
   async getProducts(ownerId: string, dto: GetProductsDto): Promise<PaginatedResult<ProductDto>> {
     const products = await this.uow.products.findByOwner(ownerId);
@@ -4846,9 +4946,10 @@ export class ProductsService implements IProductsService {
     }
     if (dto.search) {
       const searchLower = dto.search.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.name.toLowerCase().includes(searchLower) ||
-        (p.description && p.description.toLowerCase().includes(searchLower))
+      filtered = filtered.filter(
+        p =>
+          p.name.toLowerCase().includes(searchLower) ||
+          (p.description && p.description.toLowerCase().includes(searchLower))
       );
     }
     if (dto.minPrice !== undefined) {
@@ -4917,7 +5018,11 @@ export class ProductsService implements IProductsService {
     return this.mapToDto(product);
   }
 
-  async updateProduct(id: string, ownerId: string, dto: UpdateProductDto): Promise<ProductDto | null> {
+  async updateProduct(
+    id: string,
+    ownerId: string,
+    dto: UpdateProductDto
+  ): Promise<ProductDto | null> {
     const product = await this.uow.products.findById(id);
 
     if (!product || product.deletedAt) {
@@ -4994,7 +5099,11 @@ export class ProductsService implements IProductsService {
     return this.mapToDto(restored);
   }
 
-  async getProductStats(): Promise<{ totalProducts: number; activeProducts: number; totalValue: string }> {
+  async getProductStats(): Promise<{
+    totalProducts: number;
+    activeProducts: number;
+    totalValue: string;
+  }> {
     const allProducts = await this.uow.products.findByOwner('', true); // Get all products
 
     const activeProducts = allProducts.filter(p => p.isActive && !p.deletedAt);
@@ -5053,6 +5162,7 @@ git commit -m "feat: implement product management service"
 #### Task 20: Implement Product Routes and Controllers
 
 **Files:**
+
 - Create: `src/routes/products.routes.ts`
 - Create: `src/controllers/products.controller.ts`
 - Create: `src/routes/dto/products.dto.ts`
@@ -5070,7 +5180,11 @@ export const productAttributeSchema = z.object({
 });
 
 export const productVariantSchema = z.object({
-  sku: z.string().min(1).max(100).regex(/^[a-zA-Z0-9-]+$/, 'SKU must be alphanumeric'),
+  sku: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[a-zA-Z0-9-]+$/, 'SKU must be alphanumeric'),
   price: z.number().positive().optional(),
   stock: z.number().int().nonnegative().optional(),
   isActive: z.boolean().optional(),
@@ -5111,7 +5225,11 @@ export type GetProductsDto = z.infer<typeof getProductsQuerySchema>;
 // src/controllers/products.controller.ts
 import { injectable, inject } from 'tsyringe';
 import type { IProductsService } from '../services/interfaces/products.service.interface';
-import type { CreateProductDto, UpdateProductDto, GetProductsDto } from '../routes/dto/products.dto';
+import type {
+  CreateProductDto,
+  UpdateProductDto,
+  GetProductsDto,
+} from '../routes/dto/products.dto';
 import { successResponse } from '@core/validation/error.types';
 import { AppError } from '@core/errors/app-error';
 import { RepositoryTokens } from '../services/constants';
@@ -5120,7 +5238,7 @@ import { logger } from '@core/logging/logger';
 @injectable()
 export class ProductsController {
   constructor(
-    @inject(RepositoryTokens.ProductsService) private productsService: IProductsService,
+    @inject(RepositoryTokens.ProductsService) private productsService: IProductsService
   ) {}
 
   async getProducts(context: import('elysia').Context, dto: GetProductsDto) {
@@ -5208,7 +5326,11 @@ export class ProductsController {
 // src/routes/products.routes.ts
 import { Elysia, t } from 'elysia';
 import { ProductsController } from '../controllers/products.controller';
-import { createProductSchema, updateProductSchema, getProductsQuerySchema } from './dto/products.dto';
+import {
+  createProductSchema,
+  updateProductSchema,
+  getProductsQuerySchema,
+} from './dto/products.dto';
 import { requireAuth } from '../middlewares/auth.middleware';
 import { rateLimit } from '../middlewares/rate-limit.middleware';
 import { handleZodError, handleAppError } from '@core/validation/error.handler';
@@ -5374,29 +5496,28 @@ export function createProductRoutes(): Elysia {
 export function createAdminProductRoutes(): Elysia {
   const controller = new ProductsController();
 
-  return new Elysia({ prefix: '/admin/products' })
-    .get(
-      '/stats',
-      async ({ set }) => {
-        try {
-          return await controller.getProductStats();
-        } catch (error) {
-          if (error instanceof AppError) {
-            const { response, status } = handleAppError(error);
-            set.status = status;
-            return response;
-          }
-          throw error;
+  return new Elysia({ prefix: '/admin/products' }).get(
+    '/stats',
+    async ({ set }) => {
+      try {
+        return await controller.getProductStats();
+      } catch (error) {
+        if (error instanceof AppError) {
+          const { response, status } = handleAppError(error);
+          set.status = status;
+          return response;
         }
-      },
-      {
-        beforeHandle: [requireAuth],
-        detail: {
-          summary: 'Get product statistics (admin)',
-          tags: ['Admin', 'Products'],
-        },
+        throw error;
       }
-    );
+    },
+    {
+      beforeHandle: [requireAuth],
+      detail: {
+        summary: 'Get product statistics (admin)',
+        tags: ['Admin', 'Products'],
+      },
+    }
+  );
 }
 ```
 
@@ -5414,6 +5535,7 @@ git commit -m "feat: implement product management routes and controllers"
 #### Task 21: Create Main Application File
 
 **Files:**
+
 - Create: `src/app.ts`
 - Create: `src/server.ts`
 
@@ -5651,6 +5773,7 @@ git commit -m "feat: create main application with server bootstrap"
 #### Task 17: Setup Testing Infrastructure
 
 **Files:**
+
 - Create: `tests/setup.ts`
 - Create: `tests/mocks/repository.mock.ts`
 
@@ -5665,7 +5788,8 @@ let testRedis: any = null;
 
 beforeAll(async () => {
   // Setup test database connection
-  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/test_db';
+  process.env.DATABASE_URL =
+    process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/test_db';
 
   // Setup test Redis
   process.env.REDIS_DB = '15'; // Use separate DB for tests
@@ -5772,6 +5896,7 @@ git commit -m "feat: setup testing infrastructure with mocks"
 #### Task 18: Create Docker Configuration
 
 **Files:**
+
 - Create: `infra/docker/Dockerfile`
 - Create: `infra/docker/docker-compose.yml`
 
@@ -5819,7 +5944,7 @@ services:
       context: ../..
       dockerfile: infra/docker/Dockerfile
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/bun_elysia_paseto
@@ -5839,7 +5964,7 @@ services:
   postgres:
     image: postgres:16-alpine
     ports:
-      - "5432:5432"
+      - '5432:5432'
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -5850,7 +5975,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
 
@@ -5873,6 +5998,7 @@ git commit -m "feat: add Docker configuration for development"
 #### Task 19: Create Comprehensive Documentation
 
 **Files:**
+
 - Create: `README.md`
 - Create: `docs/architecture/overview.md`
 - Create: `docs/architecture/authentication.md`
@@ -5903,19 +6029,25 @@ git commit -m "feat: add Docker configuration for development"
 ## Quick Start
 
 \`\`\`bash
+
 # Install dependencies
+
 bun install
 
 # Copy environment variables
+
 cp .env.example .env
 
 # Generate PASETO key (32 bytes in hex)
+
 openssl rand -hex 32
 
 # Run migrations
+
 bun run db:migrate
 
 # Start development server
+
 bun run dev
 \`\`\`
 
@@ -5926,89 +6058,89 @@ Documentation at `http://localhost:3000/api/docs`
 
 \`\`\`
 src/
-├── app.ts              # Elysia app setup
-├── server.ts           # Server bootstrap
-├── config/             # Configuration management
-├── core/               # Core utilities
-│   ├── paseto/        # PASETO implementation
-│   ├── crypto/        # Password hashing
-│   ├── logging/       # Structured logging
-│   └── validation/    # Zod schemas
-├── database/          # Database layer
-│   ├── schema/        # Drizzle schemas
-│   └── migrations/    # Migration files
-├── repositories/      # Data access layer
-├── services/          # Business logic
-├── controllers/       # Request/response handling
-├── routes/            # API routes
-└── middlewares/       # Custom middleware
+├── app.ts # Elysia app setup
+├── server.ts # Server bootstrap
+├── config/ # Configuration management
+├── core/ # Core utilities
+│ ├── paseto/ # PASETO implementation
+│ ├── crypto/ # Password hashing
+│ ├── logging/ # Structured logging
+│ └── validation/ # Zod schemas
+├── database/ # Database layer
+│ ├── schema/ # Drizzle schemas
+│ └── migrations/ # Migration files
+├── repositories/ # Data access layer
+├── services/ # Business logic
+├── controllers/ # Request/response handling
+├── routes/ # API routes
+└── middlewares/ # Custom middleware
 \`\`\`
 
 ## API Endpoints
 
 ### Authentication
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/auth/register` | Register new user | ❌ No |
-| POST | `/api/auth/login` | User login | ❌ No |
-| POST | `/api/auth/refresh` | Refresh access token | ❌ No |
-| POST | `/api/auth/logout` | User logout | ✅ Yes |
-| GET | `/api/auth/me` | Get current user | ✅ Yes |
+| Method | Endpoint             | Description          | Auth Required |
+| ------ | -------------------- | -------------------- | ------------- |
+| POST   | `/api/auth/register` | Register new user    | ❌ No         |
+| POST   | `/api/auth/login`    | User login           | ❌ No         |
+| POST   | `/api/auth/refresh`  | Refresh access token | ❌ No         |
+| POST   | `/api/auth/logout`   | User logout          | ✅ Yes        |
+| GET    | `/api/auth/me`       | Get current user     | ✅ Yes        |
 
 ### User Profile
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/users/me` | Get current user profile | ✅ Yes |
-| PATCH | `/api/users/me` | Update current user profile | ✅ Yes |
-| PATCH | `/api/users/me/password` | Change password | ✅ Yes |
-| PATCH | `/api/users/me/email` | Change email (requires verification) | ✅ Yes |
+| Method | Endpoint                 | Description                          | Auth Required |
+| ------ | ------------------------ | ------------------------------------ | ------------- |
+| GET    | `/api/users/me`          | Get current user profile             | ✅ Yes        |
+| PATCH  | `/api/users/me`          | Update current user profile          | ✅ Yes        |
+| PATCH  | `/api/users/me/password` | Change password                      | ✅ Yes        |
+| PATCH  | `/api/users/me/email`    | Change email (requires verification) | ✅ Yes        |
 
 ### User Admin
 
-| Method | Endpoint | Description | Auth Required | Role |
-|--------|----------|-------------|---------------|------|
-| GET | `/api/admin/users` | Get paginated users list | ✅ Yes | ADMIN |
-| GET | `/api/admin/users/:id` | Get user by ID | ✅ Yes | ADMIN |
-| POST | `/api/admin/users` | Create new user | ✅ Yes | ADMIN |
-| PATCH | `/api/admin/users/:id` | Update user | ✅ Yes | ADMIN |
-| DELETE | `/api/admin/users/:id` | Soft delete user | ✅ Yes | ADMIN |
-| POST | `/api/admin/users/:id/restore` | Restore deleted user | ✅ Yes | ADMIN |
-| GET | `/api/admin/users/stats` | Get user statistics | ✅ Yes | ADMIN |
+| Method | Endpoint                       | Description              | Auth Required | Role  |
+| ------ | ------------------------------ | ------------------------ | ------------- | ----- |
+| GET    | `/api/admin/users`             | Get paginated users list | ✅ Yes        | ADMIN |
+| GET    | `/api/admin/users/:id`         | Get user by ID           | ✅ Yes        | ADMIN |
+| POST   | `/api/admin/users`             | Create new user          | ✅ Yes        | ADMIN |
+| PATCH  | `/api/admin/users/:id`         | Update user              | ✅ Yes        | ADMIN |
+| DELETE | `/api/admin/users/:id`         | Soft delete user         | ✅ Yes        | ADMIN |
+| POST   | `/api/admin/users/:id/restore` | Restore deleted user     | ✅ Yes        | ADMIN |
+| GET    | `/api/admin/users/stats`       | Get user statistics      | ✅ Yes        | ADMIN |
 
 ### Products
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/products` | Get products (with filters) | ✅ Yes |
-| GET | `/api/products/:id` | Get product by ID | ✅ Yes |
-| POST | `/api/products` | Create product | ✅ Yes |
-| PATCH | `/api/products/:id` | Update product (owner only) | ✅ Yes |
-| DELETE | `/api/products/:id` | Soft delete product (owner only) | ✅ Yes |
-| POST | `/api/products/:id/restore` | Restore deleted product (owner only) | ✅ Yes |
+| Method | Endpoint                    | Description                          | Auth Required |
+| ------ | --------------------------- | ------------------------------------ | ------------- |
+| GET    | `/api/products`             | Get products (with filters)          | ✅ Yes        |
+| GET    | `/api/products/:id`         | Get product by ID                    | ✅ Yes        |
+| POST   | `/api/products`             | Create product                       | ✅ Yes        |
+| PATCH  | `/api/products/:id`         | Update product (owner only)          | ✅ Yes        |
+| DELETE | `/api/products/:id`         | Soft delete product (owner only)     | ✅ Yes        |
+| POST   | `/api/products/:id/restore` | Restore deleted product (owner only) | ✅ Yes        |
 
 ### Admin Endpoints
 
-| Method | Endpoint | Description | Auth Required | Role |
-|--------|----------|-------------|---------------|------|
-| GET | `/api/admin/health` | Detailed health check | ✅ Yes | ADMIN |
-| GET | `/api/admin/products/stats` | Product statistics | ✅ Yes | ADMIN |
-| GET | `/api/admin/users/oldest` | Get oldest user by role | ✅ Yes | ADMIN |
+| Method | Endpoint                    | Description             | Auth Required | Role  |
+| ------ | --------------------------- | ----------------------- | ------------- | ----- |
+| GET    | `/api/admin/health`         | Detailed health check   | ✅ Yes        | ADMIN |
+| GET    | `/api/admin/products/stats` | Product statistics      | ✅ Yes        | ADMIN |
+| GET    | `/api/admin/users/oldest`   | Get oldest user by role | ✅ Yes        | ADMIN |
 
 ### Internal API
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/internal/users/oldest` | Get oldest user (internal) | 🔑 System |
+| Method | Endpoint                     | Description                | Auth Required |
+| ------ | ---------------------------- | -------------------------- | ------------- |
+| GET    | `/api/internal/users/oldest` | Get oldest user (internal) | 🔑 System     |
 
 ### Health
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/health` | Full health check | ❌ No |
-| GET | `/api/health/ready` | Readiness probe | ❌ No |
-| GET | `/api/health/live` | Liveness probe | ❌ No |
+| Method | Endpoint            | Description       | Auth Required |
+| ------ | ------------------- | ----------------- | ------------- |
+| GET    | `/api/health`       | Full health check | ❌ No         |
+| GET    | `/api/health/ready` | Readiness probe   | ❌ No         |
+| GET    | `/api/health/live`  | Liveness probe    | ❌ No         |
 
 ## Environment Variables
 
@@ -6041,17 +6173,17 @@ This boilerplate follows these key principles:
 
 \`\`\`
 ┌─────────────────────────────────────────────────────┐
-│                   API Layer                         │
-│  (Routes → Controllers → Middleware)                │
+│ API Layer │
+│ (Routes → Controllers → Middleware) │
 ├─────────────────────────────────────────────────────┤
-│                 Business Logic                      │
-│  (Services with Interfaces for DI)                  │
+│ Business Logic │
+│ (Services with Interfaces for DI) │
 ├─────────────────────────────────────────────────────┤
-│                 Data Access                         │
-│  (Repositories with Unit of Work pattern)           │
+│ Data Access │
+│ (Repositories with Unit of Work pattern) │
 ├─────────────────────────────────────────────────────┤
-│                 Infrastructure                      │
-│  (Database, Redis, PASETO, Logging)                 │
+│ Infrastructure │
+│ (Database, Redis, PASETO, Logging) │
 └─────────────────────────────────────────────────────┘
 \`\`\`
 
@@ -6059,17 +6191,17 @@ This boilerplate follows these key principles:
 
 \`\`\`
 Client Request
-    ↓
+↓
 Elysia Router
-    ↓
+↓
 Middleware (Auth, Rate Limit, Logging)
-    ↓
+↓
 Controller (Validation)
-    ↓
+↓
 Service (Business Logic)
-    ↓
+↓
 Repository (Data Access)
-    ↓
+↓
 Database
 \`\`\`
 
@@ -6092,22 +6224,24 @@ We use PASETO (Platform-Agnostic SEcurity TOkens) instead of JWT for better secu
 
 ### Why PASETO?
 
-| Feature | JWT | PASETO |
-|---------|-----|--------|
-| Algorithm confusion | ❌ Vulnerable | ✅ Protected |
-| Implicit security | ❌ Many pitfalls | ✅ Explicit |
-| Key versioning | ❌ Not built-in | ✅ Built-in |
-| Implementation | ❌ Many options | ✅ Single correct way |
+| Feature             | JWT              | PASETO                |
+| ------------------- | ---------------- | --------------------- |
+| Algorithm confusion | ❌ Vulnerable    | ✅ Protected          |
+| Implicit security   | ❌ Many pitfalls | ✅ Explicit           |
+| Key versioning      | ❌ Not built-in  | ✅ Built-in           |
+| Implementation      | ❌ Many options  | ✅ Single correct way |
 
 ### Token Types
 
 #### Access Token (v4.local)
+
 - **Purpose**: API authentication
 - **Lifetime**: 15 minutes
 - **Contents**: User ID, email, role, permissions
 - **Storage**: Memory (recommended) or secure HTTP-only cookie
 
 #### Refresh Token (v4.local)
+
 - **Purpose**: Get new access tokens
 - **Lifetime**: 7 days
 - **Contents**: User ID, token ID
@@ -6117,15 +6251,15 @@ We use PASETO (Platform-Agnostic SEcurity TOkens) instead of JWT for better secu
 
 \`\`\`typescript
 interface AccessTokenPayload {
-  iss: string;    // Issuer
-  sub: string;    // User ID
-  exp: number;    // Expiration timestamp
-  iat: number;    // Issued at timestamp
-  jti: string;    // Token ID (unique)
-  type: 'access';
-  email?: string;
-  role?: string;
-  permissions?: string[];
+iss: string; // Issuer
+sub: string; // User ID
+exp: number; // Expiration timestamp
+iat: number; // Issued at timestamp
+jti: string; // Token ID (unique)
+type: 'access';
+email?: string;
+role?: string;
+permissions?: string[];
 }
 \`\`\`
 
@@ -6161,34 +6295,34 @@ interface AccessTokenPayload {
 
 ## Naming Conventions
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Files | kebab-case | `auth.service.ts` |
-| Classes | PascalCase | `AuthService` |
-| Interfaces | PascalCase with `I` prefix | `IAuthService` |
-| Functions | camelCase | `getUserById` |
-| Constants | SCREAMING_SNAKE_CASE | `MAX_RETRIES` |
-| Private properties | camelCase | `private userId` |
-| Types/Type aliases | PascalCase | `UserDto` |
+| Type               | Convention                 | Example           |
+| ------------------ | -------------------------- | ----------------- |
+| Files              | kebab-case                 | `auth.service.ts` |
+| Classes            | PascalCase                 | `AuthService`     |
+| Interfaces         | PascalCase with `I` prefix | `IAuthService`    |
+| Functions          | camelCase                  | `getUserById`     |
+| Constants          | SCREAMING_SNAKE_CASE       | `MAX_RETRIES`     |
+| Private properties | camelCase                  | `private userId`  |
+| Types/Type aliases | PascalCase                 | `UserDto`         |
 
 ## Error Handling
 
 \`\`\`typescript
 // ✅ Good
 try {
-  const result = await this.service.doSomething();
-  return successResponse(result);
+const result = await this.service.doSomething();
+return successResponse(result);
 } catch (error) {
-  this.logger.error('Operation failed', error);
-  throw new AppError('Operation failed', 'OPERATION_ERROR', 500);
+this.logger.error('Operation failed', error);
+throw new AppError('Operation failed', 'OPERATION_ERROR', 500);
 }
 
 // ❌ Bad
 try {
-  const result = await this.service.doSomething();
-  return result;
+const result = await this.service.doSomething();
+return result;
 } catch (e) {
-  throw e;
+throw e;
 }
 \`\`\`
 
@@ -6218,6 +6352,7 @@ git commit -m "docs: add comprehensive documentation"
 #### Task 20: Final Configuration Files
 
 **Files:**
+
 - Create: `commitlint.config.js`
 - Create: `.husky/pre-commit`
 - Create: `.vscode/settings.json`
@@ -6233,15 +6368,15 @@ export default {
       2,
       'always',
       [
-        'feat',     // New feature
-        'fix',      // Bug fix
-        'docs',     // Documentation only
-        'style',    // Code style changes (formatting, etc)
+        'feat', // New feature
+        'fix', // Bug fix
+        'docs', // Documentation only
+        'style', // Code style changes (formatting, etc)
         'refactor', // Code refactoring
-        'perf',     // Performance improvement
-        'test',     // Adding or updating tests
-        'chore',    // Maintenance tasks
-        'revert',   // Revert a previous commit
+        'perf', // Performance improvement
+        'test', // Adding or updating tests
+        'chore', // Maintenance tasks
+        'revert', // Revert a previous commit
       ],
     ],
     'scope-enum': [2, 'always', ['auth', 'database', 'api', 'config', 'deps']],
@@ -6303,26 +6438,31 @@ git commit -m "chore: setup git hooks and editor configuration"
 After completing all tasks:
 
 1. **Verify project builds**
+
    ```bash
    bun run build
    ```
 
 2. **Run linter**
+
    ```bash
    bun run lint
    ```
 
 3. **Run tests**
+
    ```bash
    bun test
    ```
 
 4. **Start development server**
+
    ```bash
    bun run dev
    ```
 
 5. **Test API endpoints**
+
    ```bash
    curl http://localhost:3000/api/health
    curl -X POST http://localhost:3000/api/auth/register \
@@ -6342,6 +6482,7 @@ After completing all tasks:
 #### Task 22: Implement Elysia Plugin System
 
 **Files:**
+
 - Create: `src/plugins/index.ts`
 - Create: `src/plugins/health.plugin.ts`
 - Create: `src/plugins/metrics.plugin.ts`
@@ -6424,74 +6565,78 @@ interface HealthResponse {
 
 export const healthPlugin = () =>
   new Elysia({ name: 'health-plugin' })
-    .get('/health', async ({ set }) => {
-      const startTime = performance.now();
-      const checks: Record<string, HealthCheck> = {};
+    .get(
+      '/health',
+      async ({ set }) => {
+        const startTime = performance.now();
+        const checks: Record<string, HealthCheck> = {};
 
-      // Database health check
-      try {
-        const db = getConnection();
-        const dbStart = performance.now();
-        await db.execute('SELECT 1');
-        checks.database = {
-          name: 'database',
-          status: 'pass',
-          latency: performance.now() - dbStart,
+        // Database health check
+        try {
+          const db = getConnection();
+          const dbStart = performance.now();
+          await db.execute('SELECT 1');
+          checks.database = {
+            name: 'database',
+            status: 'pass',
+            latency: performance.now() - dbStart,
+          };
+        } catch (error) {
+          logger.error('Database health check failed', error);
+          checks.database = {
+            name: 'database',
+            status: 'fail',
+            message: error instanceof Error ? error.message : 'Unknown error',
+          };
+        }
+
+        // Redis health check
+        try {
+          const redis = getRedisClient();
+          const redisStart = performance.now();
+          await redis.ping();
+          checks.redis = {
+            name: 'redis',
+            status: 'pass',
+            latency: performance.now() - redisStart,
+          };
+        } catch (error) {
+          logger.error('Redis health check failed', error);
+          checks.redis = {
+            name: 'redis',
+            status: 'fail',
+            message: error instanceof Error ? error.message : 'Unknown error',
+          };
+        }
+
+        // Determine overall status
+        const statuses = Object.values(checks).map(c => c.status);
+        const overallStatus: HealthResponse['status'] = statuses.includes('fail')
+          ? 'fail'
+          : statuses.includes('warn')
+            ? 'warn'
+            : 'pass';
+
+        const response: HealthResponse = {
+          status: overallStatus,
+          version: process.env.npm_package_version || '1.0.0',
+          timestamp: new Date().toISOString(),
+          uptime: process.uptime(),
+          checks,
         };
-      } catch (error) {
-        logger.error('Database health check failed', error);
-        checks.database = {
-          name: 'database',
-          status: 'fail',
-          message: error instanceof Error ? error.message : 'Unknown error',
-        };
-      }
 
-      // Redis health check
-      try {
-        const redis = getRedisClient();
-        const redisStart = performance.now();
-        await redis.ping();
-        checks.redis = {
-          name: 'redis',
-          status: 'pass',
-          latency: performance.now() - redisStart,
-        };
-      } catch (error) {
-        logger.error('Redis health check failed', error);
-        checks.redis = {
-          name: 'redis',
-          status: 'fail',
-          message: error instanceof Error ? error.message : 'Unknown error',
-        };
-      }
+        set.status = overallStatus === 'fail' ? 503 : 200;
 
-      // Determine overall status
-      const statuses = Object.values(checks).map(c => c.status);
-      const overallStatus: HealthResponse['status'] = statuses.includes('fail')
-        ? 'fail'
-        : statuses.includes('warn')
-        ? 'warn'
-        : 'pass';
-
-      const response: HealthResponse = {
-        status: overallStatus,
-        version: process.env.npm_package_version || '1.0.0',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        checks,
-      };
-
-      set.status = overallStatus === 'fail' ? 503 : 200;
-
-      return response;
-    }, {
-      detail: {
-        summary: 'Health check endpoint',
-        tags: ['Health'],
-        description: 'Returns the health status of the service and its dependencies',
+        return response;
       },
-    })
+      {
+        detail: {
+          summary: 'Health check endpoint',
+          tags: ['Health'],
+          description: 'Returns the health status of the service and its dependencies',
+        },
+      }
+    )
     .get('/health/ready', async () => {
       // Readiness probe - checks if service can accept traffic
       return {
@@ -6520,6 +6665,7 @@ git commit -m "feat: implement Elysia plugin architecture with health checks"
 #### Task 23: Implement Security Headers Plugin
 
 **Files:**
+
 - Create: `src/plugins/security-headers.plugin.ts`
 
 **Step 1: Create security headers plugin**
@@ -6542,11 +6688,11 @@ interface SecurityHeadersConfig {
 }
 
 export const securityHeadersPlugin = (config: SecurityHeadersConfig = {}) =>
-  new Elysia({ name: 'security-headers-plugin' })
-    .onBeforeHandle(({ set }) => {
-      // Content Security Policy
-      const csp = config.contentSecurityPolicy ||
-        "default-src 'self'; " +
+  new Elysia({ name: 'security-headers-plugin' }).onBeforeHandle(({ set }) => {
+    // Content Security Policy
+    const csp =
+      config.contentSecurityPolicy ||
+      "default-src 'self'; " +
         "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
         "style-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data: https:; " +
@@ -6554,51 +6700,51 @@ export const securityHeadersPlugin = (config: SecurityHeadersConfig = {}) =>
         "connect-src 'self'; " +
         "frame-ancestors 'none';";
 
-      set.headers['Content-Security-Policy'] = csp;
+    set.headers['Content-Security-Policy'] = csp;
 
-      // Strict-Transport-Security (HTTPS only)
-      if (config.env.NODE_ENV === 'production') {
-        const hstsMaxAge = config.hstsMaxAge || 31536000; // 1 year
-        const hstsSubDomains = config.hstsIncludeSubDomains !== false;
-        const hstsPreload = config.hstsPreload ? '; preload' : '';
+    // Strict-Transport-Security (HTTPS only)
+    if (config.env.NODE_ENV === 'production') {
+      const hstsMaxAge = config.hstsMaxAge || 31536000; // 1 year
+      const hstsSubDomains = config.hstsIncludeSubDomains !== false;
+      const hstsPreload = config.hstsPreload ? '; preload' : '';
 
-        set.headers['Strict-Transport-Security'] =
-          `max-age=${hstsMaxAge}${hstsSubDomains ? '; includeSubDomains' : ''}${hstsPreload}`;
-      }
+      set.headers['Strict-Transport-Security'] =
+        `max-age=${hstsMaxAge}${hstsSubDomains ? '; includeSubDomains' : ''}${hstsPreload}`;
+    }
 
-      // X-Frame-Options
-      set.headers['X-Frame-Options'] = config.xFrameOptions || 'DENY';
+    // X-Frame-Options
+    set.headers['X-Frame-Options'] = config.xFrameOptions || 'DENY';
 
-      // X-Content-Type-Options
-      if (config.xContentTypeOptions !== false) {
-        set.headers['X-Content-Type-Options'] = 'nosniff';
-      }
+    // X-Content-Type-Options
+    if (config.xContentTypeOptions !== false) {
+      set.headers['X-Content-Type-Options'] = 'nosniff';
+    }
 
-      // Referrer-Policy
-      set.headers['Referrer-Policy'] = config.referrerPolicy || 'no-referrer';
+    // Referrer-Policy
+    set.headers['Referrer-Policy'] = config.referrerPolicy || 'no-referrer';
 
-      // Permissions-Policy
-      const permissions = config.permissionsPolicy || [
-        'camera=()',
-        'microphone=()',
-        'geolocation=(self)',
-        'interest-cohort=()',
-      ];
-      set.headers['Permissions-Policy'] = permissions.join(', ');
+    // Permissions-Policy
+    const permissions = config.permissionsPolicy || [
+      'camera=()',
+      'microphone=()',
+      'geolocation=(self)',
+      'interest-cohort=()',
+    ];
+    set.headers['Permissions-Policy'] = permissions.join(', ');
 
-      // X-XSS-Protection (legacy, CSP is better)
-      set.headers['X-XSS-Protection'] = '1; mode=block';
+    // X-XSS-Protection (legacy, CSP is better)
+    set.headers['X-XSS-Protection'] = '1; mode=block';
 
-      // Remove X-Powered-By header
-      delete set.headers['X-Powered-By'];
+    // Remove X-Powered-By header
+    delete set.headers['X-Powered-By'];
 
-      // Additional security headers
-      set.headers['X-DNS-Prefetch-Control'] = 'off';
-      set.headers['X-Download-Options'] = 'noopen';
-      set.headers['X-Permitted-Cross-Domain-Policies'] = 'none';
-      set.headers['Cross-Origin-Opener-Policy'] = 'same-origin';
-      set.headers['Cross-Origin-Resource-Policy'] = 'same-site';
-    });
+    // Additional security headers
+    set.headers['X-DNS-Prefetch-Control'] = 'off';
+    set.headers['X-Download-Options'] = 'noopen';
+    set.headers['X-Permitted-Cross-Domain-Policies'] = 'none';
+    set.headers['Cross-Origin-Opener-Policy'] = 'same-origin';
+    set.headers['Cross-Origin-Resource-Policy'] = 'same-site';
+  });
 ```
 
 **Step 2: Commit**
@@ -6613,6 +6759,7 @@ git commit -m "feat: implement security headers plugin with CSP and HSTS"
 #### Task 24: Implement Response Compression
 
 **Files:**
+
 - Create: `src/plugins/compression.plugin.ts`
 
 **Step 1: Create compression plugin**
@@ -6629,35 +6776,36 @@ interface CompressionConfig {
 }
 
 export const compressionPlugin = (config: CompressionConfig = {}) =>
-  new Elysia({ name: 'compression-plugin' })
-    .onAfterHandle(({ set, response }) => {
-      const threshold = config.threshold ?? 1024; // 1KB
-      const compressibleTypes = config.types ?? [
-        'text/*',
-        'application/json',
-        'application/javascript',
-        'application/xml',
-        'text/xml',
-        'text/html',
-        'text/css',
-        'text/plain',
-      ];
+  new Elysia({ name: 'compression-plugin' }).onAfterHandle(({ set, response }) => {
+    const threshold = config.threshold ?? 1024; // 1KB
+    const compressibleTypes = config.types ?? [
+      'text/*',
+      'application/json',
+      'application/javascript',
+      'application/xml',
+      'text/xml',
+      'text/html',
+      'text/css',
+      'text/plain',
+    ];
 
-      // Check if response should be compressed
-      const contentType = set.headers['Content-Type'];
-      const shouldCompress = contentType && compressibleTypes.some(type =>
-        type.endsWith('*') || contentType.includes(type.replace('*', ''))
+    // Check if response should be compressed
+    const contentType = set.headers['Content-Type'];
+    const shouldCompress =
+      contentType &&
+      compressibleTypes.some(
+        type => type.endsWith('*') || contentType.includes(type.replace('*', ''))
       );
 
-      // Only compress if response is large enough
-      const responseSize = JSON.stringify(response).length;
-      if (shouldCompress && responseSize > threshold) {
-        set.headers['Content-Encoding'] = 'gzip';
-        set.headers['X-Content-Encoding'] = 'gzip';
-      }
+    // Only compress if response is large enough
+    const responseSize = JSON.stringify(response).length;
+    if (shouldCompress && responseSize > threshold) {
+      set.headers['Content-Encoding'] = 'gzip';
+      set.headers['X-Content-Encoding'] = 'gzip';
+    }
 
-      return response;
-    });
+    return response;
+  });
 ```
 
 **Step 2: Commit**
@@ -6674,6 +6822,7 @@ git commit -m "feat: implement response compression plugin"
 #### Task 25: Implement Prometheus Metrics Export
 
 **Files:**
+
 - Create: `src/plugins/metrics.plugin.ts`
 - Create: `src/core/metrics/collector.ts`
 - Create: `src/core/metrics/types.ts`
@@ -6747,7 +6896,12 @@ class MetricsCollector {
     });
   }
 
-  histogram(name: string, value: number, labels?: Record<string, string>, buckets?: number[]): void {
+  histogram(
+    name: string,
+    value: number,
+    labels?: Record<string, string>,
+    buckets?: number[]
+  ): void {
     this.addMetric({
       name,
       type: 'histogram',
@@ -6759,7 +6913,12 @@ class MetricsCollector {
   }
 
   timing(name: string, duration: number, labels?: Record<string, string>): void {
-    this.histogram(name, duration, labels, [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]);
+    this.histogram(
+      name,
+      duration,
+      labels,
+      [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+    );
   }
 
   incrementHttpRequests(method: string, path: string, status: number): void {
@@ -6857,15 +7016,19 @@ export const metricsPlugin = () =>
       metricsCollector.incrementHttpRequests(method, path, status);
       metricsCollector.recordHttpDuration(method, path, duration);
     })
-    .get('/metrics', async () => {
-      return metricsCollector.getMetrics();
-    }, {
-      detail: {
-        summary: 'Prometheus metrics endpoint',
-        tags: ['Metrics'],
-        description: 'Returns Prometheus-compatible metrics',
+    .get(
+      '/metrics',
+      async () => {
+        return metricsCollector.getMetrics();
       },
-    });
+      {
+        detail: {
+          summary: 'Prometheus metrics endpoint',
+          tags: ['Metrics'],
+          description: 'Returns Prometheus-compatible metrics',
+        },
+      }
+    );
 ```
 
 **Step 4: Commit**
@@ -6880,6 +7043,7 @@ git commit -m "feat: implement Prometheus metrics export"
 #### Task 26: Implement Distributed Tracing with OpenTelemetry
 
 **Files:**
+
 - Create: `src/plugins/tracing.plugin.ts`
 - Create: `src/core/tracing/tracer.ts`
 - Create: `src/core/tracing/types.ts`
@@ -6973,7 +7137,12 @@ class Tracer {
     }
   }
 
-  addLog(spanId: string, level: string, message: string, attributes?: Record<string, unknown>): void {
+  addLog(
+    spanId: string,
+    level: string,
+    message: string,
+    attributes?: Record<string, unknown>
+  ): void {
     const span = this.spans.get(spanId);
     if (span) {
       span.logs.push({
@@ -6991,7 +7160,7 @@ class Tracer {
 
   injectContext(context: TraceContext): Record<string, string> {
     return {
-      'traceparent': `00-${context.traceId}-${context.spanId}-${context.sampled ? '01' : '00'}`,
+      traceparent: `00-${context.traceId}-${context.spanId}-${context.sampled ? '01' : '00'}`,
       'X-Trace-Id': context.traceId,
       'X-Span-Id': context.spanId,
     };
@@ -7053,7 +7222,10 @@ export const tracingPlugin = () =>
       };
 
       // Start span for this request
-      const span = tracer.startSpan(`${request.method} ${new URL(request.url).pathname}`, context.spanId);
+      const span = tracer.startSpan(
+        `${request.method} ${new URL(request.url).pathname}`,
+        context.spanId
+      );
 
       // Add to context
       set.traceContext = context;
@@ -7071,9 +7243,14 @@ export const tracingPlugin = () =>
     .onError(({ set, error }) => {
       // Add error log to span
       if (set.span) {
-        tracer.addLog(set.span.spanId, 'error', error instanceof Error ? error.message : 'Unknown error', {
-          stack: error instanceof Error ? error.stack : undefined,
-        });
+        tracer.addLog(
+          set.span.spanId,
+          'error',
+          error instanceof Error ? error.message : 'Unknown error',
+          {
+            stack: error instanceof Error ? error.stack : undefined,
+          }
+        );
       }
     });
 ```
@@ -7092,6 +7269,7 @@ git commit -m "feat: implement distributed tracing with OpenTelemetry"
 #### Task 27: Implement Background Job Processing
 
 **Files:**
+
 - Create: `src/core/queue/job-queue.ts`
 - Create: `src/core/queue/job.types.ts`
 - Create: `src/core/queue/worker.ts`
@@ -7144,11 +7322,15 @@ class JobQueue {
     this.handlers.set(handler.type, handler);
   }
 
-  async add<T>(type: string, payload: T, options: {
-    priority?: number;
-    delay?: number;
-    scheduledAt?: Date;
-  } = {}): Promise<string> {
+  async add<T>(
+    type: string,
+    payload: T,
+    options: {
+      priority?: number;
+      delay?: number;
+      scheduledAt?: Date;
+    } = {}
+  ): Promise<string> {
     const db = getConnection();
 
     const job: Omit<Job, 'id' | 'attempts' | 'createdAt'> = {
@@ -7237,7 +7419,7 @@ export function registerJobHandlers(handlers: JobHandler[]): void {
 // Example job handlers
 export const emailJobHandler: JobHandler<{ to: string; subject: string; body: string }> = {
   type: 'send-email',
-  handle: async (payload) => {
+  handle: async payload => {
     // Send email logic
     logger.info(`Sending email to ${payload.to}: ${payload.subject}`);
   },
@@ -7245,7 +7427,7 @@ export const emailJobHandler: JobHandler<{ to: string; subject: string; body: st
 
 export const verificationEmailHandler: JobHandler<{ userId: string; email: string }> = {
   type: 'send-verification-email',
-  handle: async (payload) => {
+  handle: async payload => {
     await jobQueue.add('send-email', {
       to: payload.email,
       subject: 'Verify your email',
@@ -7256,7 +7438,7 @@ export const verificationEmailHandler: JobHandler<{ userId: string; email: strin
 
 export const passwordResetHandler: JobHandler<{ userId: string; email: string; token: string }> = {
   type: 'send-password-reset',
-  handle: async (payload) => {
+  handle: async payload => {
     await jobQueue.add('send-email', {
       to: payload.email,
       subject: 'Reset your password',
@@ -7278,6 +7460,7 @@ git commit -m "feat: implement background job processing with retry logic"
 #### Task 28: Implement Scheduled Tasks (Cron Jobs)
 
 **Files:**
+
 - Create: `src/core/scheduler/scheduler.ts`
 - Create: `src/core/scheduler/cron.types.ts`
 - Create: `src/core/scheduler/jobs/cleanup.job.ts`
@@ -7388,10 +7571,7 @@ export const cleanupExpiredSessionsJob: ScheduledJob = {
   handler: async () => {
     const db = getConnection();
 
-    const result = await db
-      .delete(sessions)
-      .where(lt(sessions.expiresAt, new Date()))
-      .returning();
+    const result = await db.delete(sessions).where(lt(sessions.expiresAt, new Date())).returning();
 
     logger.info(`Cleaned up ${result.length} expired sessions`);
   },
@@ -7412,12 +7592,7 @@ export const cleanupSoftDeletedRecordsJob: ScheduledJob = {
     // Clean up old soft-deleted users
     const usersResult = await db
       .delete(users)
-      .where(
-        and(
-          eq(users.deletedAt, true),
-          lt(users.deletedAt, cutoffDate)
-        )
-      )
+      .where(and(eq(users.deletedAt, true), lt(users.deletedAt, cutoffDate)))
       .returning();
 
     logger.info(`Permanently deleted ${usersResult.length} old soft-deleted users`);
@@ -7439,6 +7614,7 @@ git commit -m "feat: implement scheduled tasks with cron expression support"
 #### Task 29: Implement API Versioning
 
 **Files:**
+
 - Create: `src/plugins/versioning.plugin.ts`
 - Create: `src/core/versioning/types.ts`
 - Create: `src/core/versioning/version-manager.ts`
@@ -7504,11 +7680,13 @@ class ApiVersionManager {
     return this.config.deprecatedVersions.includes(version);
   }
 
-  getDeprecationInfo(version: ApiVersion): {
-    since: string;
-    sunsetAt: string;
-    migrateTo: string;
-  } | undefined {
+  getDeprecationInfo(version: ApiVersion):
+    | {
+        since: string;
+        sunsetAt: string;
+        migrateTo: string;
+      }
+    | undefined {
     if (!this.isVersionDeprecated(version)) {
       return undefined;
     }
@@ -7517,7 +7695,9 @@ class ApiVersionManager {
 
     return {
       since: sunsetDate?.toISOString() || '',
-      sunsetAt: sunsetDate ? new Date(sunsetDate.getTime() + 180 * 24 * 60 * 60 * 1000).toISOString() : '',
+      sunsetAt: sunsetDate
+        ? new Date(sunsetDate.getTime() + 180 * 24 * 60 * 60 * 1000).toISOString()
+        : '',
       migrateTo: this.config.defaultVersion,
     };
   }
@@ -7529,9 +7709,11 @@ class ApiVersionManager {
       return undefined;
     }
 
-    return `API version ${version} is deprecated since ${deprecation.since}. ` +
-           `It will be sunset on ${deprecation.sunsetAt}. ` +
-           `Please migrate to ${deprecation.migrateTo}.`;
+    return (
+      `API version ${version} is deprecated since ${deprecation.since}. ` +
+      `It will be sunset on ${deprecation.sunsetAt}. ` +
+      `Please migrate to ${deprecation.migrateTo}.`
+    );
   }
 }
 
@@ -7601,6 +7783,7 @@ git commit -m "feat: implement API versioning with deprecation strategy"
 #### Task 30: Implement Redis Caching Layer
 
 **Files:**
+
 - Create: `src/core/cache/cache.service.ts`
 - Create: `src/core/cache/cache.types.ts`
 - Create: `src/plugins/caching.plugin.ts`
@@ -7610,9 +7793,9 @@ git commit -m "feat: implement API versioning with deprecation strategy"
 ```typescript
 // src/core/cache/cache.types.ts
 export interface CacheOptions {
-  ttl?: number;        // Time to live in seconds
-  prefix?: string;     // Key prefix
-  tags?: string[];      // Cache tags for invalidation
+  ttl?: number; // Time to live in seconds
+  prefix?: string; // Key prefix
+  tags?: string[]; // Cache tags for invalidation
 }
 
 export interface CacheResult<T> {
@@ -7750,11 +7933,13 @@ import type { Context } from 'elysia';
 import { cacheService } from '@core/cache/cache.service';
 import { logger } from '@core/logging/logger';
 
-export const cachingPlugin = (options: {
-  ttl?: number;
-  cacheablePaths?: string[];
-  cacheableMethods?: string[];
-} = {}) =>
+export const cachingPlugin = (
+  options: {
+    ttl?: number;
+    cacheablePaths?: string[];
+    cacheableMethods?: string[];
+  } = {}
+) =>
   new Elysia({ name: 'caching-plugin' })
     .onBeforeHandle(async ({ request, set }) => {
       const url = new URL(request.url);
@@ -7800,6 +7985,7 @@ git commit -m "feat: implement Redis caching layer with tag-based invalidation"
 #### Task 31: Implement File Upload Handling
 
 **Files:**
+
 - Create: `src/core/storage/storage.service.ts`
 - Create: `src/core/storage/storage.types.ts`
 - Create: `src/routes/upload.routes.ts`
@@ -7923,10 +8109,13 @@ export const storageService = new StorageService();
 import type { Context } from 'elysia';
 import { storageService } from '@core/storage/storage.service';
 
-export const multipartMiddleware = (options: {
-  maxSize?: number;
-  allowedTypes?: string[];
-} = {}) =>
+export const multipartMiddleware =
+  (
+    options: {
+      maxSize?: number;
+      allowedTypes?: string[];
+    } = {}
+  ) =>
   async (context: Context) => {
     const contentType = context.request.headers.get('content-type');
 
@@ -7952,51 +8141,50 @@ import { storageService } from '@core/storage/storage.service';
 import { requireAuth } from '@middlewares/auth.middleware';
 
 export function createUploadRoutes(): Elysia {
-  return new Elysia({ prefix: '/uploads' })
-    .post(
-      '/',
-      async ({ request, set }) => {
-        try {
-          const formData = await request.formData();
-          const file = formData.get('file') as File;
+  return new Elysia({ prefix: '/uploads' }).post(
+    '/',
+    async ({ request, set }) => {
+      try {
+        const formData = await request.formData();
+        const file = formData.get('file') as File;
 
-          if (!file) {
-            return {
-              success: false,
-              error: {
-                code: 'NO_FILE',
-                message: 'No file provided',
-              },
-              status: 400,
-            };
-          }
-
-          const uploaded = await storageService.uploadFile(file);
-
-          return {
-            success: true,
-            message: 'File uploaded successfully',
-            data: uploaded,
-          };
-        } catch (error) {
+        if (!file) {
           return {
             success: false,
             error: {
-              code: 'UPLOAD_FAILED',
-              message: error instanceof Error ? error.message : 'Upload failed',
+              code: 'NO_FILE',
+              message: 'No file provided',
             },
             status: 400,
           };
         }
-      },
-      {
-        beforeHandle: [requireAuth],
-        detail: {
-          summary: 'Upload file',
-          tags: ['Upload'],
-        },
+
+        const uploaded = await storageService.uploadFile(file);
+
+        return {
+          success: true,
+          message: 'File uploaded successfully',
+          data: uploaded,
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: {
+            code: 'UPLOAD_FAILED',
+            message: error instanceof Error ? error.message : 'Upload failed',
+          },
+          status: 400,
+        };
       }
-    );
+    },
+    {
+      beforeHandle: [requireAuth],
+      detail: {
+        summary: 'Upload file',
+        tags: ['Upload'],
+      },
+    }
+  );
 }
 ```
 
@@ -8014,6 +8202,7 @@ git commit -m "feat: implement file upload handling with local storage"
 #### Task 32: Implement Email Service
 
 **Files:**
+
 - Create: `src/core/email/email.service.ts`
 - Create: `src/core/email/email.types.ts`
 - Create: `src/core/email/templates/verification.template.ts`
@@ -8145,6 +8334,7 @@ git commit -m "feat: implement email service with template support"
 #### Task 33: Implement Additional Security Measures
 
 **Files:**
+
 - Create: `src/core/security/content-security.plugin.ts`
 - Create: `src/core/security/rate-limit-per-user.plugin.ts`
 - Create: `src/core/security/csrf.plugin.ts`
@@ -8217,6 +8407,7 @@ git commit -m "feat: implement per-user rate limiting and CSRF protection"
 #### Task 34: Implement Connection Pooling & Database Optimization
 
 **Files:**
+
 - Update: `src/database/connection.ts`
 - Create: `src/database/performance/monitor.ts`
 
@@ -8294,6 +8485,7 @@ git commit -m "feat: enhance database connection pooling with metrics"
 #### Task 35: Create Production Deployment Configuration
 
 **Files:**
+
 - Create: `infra/docker/production.dockerfile`
 - Create: `infra/kubernetes/deployment.yaml`
 - Create: `infra/kubernetes/service.yaml`
@@ -8375,51 +8567,51 @@ spec:
         prometheus.io/path: '/metrics'
     spec:
       containers:
-      - name: paseto-api
-        image: paseto-api:latest
-        ports:
-        - containerPort: 3000
-          name: http
-        env:
-        - name: NODE_ENV
-          value: 'production'
-        - name: PORT
-          value: '3000'
-        envFrom:
-          - configMapRef:
-              name: app-config
-          - secretRef:
-              name: app-secrets
-        resources:
-          requests:
-            memory: '256Mi'
-            cpu: '250m'
-          limits:
-            memory: '512Mi'
-            cpu: '500m'
-        livenessProbe:
-          httpGet:
-            path: /api/health/live
-            port: 3000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 3
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /api/health/ready
-            port: 3000
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 3
-        lifecycle:
-          preStop:
-            exec:
-              command:
-                - 'sh'
-                - '-c'
-                - 'sleep 15 && curl -X POST http://localhost:3000/api/health/shutdown || true'
+        - name: paseto-api
+          image: paseto-api:latest
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: NODE_ENV
+              value: 'production'
+            - name: PORT
+              value: '3000'
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests:
+              memory: '256Mi'
+              cpu: '250m'
+            limits:
+              memory: '512Mi'
+              cpu: '500m'
+          livenessProbe:
+            httpGet:
+              path: /api/health/live
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health/ready
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - 'sh'
+                  - '-c'
+                  - 'sleep 15 && curl -X POST http://localhost:3000/api/health/shutdown || true'
 ```
 
 **Step 3: Create Kubernetes service**
@@ -8433,10 +8625,10 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 80
-    targetPort: 3000
-    protocol: TCP
-    name: http
+    - port: 80
+      targetPort: 3000
+      protocol: TCP
+      name: http
   selector:
     app: paseto-api
   sessionAffinity:
@@ -8458,6 +8650,7 @@ git commit -m "feat: add Kubernetes deployment configuration with health checks"
 #### Task 36: Create Load Testing Scripts
 
 **Files:**
+
 - Create: `tests/load/api-load.test.ts`
 - Create: `tests/performance/benchmark.test.ts`
 
@@ -8485,7 +8678,8 @@ describe('API Load Tests', () => {
     const totalTime = performance.now() - startTime;
 
     const successful = results.filter(r => r.status === 200);
-    const averageLatency = results.reduce((sum, r) => sum + r.latency - startTime, 0) / results.length;
+    const averageLatency =
+      results.reduce((sum, r) => sum + r.latency - startTime, 0) / results.length;
 
     console.log({
       totalRequests: results.length,
@@ -8515,6 +8709,7 @@ git commit -m "feat: add load testing and performance benchmarking scripts"
 #### Task 37: Update README and Final Documentation
 
 **Files:**
+
 - Update: `README.md`
 - Create: `docs/deployment/production.md`
 - Create: `docs/operations/monitoring.md`
@@ -8541,17 +8736,23 @@ git commit -m "feat: add load testing and performance benchmarking scripts"
 ## Quick Start
 
 \`\`\`bash
+
 # Install dependencies
+
 bun install
 
 # Setup environment
+
 cp .env.example .env
+
 # Edit .env with your configuration
 
 # Run migrations
+
 bun run db:migrate
 
 # Start development server
+
 bun run dev
 \`\`\`
 
@@ -8581,12 +8782,14 @@ git commit -m "docs: finalize documentation with deployment and operations guide
 This boilerplate teaches:
 
 ### Phase 1: Foundation
+
 - ✅ Clean architecture principles
 - ✅ Repository pattern with Unit of Work
 - ✅ Dependency injection
 - ✅ Configuration management
 
 ### Phase 2: Security
+
 - ✅ **Hybrid PASETO v4** (v4.local + v4.public) - **Both symmetric & asymmetric crypto**
   - v4.local: Encrypted access tokens (XChaCha20-Poly1305)
   - v4.public: Signed refresh tokens (Ed25519)
@@ -8600,6 +8803,7 @@ This boilerplate teaches:
 - ✅ CSRF protection
 
 ### Phase 3: Production Readiness
+
 - ✅ Structured logging with correlation IDs
 - ✅ Health checks (liveness, readiness, deep)
 - ✅ Graceful shutdown with pre-stop hooks
@@ -8608,6 +8812,7 @@ This boilerplate teaches:
 - ✅ OpenTelemetry distributed tracing
 
 ### Phase 4: Testing
+
 - ✅ Unit testing patterns
 - ✅ Test doubles (mocks, spies, stubs)
 - ✅ Test fixtures and builders
@@ -8616,6 +8821,7 @@ This boilerplate teaches:
 - ✅ Performance benchmarking
 
 ### Phase 5: Advanced Features
+
 - ✅ Elysia plugin architecture
 - ✅ Background job processing
 - ✅ Scheduled tasks (cron jobs)
@@ -8625,6 +8831,7 @@ This boilerplate teaches:
 - ✅ Email service integration
 
 ### Phase 6: Deployment & DevOps
+
 - ✅ Docker multi-stage builds
 - ✅ Kubernetes deployment manifests
 - ✅ Health check probes
@@ -8633,6 +8840,7 @@ This boilerplate teaches:
 - ✅ Pre-stop hooks for graceful shutdown
 
 ### Phase 7: Next Steps
+
 - 📌 Circuit breaker pattern implementation
 - 📌 Request retry logic with exponential backoff
 - 📌 Distributed tracing with OTLP export

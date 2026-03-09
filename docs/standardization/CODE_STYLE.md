@@ -38,15 +38,15 @@ This project uses Prettier and ESLint to maintain consistent code formatting and
 
 ### Rules Summary
 
-| Rule | Value | Description |
-|------|-------|-------------|
-| **Indentation** | 2 spaces | Consistent indentation across files |
-| **Quotes** | Single quotes | `'string'` instead of `"string"` |
-| **Semicolons** | Required | Always terminate statements |
-| **Trailing Commas** | ES5 | Multi-line structures have trailing commas |
-| **Line Width** | 100 characters | Maximum line length for readability |
-| **Arrow Params** | Omit parens | `x => x` instead of `(x) => x` |
-| **End of Line** | LF | Unix-style line endings |
+| Rule                | Value          | Description                                |
+| ------------------- | -------------- | ------------------------------------------ |
+| **Indentation**     | 2 spaces       | Consistent indentation across files        |
+| **Quotes**          | Single quotes  | `'string'` instead of `"string"`           |
+| **Semicolons**      | Required       | Always terminate statements                |
+| **Trailing Commas** | ES5            | Multi-line structures have trailing commas |
+| **Line Width**      | 100 characters | Maximum line length for readability        |
+| **Arrow Params**    | Omit parens    | `x => x` instead of `(x) => x`             |
+| **End of Line**     | LF             | Unix-style line endings                    |
 
 ---
 
@@ -108,7 +108,7 @@ function getUserName(user: User | null): string {
 
 // ❌ Bad: Assume non-null
 function getUserNameBad(user: User | null): string {
-  return user.name;  // TypeScript error in strict mode
+  return user.name; // TypeScript error in strict mode
 }
 
 // ✅ Good: Explicit return types
@@ -131,17 +131,17 @@ if (typeof value !== 'string') {
 
 ### General Rules
 
-| Type | Convention | Example | Bad Example |
-|------|------------|---------|-------------|
-| **Files** | kebab-case | `auth.service.ts` | `AuthService.ts` |
-| **Classes** | PascalCase | `AuthService` | `authService` |
-| **Interfaces** | PascalCase with `I` prefix | `IAuthService` | `AuthService` |
-| **Types** | PascalCase | `UserDto` | `userDto` |
-| **Functions** | camelCase | `getUserById` | `GetUserById` |
-| **Constants** | SCREAMING_SNAKE_CASE | `MAX_RETRIES` | `maxRetries` |
-| **Private Properties** | camelCase | `private userId` | `private UserId` |
-| **Enums** | PascalCase | `UserRole` | `userRole` |
-| **Enum Values** | SCREAMING_SNAKE_CASE | `ADMIN_ROLE` | `AdminRole` |
+| Type                   | Convention                 | Example           | Bad Example      |
+| ---------------------- | -------------------------- | ----------------- | ---------------- |
+| **Files**              | kebab-case                 | `auth.service.ts` | `AuthService.ts` |
+| **Classes**            | PascalCase                 | `AuthService`     | `authService`    |
+| **Interfaces**         | PascalCase with `I` prefix | `IAuthService`    | `AuthService`    |
+| **Types**              | PascalCase                 | `UserDto`         | `userDto`        |
+| **Functions**          | camelCase                  | `getUserById`     | `GetUserById`    |
+| **Constants**          | SCREAMING_SNAKE_CASE       | `MAX_RETRIES`     | `maxRetries`     |
+| **Private Properties** | camelCase                  | `private userId`  | `private UserId` |
+| **Enums**              | PascalCase                 | `UserRole`        | `userRole`       |
+| **Enum Values**        | SCREAMING_SNAKE_CASE       | `ADMIN_ROLE`      | `AdminRole`      |
 
 ### Domain-Specific Naming
 
@@ -236,9 +236,7 @@ export class UserService implements IUserService {
   private cache: Map<string, User> = new Map();
 
   // 3. Constructor
-  constructor(
-    @inject(RepositoryTokens.UserRepository) private userRepository: UserRepository,
-  ) {}
+  constructor(@inject(RepositoryTokens.UserRepository) private userRepository: UserRepository) {}
 
   // 4. Public methods (CRUD operations first)
   async findById(id: string): Promise<User | null> {
@@ -285,7 +283,7 @@ try {
 try {
   const user = await this.userService.findById(id);
 } catch (error) {
-  throw new Error('Something went wrong');  // Loses context
+  throw new Error('Something went wrong'); // Loses context
 }
 ```
 
@@ -317,8 +315,8 @@ async function getUserData(id: string): Promise<UserData> {
 // ❌ Bad: Sequential independent operations
 async function getUserDataBad(id: string): Promise<UserData> {
   const user = await this.userRepository.findById(id);
-  const posts = await this.postRepository.findByUserId(id);  // Waits unnecessarily
-  const settings = await this.settingsRepository.findByUserId(id);  // Waits unnecessarily
+  const posts = await this.postRepository.findByUserId(id); // Waits unnecessarily
+  const settings = await this.settingsRepository.findByUserId(id); // Waits unnecessarily
 
   return { user, posts, settings };
 }
@@ -340,7 +338,7 @@ function getUserSafe(id: string): User | null {
 }
 
 // ❌ Bad: Force non-null assertion
-const email = user.profile.email!;  // Crash if undefined
+const email = user.profile.email!; // Crash if undefined
 ```
 
 ### Immutability
@@ -358,7 +356,7 @@ const usersWithRole = users.map(u => ({ ...u, role: 'USER' }));
 
 // ❌ Bad: Mutating objects directly
 user.lastLoginAt = new Date();
-users.push(newUser);  // Mutates original array
+users.push(newUser); // Mutates original array
 ```
 
 ### Constants vs Configuration
@@ -377,7 +375,7 @@ const config = {
 
 // ❌ Bad: Magic numbers
 function shouldLockout(attempts: number): boolean {
-  return attempts > 5;  // What is 5?
+  return attempts > 5; // What is 5?
 }
 
 // ✅ Good: Named constants
@@ -565,22 +563,26 @@ temp/
 **Solutions:**
 
 1. Check if Prettier extension is installed
+
 ```bash
 code --list-extensions | grep prettier
 ```
 
 2. Verify file extension is included
+
 ```bash
 # Check package.json format script
 cat package.json | grep format
 ```
 
 3. Ensure file is not in `.prettierignore`
+
 ```bash
 cat .prettierignore
 ```
 
 4. Reload VSCode window
+
 ```bash
 # In VSCode: Developer > Reload Window
 ```
@@ -592,22 +594,25 @@ cat .prettierignore
 **Solutions:**
 
 1. Use `eslint-config-prettier` to disable conflicting rules
+
 ```bash
 bun add -D eslint-config-prettier
 ```
 
 2. Update `.eslintrc.json`
+
 ```json
 {
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
-    "prettier"  // Must be last
+    "prettier" // Must be last
   ]
 }
 ```
 
 3. Run Prettier after ESLint
+
 ```bash
 bun run lint:fix && bun run format
 ```
@@ -634,21 +639,25 @@ bun run lint:fix && bun run format
 **Solutions:**
 
 1. Verify Husky is installed
+
 ```bash
 ls .husky/pre-commit
 ```
 
 2. Reinstall hooks
+
 ```bash
 bun run prepare
 ```
 
 3. Check git configuration
+
 ```bash
 git config core.hooksPath
 ```
 
 4. Manually test hook
+
 ```bash
 ./.husky/pre-commit
 ```
