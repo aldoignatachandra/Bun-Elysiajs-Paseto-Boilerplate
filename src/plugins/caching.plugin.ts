@@ -43,9 +43,7 @@ function pathMatchesPatterns(path: string, patterns: string[]): boolean {
 
   return patterns.some(pattern => {
     // Convert glob pattern to regex
-    const regexPattern = pattern
-      .replace(/\*/g, '.*')
-      .replace(/\?/g, '.');
+    const regexPattern = pattern.replace(/\*/g, '.*').replace(/\?/g, '.');
 
     const regex = new RegExp(`^${regexPattern}$`);
     return regex.test(path);
@@ -89,17 +87,6 @@ export interface CachingPluginOptions {
 }
 
 /**
- * Store for request metadata
- */
-interface RequestContext {
-  cacheKey: string;
-  fromCache: boolean;
-  cacheable: boolean;
-}
-
-const requestContext = new WeakMap<Request, RequestContext>();
-
-/**
  * Caching plugin for Elysia
  *
  * @example
@@ -117,14 +104,20 @@ export function cachingPlugin(options: CachingPluginOptions) {
     prefix = 'cache:',
     cacheablePaths = [],
     cacheableMethods = ['GET'],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     cacheErrors = false,
   } = options;
 
   const cacheService = new CacheService(redis);
-  const httpPrefix = `${prefix}http:`;
 
+  // Use Elysia's store for cache metadata
   return new Elysia({ name: 'caching-plugin' })
-    .onRequest(({ request }) => {
+    .state({
+      __cacheKey: '' as string,
+      __cacheable: false,
+      __fromCache: false,
+    })
+    .onRequest(({ set, store }) => {
       // Check if request should bypass cache
       const shouldBypass =
         request.headers.get('Cache-Control') === 'no-cache' ||
@@ -141,108 +134,108 @@ export function cachingPlugin(options: CachingPluginOptions) {
       // Check if path is cacheable
       const isCacheablePath = pathMatchesPatterns(path, cacheablePaths);
 
-      // Generate cache key
-      const cacheKey = `${httpPrefix}${request.method}:${path}${queryString}`;
+      // Generate cache key (without prefix - CacheService will add it)
+      const cacheKey = `http:${request.method}:${path}${queryString}`;
 
       // Determine if request is cacheable
       const isCacheable = !shouldBypass && isCacheableMethod && isCacheablePath;
 
-      // Store context for later use
-      requestContext.set(request, {
-        cacheKey,
-        fromCache: false,
-        cacheable: isCacheable,
-      });
-    })
-    .onBeforeHandle(async ({ request }) => {
-      const ctx = requestContext.get(request);
+      // Store in state
+      store.__cacheKey = cacheKey;
+      store.__cacheable = isCacheable;
+      store.__fromCache = false;
 
-      // Skip caching if not cacheable
-      if (!ctx || !ctx.cacheable) {
+      // Set X-Cache header for cacheable requests
+      if (isCacheable) {
+        set.headers['X-Cache'] = 'MISS';
+      }
+    })
+    .onBeforeHandle(async ({ set, store }) => {
+      if (!store.__cacheable) {
         return;
       }
 
       try {
         // Try to get from cache
         const result = await cacheService.get<{ body: string; headers: Record<string, string> }>(
-          ctx.cacheKey.replace(prefix, '') // Remove prefix for get operation
+          store.__cacheKey,
+          prefix
         );
 
         if (result.hit && result.value) {
-          // Update context
-          requestContext.set(request, { ...ctx, fromCache: true });
+          // Mark as cache hit
+          store.__fromCache = true;
 
-          // Return cached body
-          return result.value.body;
+          // Set HIT header
+          set.headers['X-Cache'] = 'HIT';
+
+          // Return cached response with HIT header
+          const headers = new Headers(result.value.headers);
+          headers.set('X-Cache', 'HIT');
+          headers.set('Content-Type', 'application/json; charset=utf-8');
+
+          return new Response(result.value.body, {
+            status: 200,
+            headers,
+          });
         }
       } catch (error) {
-        logger.error('Cache retrieval error', { cacheKey: ctx.cacheKey, error });
+        logger.error('Cache retrieval error', { cacheKey: store.__cacheKey, error });
         // Continue without caching on error
       }
     })
-    .mapResponse(async ({ request, response }) => {
-      const ctx = requestContext.get(request);
-
-      if (!ctx) {
+    .onAfterHandle(async ({ response, store }) => {
+      // If this was a cache hit, don't cache it again
+      if (store.__fromCache) {
         return response;
       }
 
-      // Clone the response to modify headers
-      const headers = new Headers(response.headers);
+      // For cacheable requests, store the response
+      if (store.__cacheable && store.__cacheKey && response) {
+        // Convert response to string if it's an object
+        let responseBody: string;
 
-      if (ctx.fromCache) {
-        // Cache hit - set HIT header
-        headers.set('X-Cache', 'HIT');
-        return new Response(response.body, {
-          status: response.status,
-          statusText: response.statusText,
-          headers,
-        });
-      } else if (ctx.cacheable) {
-        // Cache miss - set MISS header and cache the response
-        headers.set('X-Cache', 'MISS');
+        if (typeof response === 'string') {
+          responseBody = response;
+        } else if (response instanceof Response) {
+          // Skip caching Response objects
+          return response;
+        } else {
+          // It's an object, stringify it
+          responseBody = JSON.stringify(response);
+        }
 
-        // Check if response should be cached
-        const status = response.status;
-        if (cacheErrors || (status >= 200 && status < 300)) {
-          try {
-            const body = await response.text();
+        try {
+          // Store response with headers
+          const cacheValue = {
+            body: responseBody,
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+            },
+          };
 
-            // Store response with headers
-            const cacheValue = {
-              body,
-              headers: Object.fromEntries(headers.entries()),
-            };
-
-            await cacheService.set(ctx.cacheKey.replace(prefix, ''), cacheValue, {
-              ttl: defaultTTL,
-              prefix,
-            });
-
-            // Return new response with cached body
-            return new Response(body, {
-              status,
-              headers,
-            });
-          } catch (error) {
-            logger.error('Cache storage error', { cacheKey: ctx.cacheKey, error });
-            // Don't fail the request if caching fails
-          }
+          // Cache the response
+          await cacheService.set(store.__cacheKey, cacheValue, {
+            ttl: defaultTTL,
+            prefix,
+          });
+        } catch (error) {
+          logger.error('Cache storage error', { cacheKey: store.__cacheKey, error });
+          // Don't fail the request if caching fails
         }
       }
 
-      // Return response with X-Cache header
-      return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers,
-      });
+      return response;
     })
-    .onError(({ request, set }) => {
-      const ctx = requestContext.get(request);
-
+    .mapResponse(({ response }) => {
+      // For cache hits, X-Cache: HIT is already set
+      // For cache misses, X-Cache: MISS is already set in onRequest
+      // Just return the response as-is
+      return response;
+    })
+    .onError(({ set, store }) => {
       // Ensure cache miss header is set on errors for cacheable requests
-      if (ctx && !ctx.fromCache && ctx.cacheable) {
+      if (!store.__fromCache && store.__cacheable && !set.headers['X-Cache']) {
         set.headers['X-Cache'] = 'MISS';
       }
     })
