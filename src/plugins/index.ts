@@ -2,6 +2,7 @@ import { Elysia } from 'elysia';
 import { healthPlugin } from './health.plugin';
 import { metricsPlugin } from './metrics.plugin';
 import { tracingPlugin } from './tracing.plugin';
+import { compressionPlugin } from './compression.plugin';
 
 /**
  * Plugin configuration interface
@@ -21,6 +22,11 @@ export interface PluginConfig {
    * Enable distributed tracing plugin (default: false)
    */
   tracing?: boolean;
+
+  /**
+   * Enable response compression plugin (default: false)
+   */
+  compression?: boolean;
 }
 
 /**
@@ -59,6 +65,11 @@ export function registerPlugins(app: Elysia, config: PluginConfig = {}): Elysia 
     app.use(tracingPlugin());
   }
 
+  // Compression plugin is opt-in
+  if (config.compression) {
+    app.use(compressionPlugin());
+  }
+
   return app;
 }
 
@@ -67,3 +78,4 @@ export * from './health.plugin';
 export * from './metrics.plugin';
 export * from './tracing.plugin';
 export * from './security-headers.plugin';
+export * from './compression.plugin';
