@@ -46,17 +46,13 @@ export function createApp(): Elysia {
   const unitOfWork = new UnitOfWork(db);
   const passwordService = new PasswordService();
   const pasetoService = new PasetoService({
-    localKey: process.env.PASETO_LOCAL_KEY!,
+    issuer: 'bun-elysia-paseto-boilerplate',
+    audience: 'bun-elysia-paseto-api',
+    symmetricKey: process.env.PASETO_LOCAL_KEY!,
     publicKey: process.env.PASETO_PUBLIC_KEY!,
     secretKey: process.env.PASETO_SECRET_KEY!,
-    accessTokenExpiry: {
-      value: Number(process.env.ACCESS_TOKEN_EXPIRY_MINUTES) || 15,
-      unit: 'm',
-    },
-    refreshTokenExpiry: {
-      value: Number(process.env.REFRESH_TOKEN_EXPIRY_DAYS) || 7,
-      unit: 'd',
-    },
+    accessTokenExpiryMinutes: Number(process.env.ACCESS_TOKEN_EXPIRY_MINUTES) || 15,
+    refreshTokenExpiryDays: Number(process.env.REFRESH_TOKEN_EXPIRY_DAYS) || 7,
   });
   const authService = new AuthService(unitOfWork, pasetoService, passwordService);
   const usersService = new UsersService(unitOfWork, passwordService);
@@ -74,7 +70,7 @@ export function createApp(): Elysia {
       })
     )
     // Logging middleware
-    .use(loggingPlugin())
+    .use(loggingPlugin)
     // Global error handler
     .onError(({ error, set }) => {
       logger.error('Unhandled error', error);

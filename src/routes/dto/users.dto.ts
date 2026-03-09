@@ -213,3 +213,19 @@ export const userStatsResponseSchema = z.object({
 });
 
 export type UserStatsResponse = z.infer<typeof userStatsResponseSchema>;
+
+/**
+ * Error Response DTO
+ *
+ * Common schema for API error responses.
+ */
+export const errorResponseSchema = z.object({
+  success: z.literal(false),
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    details: z.any().optional(),
+  }),
+});
+
+export type ErrorResponse = z.infer<typeof errorResponseSchema>;
