@@ -18,9 +18,50 @@ export class Tracer {
   private spans: Map<string, Span> = new Map();
   private currentTraceId: string | undefined;
   private currentSpanId: string | undefined;
+  private readonly maxSpans = 10000;
+  private cleanupInterval: Timer | undefined;
 
   constructor(config: TracingConfig) {
     this.config = config;
+    this.startCleanupInterval();
+  }
+
+  /**
+   * Start the cleanup interval to remove old spans
+   */
+  private startCleanupInterval(): void {
+    // Clean up spans every minute
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupOldSpans();
+    }, 60000);
+  }
+
+  /**
+   * Clean up old spans to prevent memory leaks
+   * Removes the oldest spans if we exceed the maximum limit
+   */
+  private cleanupOldSpans(): void {
+    if (this.spans.size <= this.maxSpans) {
+      return;
+    }
+
+    const entries = Array.from(this.spans.entries());
+    const toRemove = entries.slice(0, entries.length - this.maxSpans);
+
+    for (const [spanId] of toRemove) {
+      this.spans.delete(spanId);
+    }
+  }
+
+  /**
+   * Clean up resources when the tracer is destroyed
+   */
+  destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = undefined;
+    }
+    this.spans.clear();
   }
 
   /**
@@ -197,7 +238,7 @@ export class Tracer {
    * @returns The extracted trace context, or a new context if none found
    */
   extractContext(headers: Record<string, string>): TraceContext {
-    const traceparent = headers['traceparent'] || headers['traceparent'];
+    const traceparent = headers['traceparent'];
 
     if (!traceparent) {
       // No trace context, create a new one
@@ -270,19 +311,29 @@ export class Tracer {
   /**
    * Generate a random trace ID (32 hex characters)
    *
+   * Uses cryptographically secure random UUID generation.
+   *
    * @returns A random trace ID
    */
   private generateTraceId(): string {
-    return Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    // Use crypto.randomUUID() for cryptographically secure random generation
+    const uuid = crypto.randomUUID();
+    // Remove hyphens and use the first 32 characters
+    return uuid.replace(/-/g, '');
   }
 
   /**
    * Generate a random span ID (16 hex characters)
    *
+   * Uses cryptographically secure random UUID generation.
+   *
    * @returns A random span ID
    */
   private generateSpanId(): string {
-    return Array.from({ length: 16 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    // Use crypto.randomUUID() for cryptographically secure random generation
+    const uuid = crypto.randomUUID();
+    // Remove hyphens and use the first 16 characters
+    return uuid.replace(/-/g, '').substring(0, 16);
   }
 }
 
