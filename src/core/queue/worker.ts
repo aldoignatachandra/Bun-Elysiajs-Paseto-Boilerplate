@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Background Job Worker
  *
@@ -73,7 +71,7 @@ export class Worker {
    *
    * @returns Array of email-related job handlers
    */
-  getEmailHandlers(): JobHandler[] {
+  getEmailHandlers(): JobHandler<EmailPayload>[] {
     return [
       {
         type: 'email',
@@ -82,9 +80,10 @@ export class Worker {
 
           // TODO: Implement actual email sending logic
           // For now, just log and return success
-          console.log(`Email sent to: ${payload.to}`);
-          console.log(`Subject: ${payload.subject}`);
-          console.log(`Body: ${payload.body}`);
+          await Promise.resolve(); // eslint-disable-line require-atomic-updates
+          logger.debug(`Email sent to: ${payload.to}`);
+          logger.debug(`Subject: ${payload.subject}`);
+          logger.debug(`Body: ${payload.body}`);
 
           return { success: true };
         },
@@ -97,17 +96,21 @@ export class Worker {
    *
    * @returns Array of verification-related job handlers
    */
-  getVerificationHandlers(): JobHandler[] {
+  getVerificationHandlers(): JobHandler<VerificationPayload>[] {
     return [
       {
         type: 'verification',
         handle: async (payload: VerificationPayload) => {
-          logger.info('Sending verification email', { userId: payload.userId, email: payload.email });
+          logger.info('Sending verification email', {
+            userId: payload.userId,
+            email: payload.email,
+          });
 
           // TODO: Implement actual verification email sending logic
           // For now, just log and return success
-          console.log(`Verification email sent to: ${payload.email}`);
-          console.log(`User ID: ${payload.userId}`);
+          await Promise.resolve();
+          logger.debug(`Verification email sent to: ${payload.email}`);
+          logger.debug(`User ID: ${payload.userId}`);
 
           return { success: true };
         },
@@ -120,7 +123,7 @@ export class Worker {
    *
    * @returns Array of password reset-related job handlers
    */
-  getPasswordResetHandlers(): JobHandler[] {
+  getPasswordResetHandlers(): JobHandler<PasswordResetPayload>[] {
     return [
       {
         type: 'password-reset',
@@ -132,9 +135,10 @@ export class Worker {
 
           // TODO: Implement actual password reset email sending logic
           // For now, just log and return success
-          console.log(`Password reset email sent to: ${payload.email}`);
-          console.log(`User ID: ${payload.userId}`);
-          console.log(`Reset token: ${payload.token}`);
+          await Promise.resolve();
+          logger.debug(`Password reset email sent to: ${payload.email}`);
+          logger.debug(`User ID: ${payload.userId}`);
+          logger.debug(`Reset token: ${payload.token}`);
 
           return { success: true };
         },
@@ -148,6 +152,10 @@ export class Worker {
    * @returns Array of all example job handlers
    */
   getAllHandlers(): JobHandler[] {
-    return [...this.getEmailHandlers(), ...this.getVerificationHandlers(), ...this.getPasswordResetHandlers()];
+    return [
+      ...(this.getEmailHandlers() as unknown as JobHandler[]),
+      ...(this.getVerificationHandlers() as unknown as JobHandler[]),
+      ...(this.getPasswordResetHandlers() as unknown as JobHandler[]),
+    ];
   }
 }

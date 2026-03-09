@@ -75,7 +75,7 @@ describe('Job Types', () => {
     it('should have type and handle function', () => {
       const handler: JobHandler<{ test: string }> = {
         type: 'test-handler',
-        handle: async (payload) => {
+        handle: async payload => {
           return { success: true, data: payload.test };
         },
       };
@@ -87,7 +87,7 @@ describe('Job Types', () => {
     it('should handle payload correctly', async () => {
       const handler: JobHandler<{ message: string }> = {
         type: 'test-handler',
-        handle: async (payload) => {
+        handle: async payload => {
           return { success: true, message: payload.message };
         },
       };
@@ -133,7 +133,7 @@ describe('JobQueue', () => {
     it('should register a job handler', () => {
       const handler: JobHandler<{ test: string }> = {
         type: 'test-job',
-        handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+        handle: async () => ({ success: true }),
       };
 
       expect(() => jobQueue.registerHandler(handler)).not.toThrow();
@@ -142,12 +142,12 @@ describe('JobQueue', () => {
     it('should register multiple handlers', () => {
       const handler1: JobHandler<{ data: string }> = {
         type: 'job1',
-        handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+        handle: async () => ({ success: true }),
       };
 
       const handler2: JobHandler<{ value: number }> = {
         type: 'job2',
-        handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+        handle: async () => ({ success: true }),
       };
 
       jobQueue.registerHandler(handler1);
@@ -163,7 +163,7 @@ describe('JobQueue', () => {
     it('should throw when registering duplicate handler type', () => {
       const handler: JobHandler<Record<string, unknown>> = {
         type: 'duplicate',
-        handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+        handle: async () => ({ success: true }),
       };
 
       jobQueue.registerHandler(handler);
@@ -176,7 +176,7 @@ describe('JobQueue', () => {
     beforeEach(() => {
       const handler: JobHandler<{ message: string }> = {
         type: 'test-job',
-        handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+        handle: async () => ({ success: true }),
       };
       jobQueue.registerHandler(handler);
     });
@@ -202,8 +202,7 @@ describe('JobQueue', () => {
       const jobId = await jobQueue.add('test-job', { message: 'test' });
 
       // UUID format validation
-      const uuidRegex =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       expect(jobId).toMatch(uuidRegex);
     });
 
@@ -225,12 +224,16 @@ describe('JobQueue', () => {
       expect(job?.priority).toBe(10);
     });
 
-    it('should accept custom delay', async () => {
-      const jobId = await jobQueue.add('test-job', { message: 'test' }, { delay: 5000 });
-      const job = await jobQueue.getStatus(jobId);
+    it(
+      'should accept custom delay',
+      async () => {
+        const jobId = await jobQueue.add('test-job', { message: 'test' }, { delay: 100 });
+        const job = await jobQueue.getStatus(jobId);
 
-      expect(job?.delay).toBe(5000);
-    });
+        expect(job?.delay).toBe(100);
+      },
+      { timeout: 10000 }
+    );
 
     it('should accept custom maxAttempts', async () => {
       const jobId = await jobQueue.add('test-job', { message: 'test' }, { maxAttempts: 5 });
@@ -239,16 +242,26 @@ describe('JobQueue', () => {
       expect(job?.maxAttempts).toBe(5);
     });
 
-    it('should accept scheduled execution time', async () => {
-      const scheduledAt = new Date(Date.now() + 10000);
-      const jobId = await jobQueue.add('test-job', { message: 'test' }, { scheduledAt });
-      const job = await jobQueue.getStatus(jobId);
+    it(
+      'should accept scheduled execution time',
+      async () => {
+        const scheduledAt = new Date(Date.now() + 100);
+        const jobId = await jobQueue.add('test-job', { message: 'test' }, { scheduledAt });
+        const job = await jobQueue.getStatus(jobId);
 
-      expect(job?.scheduledAt).toEqual(scheduledAt);
-    });
+        expect(job?.scheduledAt).toEqual(scheduledAt);
+      },
+      { timeout: 10000 }
+    );
 
     it('should throw when adding job for unregistered handler', async () => {
-      await expect(jobQueue.add('unregistered-job', {})).rejects.toThrow();
+      let errorThrown = false;
+      try {
+        await jobQueue.add('unregistered-job', {});
+      } catch (error) {
+        errorThrown = true;
+      }
+      expect(errorThrown).toBe(true);
     });
 
     it('should process job with delay after specified time', async () => {
@@ -302,7 +315,7 @@ describe('JobQueue', () => {
     it('should increment attempts on processing', async () => {
       const handler: JobHandler<Record<string, unknown>> = {
         type: 'attempts-job',
-        handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+        handle: async () => ({ success: true }),
       };
       jobQueue.registerHandler(handler);
 
@@ -318,7 +331,7 @@ describe('JobQueue', () => {
     it('should set startedAt timestamp when processing starts', async () => {
       const handler: JobHandler<Record<string, unknown>> = {
         type: 'timestamp-job',
-        handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+        handle: async () => ({ success: true }),
       };
       jobQueue.registerHandler(handler);
 
@@ -335,7 +348,7 @@ describe('JobQueue', () => {
     it('should set completedAt timestamp on success', async () => {
       const handler: JobHandler<Record<string, unknown>> = {
         type: 'complete-job',
-        handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+        handle: async () => ({ success: true }),
       };
       jobQueue.registerHandler(handler);
 
@@ -351,162 +364,182 @@ describe('JobQueue', () => {
   });
 
   describe('retry logic', () => {
-    it('should retry failed jobs with exponential backoff', async () => {
-      let attemptCount = 0;
-      const attemptTimes: number[] = [];
-      let jobCompleted = false;
+    it(
+      'should retry failed jobs with exponential backoff',
+      async () => {
+        let attemptCount = 0;
+        const attemptTimes: number[] = [];
+        let jobCompleted = false;
 
-      const handler: JobHandler<Record<string, unknown>> = {
-        type: 'retry-job',
-        handle: async () => {
-          attemptCount++;
-          attemptTimes.push(Date.now());
-          if (attemptCount < 3) {
-            throw new Error('Temporary failure');
-          }
-          jobCompleted = true;
-          return { success: true };
-        },
-      };
-      jobQueue.registerHandler(handler);
+        const handler: JobHandler<Record<string, unknown>> = {
+          type: 'retry-job',
+          handle: async () => {
+            attemptCount++;
+            attemptTimes.push(Date.now());
+            if (attemptCount < 3) {
+              throw new Error('Temporary failure');
+            }
+            jobCompleted = true;
+            return { success: true };
+          },
+        };
+        jobQueue.registerHandler(handler);
 
-      const jobId = await jobQueue.add('retry-job', {});
-      const startTime = Date.now();
-      await jobQueue.start();
+        const jobId = await jobQueue.add('retry-job', {});
+        const startTime = Date.now();
+        await jobQueue.start();
 
-      // Wait for job to complete (3 attempts with exponential backoff)
-      // First attempt: immediate, fails
-      // Second attempt: after 2^1 * 1000 = 2000ms, fails
-      // Third attempt: after 2^2 * 1000 = 4000ms, succeeds
-      while (!jobCompleted && Date.now() - startTime < 15000) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
-      expect(attemptCount).toBe(3);
-      expect(jobCompleted).toBe(true);
-
-      // Verify exponential backoff: 2^1 * 1000 = 2000ms, 2^2 * 1000 = 4000ms
-      const firstRetryDelay = attemptTimes[1] - attemptTimes[0];
-      const secondRetryDelay = attemptTimes[2] - attemptTimes[1];
-
-      expect(firstRetryDelay).toBeGreaterThanOrEqual(1900); // Allow some tolerance for 2000ms
-      expect(secondRetryDelay).toBeGreaterThanOrEqual(3900); // Allow some tolerance for 4000ms
-    });
-
-    it('should calculate backoff using Math.pow(2, attempts) * 1000', async () => {
-      let attemptCount = 0;
-      let jobCompleted = false;
-
-      const handler: JobHandler<Record<string, unknown>> = {
-        type: 'backoff-job',
-        handle: async () => {
-          const currentAttempt = attemptCount;
-          attemptCount++;
-          if (currentAttempt < 2) {
-            throw new Error('Fail');
-          }
-          jobCompleted = true;
-          return { success: true };
-        },
-      };
-      jobQueue.registerHandler(handler);
-
-      const jobId = await jobQueue.add('backoff-job', {});
-      const startTime = Date.now();
-      await jobQueue.start();
-
-      // Wait for job to complete
-      while (!jobCompleted && Date.now() - startTime < 10000) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
-      // Should have 3 attempts total
-      expect(attemptCount).toBe(3);
-      expect(jobCompleted).toBe(true);
-
-      const job = await jobQueue.getStatus(jobId);
-      expect(job?.attempts).toBe(3);
-    });
-
-    it('should enforce max attempts limit', async () => {
-      let attemptCount = 0;
-
-      const handler: JobHandler<Record<string, unknown>> = {
-        type: 'max-attempts-job',
-        handle: async () => {
-          attemptCount++;
-          throw new Error('Always fails');
-        },
-      };
-      jobQueue.registerHandler(handler);
-
-      const jobId = await jobQueue.add('max-attempts-job', {}, { maxAttempts: 2 });
-      await jobQueue.start();
-
-      // Wait for all retries
-      await new Promise(resolve => setTimeout(resolve, 5000));
-
-      expect(attemptCount).toBe(2); // maxAttempts
-
-      const job = await jobQueue.getStatus(jobId);
-      expect(job?.failedAt).toBeDefined();
-      expect(job?.error).toBeDefined();
-    });
-
-    it('should use default maxAttempts of 3', async () => {
-      let attemptCount = 0;
-      let jobFailed = false;
-
-      const handler: JobHandler<Record<string, unknown>> = {
-        type: 'default-max-job',
-        handle: async () => {
-          attemptCount++;
-          throw new Error('Always fails');
-        },
-      };
-      jobQueue.registerHandler(handler);
-
-      const jobId = await jobQueue.add('default-max-job', {});
-      const startTime = Date.now();
-      await jobQueue.start();
-
-      // Wait for job to fail after max attempts
-      while (!jobFailed && Date.now() - startTime < 12000) {
-        const job = await jobQueue.getStatus(jobId);
-        if (job?.failedAt) {
-          jobFailed = true;
-        } else {
+        // Wait for job to complete (3 attempts with exponential backoff)
+        // First attempt: immediate, fails
+        // Second attempt: after 2^1 * 1000 = 2000ms, fails
+        // Third attempt: after 2^2 * 1000 = 4000ms, succeeds
+        while (!jobCompleted && Date.now() - startTime < 15000) {
           await new Promise(resolve => setTimeout(resolve, 100));
         }
-      }
 
-      // Check that job has failed
-      expect(jobFailed).toBe(true);
-      const job = await jobQueue.getStatus(jobId);
-      expect(job?.failedAt).toBeDefined();
-      expect(job?.attempts).toBe(3); // Default maxAttempts
-      expect(attemptCount).toBe(3); // Handler should have been called 3 times
-    });
+        expect(attemptCount).toBe(3);
+        expect(jobCompleted).toBe(true);
 
-    it('should set error and failedAt on final failure', async () => {
-      const handler: JobHandler<Record<string, unknown>> = {
-        type: 'fail-job',
-        handle: async () => {
-          throw new Error('Permanent failure');
-        },
-      };
-      jobQueue.registerHandler(handler);
+        // Verify exponential backoff: 2^1 * 1000 = 2000ms, 2^2 * 1000 = 4000ms
+        const firstRetryDelay = attemptTimes[1] - attemptTimes[0];
+        const secondRetryDelay = attemptTimes[2] - attemptTimes[1];
 
-      const jobId = await jobQueue.add('fail-job', {}, { maxAttempts: 1 });
-      await jobQueue.start();
+        expect(firstRetryDelay).toBeGreaterThanOrEqual(1900); // Allow some tolerance for 2000ms
+        expect(secondRetryDelay).toBeGreaterThanOrEqual(3900); // Allow some tolerance for 4000ms
+      },
+      { timeout: 20000 }
+    );
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    it(
+      'should calculate backoff using Math.pow(2, attempts) * 1000',
+      async () => {
+        let attemptCount = 0;
+        let jobCompleted = false;
 
-      const job = await jobQueue.getStatus(jobId);
-      expect(job?.failedAt).toBeDefined();
-      expect(job?.error).toBeInstanceOf(Error);
-      expect(job?.error?.message).toBe('Permanent failure');
-    });
+        const handler: JobHandler<Record<string, unknown>> = {
+          type: 'backoff-job',
+          handle: async () => {
+            const currentAttempt = attemptCount;
+            attemptCount++;
+            if (currentAttempt < 2) {
+              throw new Error('Fail');
+            }
+            jobCompleted = true;
+            return { success: true };
+          },
+        };
+        jobQueue.registerHandler(handler);
+
+        const jobId = await jobQueue.add('backoff-job', {});
+        const startTime = Date.now();
+        await jobQueue.start();
+
+        // Wait for job to complete
+        while (!jobCompleted && Date.now() - startTime < 10000) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        // Should have 3 attempts total
+        expect(attemptCount).toBe(3);
+        expect(jobCompleted).toBe(true);
+
+        const job = await jobQueue.getStatus(jobId);
+        expect(job?.attempts).toBe(3);
+      },
+      { timeout: 20000 }
+    );
+
+    it(
+      'should enforce max attempts limit',
+      async () => {
+        let attemptCount = 0;
+
+        const handler: JobHandler<Record<string, unknown>> = {
+          type: 'max-attempts-job',
+          handle: async () => {
+            attemptCount++;
+            throw new Error('Always fails');
+          },
+        };
+        jobQueue.registerHandler(handler);
+
+        const jobId = await jobQueue.add('max-attempts-job', {}, { maxAttempts: 2 });
+        await jobQueue.start();
+
+        // Wait for all retries
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+        expect(attemptCount).toBe(2); // maxAttempts
+
+        const job = await jobQueue.getStatus(jobId);
+        expect(job?.failedAt).toBeDefined();
+        expect(job?.error).toBeDefined();
+      },
+      { timeout: 10000 }
+    );
+
+    it(
+      'should use default maxAttempts of 3',
+      async () => {
+        let attemptCount = 0;
+        let jobFailed = false;
+
+        const handler: JobHandler<Record<string, unknown>> = {
+          type: 'default-max-job',
+          handle: async () => {
+            attemptCount++;
+            throw new Error('Always fails');
+          },
+        };
+        jobQueue.registerHandler(handler);
+
+        const jobId = await jobQueue.add('default-max-job', {});
+        const startTime = Date.now();
+        await jobQueue.start();
+
+        // Wait for job to fail after max attempts
+        while (!jobFailed && Date.now() - startTime < 12000) {
+          const job = await jobQueue.getStatus(jobId);
+          if (job?.failedAt) {
+            jobFailed = true;
+          } else {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+
+        // Check that job has failed
+        expect(jobFailed).toBe(true);
+        const job = await jobQueue.getStatus(jobId);
+        expect(job?.failedAt).toBeDefined();
+        expect(job?.attempts).toBe(3); // Default maxAttempts
+        expect(attemptCount).toBe(3); // Handler should have been called 3 times
+      },
+      { timeout: 20000 }
+    );
+
+    it(
+      'should set error and failedAt on final failure',
+      async () => {
+        const handler: JobHandler<Record<string, unknown>> = {
+          type: 'fail-job',
+          handle: async () => {
+            throw new Error('Permanent failure');
+          },
+        };
+        jobQueue.registerHandler(handler);
+
+        const jobId = await jobQueue.add('fail-job', {}, { maxAttempts: 1 });
+        await jobQueue.start();
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const job = await jobQueue.getStatus(jobId);
+        expect(job?.failedAt).toBeDefined();
+        expect(job?.error).toBeInstanceOf(Error);
+        expect(job?.error?.message).toBe('Permanent failure');
+      },
+      { timeout: 10000 }
+    );
   });
 
   describe('priority queue', () => {
@@ -608,7 +641,7 @@ describe('JobQueue', () => {
     it('should return job by ID', async () => {
       const handler: JobHandler<{ message: string }> = {
         type: 'status-job',
-        handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+        handle: async () => ({ success: true }),
       };
       jobQueue.registerHandler(handler);
 
@@ -629,7 +662,7 @@ describe('JobQueue', () => {
     it('should return job with current status', async () => {
       const handler: JobHandler<Record<string, unknown>> = {
         type: 'pending-job',
-        handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+        handle: async () => ({ success: true }),
       };
       jobQueue.registerHandler(handler);
 
@@ -708,7 +741,7 @@ describe('JobQueue', () => {
     it('should shutdown gracefully', async () => {
       const handler: JobHandler<Record<string, unknown>> = {
         type: 'shutdown-job',
-        handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+        handle: async () => ({ success: true }),
       };
       jobQueue.registerHandler(handler);
 

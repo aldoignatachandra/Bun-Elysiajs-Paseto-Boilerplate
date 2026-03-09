@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/require-await */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect } from 'bun:test';
 import { Worker } from '@/core/queue/worker';
 import { JobQueue } from '@/core/queue/job-queue';
 import type { JobHandler } from '@/core/queue/job.types';
@@ -15,15 +13,15 @@ describe('Worker', () => {
       const handlers: JobHandler[] = [
         {
           type: 'email',
-          handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+          handle: async () => ({ success: true }),
         },
         {
           type: 'verification',
-          handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+          handle: async () => ({ success: true }),
         },
         {
           type: 'password-reset',
-          handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+          handle: async () => ({ success: true }),
         },
       ];
 
@@ -37,7 +35,7 @@ describe('Worker', () => {
       const handlers: JobHandler[] = [
         {
           type: 'test-job',
-          handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+          handle: async () => ({ success: true }),
         },
       ];
 
@@ -54,7 +52,7 @@ describe('Worker', () => {
 
       const invalidHandlers = [
         {
-          handle: async () => {// eslint-disable-next-line @typescript-eslint/require-await success: true }),
+          handle: async () => ({ success: true }),
         },
       ] as unknown as JobHandler[];
 
