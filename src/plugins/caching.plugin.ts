@@ -192,25 +192,33 @@ export function cachingPlugin(options: CachingPluginOptions) {
 
       // For cacheable requests, store the response
       if (store.__cacheable && store.__cacheKey && response) {
-        // Convert response to string if it's an object
-        let responseBody: string;
-
-        if (typeof response === 'string') {
-          responseBody = response;
-        } else if (response instanceof Response) {
-          // Skip caching Response objects
-          return response;
-        } else {
-          // It's an object, stringify it
-          responseBody = JSON.stringify(response);
-        }
-
         try {
+          // Convert response to string if it's an object
+          let responseBody: string;
+          let contentType = 'application/json; charset=utf-8';
+
+          if (typeof response === 'string') {
+            responseBody = response;
+          } else if (response instanceof Response) {
+            // Handle Response objects - clone and read body
+            const clonedResponse = response.clone();
+            responseBody = await clonedResponse.text();
+
+            // Extract content type from response headers
+            const responseContentType = response.headers.get('Content-Type');
+            if (responseContentType) {
+              contentType = responseContentType;
+            }
+          } else {
+            // It's an object, stringify it
+            responseBody = JSON.stringify(response);
+          }
+
           // Store response with headers
           const cacheValue = {
             body: responseBody,
             headers: {
-              'Content-Type': 'application/json; charset=utf-8',
+              'Content-Type': contentType,
             },
           };
 
@@ -227,10 +235,76 @@ export function cachingPlugin(options: CachingPluginOptions) {
 
       return response;
     })
-    .mapResponse(({ response }) => {
-      // For cache hits, X-Cache: HIT is already set
-      // For cache misses, X-Cache: MISS is already set in onRequest
-      // Just return the response as-is
+    .onAfterHandle(async ({ response, store, set }) => {
+      // Ensure X-Cache header is set for all cacheable requests
+      if (store.__cacheable && !set.headers['X-Cache']) {
+        set.headers['X-Cache'] = store.__fromCache ? 'HIT' : 'MISS';
+      }
+
+      // If this was a cache hit, don't cache it again
+      if (store.__fromCache) {
+        return response;
+      }
+
+      // For cacheable requests, store the response
+      if (store.__cacheable && store.__cacheKey && response) {
+        try {
+          // Convert response to string if it's an object
+          let responseBody: string;
+          let contentType = 'application/json; charset=utf-8';
+
+          if (typeof response === 'string') {
+            responseBody = response;
+          } else if (response instanceof Response) {
+            // Handle Response objects - clone and read body
+            const clonedResponse = response.clone();
+            responseBody = await clonedResponse.text();
+
+            // Extract content type from response headers
+            const responseContentType = response.headers.get('Content-Type');
+            if (responseContentType) {
+              contentType = responseContentType;
+            }
+          } else {
+            // It's an object, stringify it
+            responseBody = JSON.stringify(response);
+          }
+
+          // Store response with headers
+          const cacheValue = {
+            body: responseBody,
+            headers: {
+              'Content-Type': contentType,
+            },
+          };
+
+          // Cache the response
+          await cacheService.set(store.__cacheKey, cacheValue, {
+            ttl: defaultTTL,
+            prefix,
+          });
+        } catch (error) {
+          logger.error('Cache storage error', { cacheKey: store.__cacheKey, error });
+          // Don't fail the request if caching fails
+        }
+      }
+
+      return response;
+    })
+    .mapResponse(({ response, set }) => {
+      // Ensure X-Cache header is included in final response
+      // For Response objects, we need to create a new Response with the header
+      if (response instanceof Response && set.headers['X-Cache']) {
+        const headers = new Headers(response.headers);
+        headers.set('X-Cache', set.headers['X-Cache']);
+
+        return new Response(response.body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+        });
+      }
+
       return response;
     })
     .onError(({ set, store }) => {
