@@ -15,24 +15,23 @@
     "noEmit": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./src",
-    "baseUrl": "./src",
+    "baseUrl": "./",
     "paths": {
-      "@/*": ["./*"],
-      "@config/*": ["config/*"],
-      "@core/*": ["core/*"],
-      "@database/*": ["database/*"],
-      "@repositories/*": ["repositories/*"],
-      "@services/*": ["services/*"],
-      "@controllers/*": ["controllers/*"],
-      "@routes/*": ["routes/*"],
-      "@middlewares/*": ["middlewares/*"],
-      "@types/*": ["types/*"],
-      "@utils/*": ["utils/*"]
+      "@/*": ["src/*"],
+      "@config/*": ["src/config/*"],
+      "@core/*": ["src/core/*"],
+      "@database/*": ["src/database/*"],
+      "@repositories/*": ["src/repositories/*"],
+      "@services/*": ["src/services/*"],
+      "@controllers/*": ["src/controllers/*"],
+      "@routes/*": ["src/routes/*"],
+      "@middlewares/*": ["src/middlewares/*"],
+      "@types/*": ["src/types/*"],
+      "@utils/*": ["src/utils/*"]
     },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests"]
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

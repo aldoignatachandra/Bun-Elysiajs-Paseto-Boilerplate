@@ -1,52 +1,84 @@
 import pino from 'pino';
-import { loggerConfig } from '@config/logger';
 import type { LogContext, LogMetadata, Logger } from './types';
 
-const baseOptions: pino.LoggerOptions = {
-  level: loggerConfig.level,
-  formatters: {
-    level: label => ({ level: label }),
-  },
-  timestamp: pino.stdTimeFunctions.isoTime,
-  redact: [...loggerConfig.redact],
-};
+interface LoggerConfig {
+  level: pino.LevelWithSilent;
+  pretty: boolean;
+  format: string;
+  redact: string[];
+}
 
-const options: pino.LoggerOptions =
-  loggerConfig.pretty || process.env.NODE_ENV !== 'production'
-    ? {
-        ...baseOptions,
-        transport: {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'SYS:standard',
-            ignore: 'pid,hostname',
-          },
-        },
-      }
-    : baseOptions;
+let pinoLoggerInstance: pino.Logger | null = null;
 
-const pinoLogger = pino(options);
+function getLoggerConfig(): LoggerConfig {
+  // Lazy-load config to avoid environment validation during module load
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
+    const { loggerConfig } = require('@config/logger');
+    return loggerConfig as LoggerConfig;
+  } catch {
+    // Fallback config if config module isn't available yet
+    return {
+      level: (process.env.LOG_LEVEL as pino.LevelWithSilent) || 'info',
+      pretty: process.env.LOG_PRETTY === 'true' || process.env.NODE_ENV !== 'production',
+      format: process.env.LOG_FORMAT || 'json',
+      redact: ['req.headers.authorization', 'req.headers.cookie'],
+    };
+  }
+}
+
+function getPinoLoggerInstance(): pino.Logger {
+  if (!pinoLoggerInstance) {
+    const config = getLoggerConfig();
+
+    const baseOptions: pino.LoggerOptions = {
+      level: config.level,
+      formatters: {
+        level: label => ({ level: label }),
+      },
+      timestamp: pino.stdTimeFunctions.isoTime,
+      redact: [...config.redact],
+    };
+
+    const options: pino.LoggerOptions =
+      config.pretty || process.env.NODE_ENV !== 'production'
+        ? {
+            ...baseOptions,
+            transport: {
+              target: 'pino-pretty',
+              options: {
+                colorize: true,
+                translateTime: 'SYS:standard',
+                ignore: 'pid,hostname',
+              },
+            },
+          }
+        : baseOptions;
+
+    pinoLoggerInstance = pino(options);
+  }
+  return pinoLoggerInstance;
+}
 
 class PinoLogger implements Logger {
   constructor(private metadata: LogMetadata = {}) {}
 
   debug(message: string, context: LogContext = {}): void {
-    pinoLogger.debug({ ...this.metadata, ...context }, message);
+    getPinoLoggerInstance().debug({ ...this.metadata, ...context }, message);
   }
 
   info(message: string, context: LogContext = {}): void {
-    pinoLogger.info({ ...this.metadata, ...context }, message);
+    getPinoLoggerInstance().info({ ...this.metadata, ...context }, message);
   }
 
   warn(message: string, context: LogContext = {}): void {
-    pinoLogger.warn({ ...this.metadata, ...context }, message);
+    getPinoLoggerInstance().warn({ ...this.metadata, ...context }, message);
   }
 
   error(message: string, error?: unknown, context: LogContext = {}): void {
     const errorContext =
       error instanceof Error ? { error: this.serializeError(error), ...context } : context;
-    pinoLogger.error({ ...this.metadata, ...errorContext }, message);
+    getPinoLoggerInstance().error({ ...this.metadata, ...errorContext }, message);
   }
 
   child(metadata: LogMetadata): Logger {
