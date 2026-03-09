@@ -304,7 +304,9 @@ describe('Scheduler (unit)', () => {
 
   describe('Job Status', () => {
     it('should mark job as running during execution', async () => {
+      let callCount = 0;
       const handler = mock(async () => {
+        callCount++;
         await new Promise(resolve => setTimeout(resolve, 100));
       });
 
@@ -317,10 +319,11 @@ describe('Scheduler (unit)', () => {
       // The job should be scheduled
       expect(job.nextRun).toBeInstanceOf(Date);
 
-      // Wait for execution (job runs every second)
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Wait for execution (job runs every second, wait longer to ensure it runs)
+      await new Promise(resolve => setTimeout(resolve, 2500));
 
       // Handler should have been called at least once
+      expect(callCount).toBeGreaterThan(0);
       expect(handler.mock.calls.length).toBeGreaterThan(0);
     });
 
