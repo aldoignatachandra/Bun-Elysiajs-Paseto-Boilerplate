@@ -39,16 +39,32 @@ describe('Health Plugin', () => {
       expect(response.timestamp).toBeDefined();
     });
 
-    it('should return 503 when database fails', () => {
-      // This test would require mocking the database connection
-      // For now, we'll skip this test
-      expect(true).toBe(true);
+    it.skip('should return 503 when database fails', () => {
+      // TODO: Implement this test with proper mocking of the database connection
+      // The test should:
+      // 1. Mock the database connection to throw an error or return failure
+      // 2. Call the /health endpoint
+      // 3. Verify the response status is 503
+      // 4. Verify the response contains error details for the database check
+      //
+      // Example implementation approach:
+      // - Use vi.mock() to mock the database connection module
+      // - Mock getConnection() to return a connection that fails queries
+      // - Or use dependency injection to provide a mock connection
     });
 
-    it('should return 503 when Redis fails', () => {
-      // This test would require mocking the Redis connection
-      // For now, we'll skip this test
-      expect(true).toBe(true);
+    it.skip('should return 503 when Redis fails', () => {
+      // TODO: Implement this test with proper mocking of the Redis connection
+      // The test should:
+      // 1. Mock the Redis connection to throw an error or return failure
+      // 2. Call the /health endpoint
+      // 3. Verify the response status is 503
+      // 4. Verify the response contains error details for the Redis check
+      //
+      // Example implementation approach:
+      // - Use vi.mock() to mock the Redis connection module
+      // - Mock the Redis client to simulate connection failures
+      // - Or use dependency injection to provide a mock Redis client
     });
 
     it('should include latency measurements for each check', async () => {

@@ -63,6 +63,10 @@ describe('Plugin Registry', () => {
     const configuredApp = registerPlugins(app, config);
 
     expect(configuredApp).toBeDefined();
+    // Verify the metrics endpoint is available
+    // Note: The metrics plugin is a stub implementation, so we're just
+    // verifying it doesn't cause errors when enabled
+    expect(configuredApp).toBe(app);
   });
 
   it('should register tracing plugin when enabled', () => {
@@ -71,6 +75,10 @@ describe('Plugin Registry', () => {
     const configuredApp = registerPlugins(app, config);
 
     expect(configuredApp).toBeDefined();
+    // Verify the tracing plugin doesn't break the app
+    // Note: The tracing plugin is a stub implementation, so we're just
+    // verifying it doesn't cause errors when enabled
+    expect(configuredApp).toBe(app);
   });
 
   it('should register all plugins when all enabled', async () => {

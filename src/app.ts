@@ -31,6 +31,7 @@ import { UsersService } from './services/users.service';
 import { createAuthRoutes } from './routes/auth.routes';
 import { createUsersRoutes } from './routes/users.routes';
 import { AppError } from './core/errors/app-error';
+import { registerPlugins } from './plugins';
 
 /**
  * Create and configure the Elysia application
@@ -71,6 +72,8 @@ export function createApp(): Elysia {
     )
     // Logging middleware
     .use(loggingPlugin)
+    // Register plugins (health check, metrics, tracing)
+    .use(registerPlugins)
     // Global error handler
     .onError(({ error, set }) => {
       logger.error('Unhandled error', error);
@@ -116,12 +119,6 @@ export function createApp(): Elysia {
         },
       };
     })
-    // Health check endpoint
-    .get('/health', () => ({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-    }))
     // API Routes
     .use(createAuthRoutes(new Elysia(), authService, pasetoService))
     .use(createUsersRoutes(new Elysia(), usersService, authService, pasetoService))
