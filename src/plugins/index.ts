@@ -4,7 +4,9 @@ import { metricsPlugin } from './metrics.plugin';
 import { tracingPlugin } from './tracing.plugin';
 import { compressionPlugin } from './compression.plugin';
 import { cachingPlugin } from './caching.plugin';
+import { versioningPlugin } from './versioning.plugin';
 import type { CachingPluginOptions } from './caching.plugin';
+import type { VersioningPluginOptions } from './versioning.plugin';
 
 /**
  * Plugin configuration interface
@@ -37,9 +39,19 @@ export interface PluginConfig {
   caching?: boolean;
 
   /**
+   * Enable versioning plugin (default: false)
+   */
+  versioning?: boolean;
+
+  /**
    * Caching plugin options (required if caching is enabled)
    */
   cachingOptions?: CachingPluginOptions;
+
+  /**
+   * Versioning plugin options (optional)
+   */
+  versioningOptions?: VersioningPluginOptions;
 }
 
 /**
@@ -88,6 +100,11 @@ export function registerPlugins(app: Elysia, config: PluginConfig = {}): Elysia 
     app.use(cachingPlugin(config.cachingOptions));
   }
 
+  // Versioning plugin is opt-in
+  if (config.versioning) {
+    app.use(versioningPlugin(config.versioningOptions));
+  }
+
   return app;
 }
 
@@ -98,3 +115,4 @@ export * from './tracing.plugin';
 export * from './security-headers.plugin';
 export * from './compression.plugin';
 export * from './caching.plugin';
+export * from './versioning.plugin';
