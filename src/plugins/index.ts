@@ -3,6 +3,8 @@ import { healthPlugin } from './health.plugin';
 import { metricsPlugin } from './metrics.plugin';
 import { tracingPlugin } from './tracing.plugin';
 import { compressionPlugin } from './compression.plugin';
+import { cachingPlugin } from './caching.plugin';
+import type { CachingPluginOptions } from './caching.plugin';
 
 /**
  * Plugin configuration interface
@@ -27,6 +29,17 @@ export interface PluginConfig {
    * Enable response compression plugin (default: false)
    */
   compression?: boolean;
+
+  /**
+   * Enable caching plugin (default: false)
+   * Requires cachingOptions to be provided
+   */
+  caching?: boolean;
+
+  /**
+   * Caching plugin options (required if caching is enabled)
+   */
+  cachingOptions?: CachingPluginOptions;
 }
 
 /**
@@ -70,6 +83,11 @@ export function registerPlugins(app: Elysia, config: PluginConfig = {}): Elysia 
     app.use(compressionPlugin());
   }
 
+  // Caching plugin is opt-in
+  if (config.caching && config.cachingOptions) {
+    app.use(cachingPlugin(config.cachingOptions));
+  }
+
   return app;
 }
 
@@ -79,3 +97,4 @@ export * from './metrics.plugin';
 export * from './tracing.plugin';
 export * from './security-headers.plugin';
 export * from './compression.plugin';
+export * from './caching.plugin';
