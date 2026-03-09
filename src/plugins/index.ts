@@ -66,3 +66,4 @@ export function registerPlugins(app: Elysia, config: PluginConfig = {}): Elysia 
 export * from './health.plugin';
 export * from './metrics.plugin';
 export * from './tracing.plugin';
+export * from './security-headers.plugin';
