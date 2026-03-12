@@ -1,9 +1,10 @@
 import type { Database } from './base.repository';
-import type { User, Session, Product, NewUser, NewSession, NewProduct } from '../database/schema';
+import type { NewProduct, NewSession, NewUser, Product, Session, User } from '../database/schema';
+import type { ProductCreateWithVariantsInput, ProductUpdateWithVariantsInput, ProductView } from './products.repository';
 import { logger } from '../core/logging/logger';
-import { UserRepository } from './users.repository';
-import { SessionRepository } from './sessions.repository';
 import { ProductRepository } from './products.repository';
+import { SessionRepository } from './sessions.repository';
+import { UserRepository } from './users.repository';
 
 export interface IUserRepository {
   findAll(options?: { limit?: number; offset?: number; search?: string; includeDeleted?: boolean; onlyDeleted?: boolean }): Promise<User[]>;
@@ -26,17 +27,25 @@ export interface ISessionRepository {
 }
 
 export interface IProductRepository {
-  findAll(options?: {
+  findAll(options?: { limit?: number; offset?: number; includeDeleted?: boolean }): Promise<Product[]>;
+  findWithFilters(options: {
     limit?: number;
     offset?: number;
     search?: string;
-    status?: 'ACTIVE' | 'INACTIVE';
     includeDeleted?: boolean;
     onlyDeleted?: boolean;
-  }): Promise<Product[]>;
+    hasVariant?: boolean;
+    inStock?: boolean;
+    minPrice?: number;
+    maxPrice?: number;
+    includeVariants?: boolean;
+  }): Promise<{ data: ProductView[]; total: number }>;
   findById(id: string, includeDeleted?: boolean): Promise<Product | null>;
+  findByIdWithVariants(id: string, includeDeleted?: boolean): Promise<ProductView | null>;
   create(data: NewProduct): Promise<Product>;
+  createWithVariants(data: ProductCreateWithVariantsInput): Promise<ProductView>;
   update(id: string, data: Partial<Product>): Promise<Product | null>;
+  updateWithVariants(id: string, data: ProductUpdateWithVariantsInput): Promise<ProductView | null>;
   updateStock(id: string, stock: number): Promise<Product | null>;
   softDelete(id: string): Promise<boolean>;
   restore(id: string): Promise<boolean>;

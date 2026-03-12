@@ -1,36 +1,23 @@
 import type { Elysia } from 'elysia';
-import { z } from 'zod';
-import type { UsersService } from '../services/users.service';
 import type { PasetoService } from '../core/paseto/paseto.service';
 import type { AuthService } from '../services/auth.service';
+import type { UsersService } from '../services/users.service';
 import { UsersController } from '../controllers/users.controller';
+import { successResponse } from '../core/http/response';
 import { requireAuth, type AuthContext } from '../middlewares/auth.middleware';
 import { enforceRateLimit, type RateLimitOptions } from '../middlewares/rate-limit.middleware';
-import { successResponse } from '../core/http/response';
-
-const updateProfileSchema = z.object({
-  firstName: z.string().min(1).optional(),
-  lastName: z.string().min(1).optional(),
-});
-
-const getUsersQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(10),
-  search: z.string().optional(),
-  include_deleted: z.coerce.boolean().optional().default(false),
-  only_deleted: z.coerce.boolean().optional().default(false),
-});
-
-const activityQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(10),
-  user_id: z.string().uuid().optional(),
-  action: z.string().optional(),
-  resource: z.string().optional(),
-});
-
-const userIdParamSchema = z.object({ id: z.string().uuid() });
-const deleteUserQuerySchema = z.object({ force: z.string().optional() });
+import {
+  activityQuerySchema,
+  deleteUserQuerySchema,
+  getUsersQuerySchema,
+  updateProfileSchema,
+  userIdParamSchema,
+  type ActivityQueryDTO,
+  type DeleteUserQueryDTO,
+  type GetUsersQueryDTO,
+  type UpdateProfileDTO,
+  type UserIdParamDTO,
+} from './dto/users.dto';
 
 type RouteLimitConfig = Required<Pick<RateLimitOptions, 'maxRequests' | 'window' | 'strategy'>>;
 
@@ -61,7 +48,7 @@ function toAuthContext(ctx: { user?: AuthContext['user']; tokenId?: string | nul
   };
 }
 
-export function createUsersRoutes(app: Elysia, usersService: UsersService, authService: AuthService, pasetoService: PasetoService): Elysia {
+export function createUsersRoutes(app: Elysia, usersService: UsersService, authService: AuthService, pasetoService: PasetoService) {
   const controller = new UsersController(usersService);
   const auth = requireAuth(pasetoService, authService);
 
@@ -93,7 +80,7 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
         .patch(
           '/me',
           async ctx => {
-            const routeCtx = ctx as RouteContext<z.infer<typeof updateProfileSchema>>;
+            const routeCtx = ctx as RouteContext<UpdateProfileDTO>;
             const body = updateProfileSchema.parse(routeCtx.body);
             const data = await controller.updateMe(body, toAuthContext(routeCtx));
             return successResponse(routeCtx.request, data);
@@ -106,7 +93,7 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
         .get(
           '/',
           async ctx => {
-            const routeCtx = ctx as RouteContext<unknown, z.infer<typeof getUsersQuerySchema>>;
+            const routeCtx = ctx as RouteContext<unknown, GetUsersQueryDTO>;
             const query = getUsersQuerySchema.parse(routeCtx.query);
             const data = await controller.getUsers(query, toAuthContext(routeCtx));
             return successResponse(routeCtx.request, data);
@@ -130,7 +117,7 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
         .get(
           '/:id',
           async ctx => {
-            const routeCtx = ctx as RouteContext<unknown, unknown, z.infer<typeof userIdParamSchema>>;
+            const routeCtx = ctx as RouteContext<unknown, unknown, UserIdParamDTO>;
             const params = userIdParamSchema.parse(routeCtx.params);
             const data = await controller.getUserById(params.id, toAuthContext(routeCtx));
             return successResponse(routeCtx.request, data);
@@ -143,7 +130,7 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
         .post(
           '/:id/activate',
           async ctx => {
-            const routeCtx = ctx as RouteContext<unknown, unknown, z.infer<typeof userIdParamSchema>>;
+            const routeCtx = ctx as RouteContext<unknown, unknown, UserIdParamDTO>;
             const params = userIdParamSchema.parse(routeCtx.params);
             const data = await controller.activateUser(params.id, toAuthContext(routeCtx));
             return successResponse(routeCtx.request, data);
@@ -156,7 +143,7 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
         .post(
           '/:id/deactivate',
           async ctx => {
-            const routeCtx = ctx as RouteContext<unknown, unknown, z.infer<typeof userIdParamSchema>>;
+            const routeCtx = ctx as RouteContext<unknown, unknown, UserIdParamDTO>;
             const params = userIdParamSchema.parse(routeCtx.params);
             const data = await controller.deactivateUser(params.id, toAuthContext(routeCtx));
             return successResponse(routeCtx.request, data);
@@ -169,7 +156,7 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
         .delete(
           '/:id',
           async ctx => {
-            const routeCtx = ctx as RouteContext<unknown, z.infer<typeof deleteUserQuerySchema>, z.infer<typeof userIdParamSchema>>;
+            const routeCtx = ctx as RouteContext<unknown, DeleteUserQueryDTO, UserIdParamDTO>;
             const params = userIdParamSchema.parse(routeCtx.params);
             const query = deleteUserQuerySchema.parse(routeCtx.query);
             const force = query.force === 'true';
@@ -185,7 +172,7 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
         .post(
           '/:id/restore',
           async ctx => {
-            const routeCtx = ctx as RouteContext<unknown, unknown, z.infer<typeof userIdParamSchema>>;
+            const routeCtx = ctx as RouteContext<unknown, unknown, UserIdParamDTO>;
             const params = userIdParamSchema.parse(routeCtx.params);
             const data = await controller.restoreUser(params.id, toAuthContext(routeCtx));
             return successResponse(routeCtx.request, data);
@@ -200,7 +187,7 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
       logsApp.get(
         '/',
         async ctx => {
-          const routeCtx = ctx as RouteContext<unknown, z.infer<typeof activityQuerySchema>>;
+          const routeCtx = ctx as RouteContext<unknown, ActivityQueryDTO>;
           const query = activityQuerySchema.parse(routeCtx.query);
           const data = await controller.getActivityLogs(query, toAuthContext(routeCtx));
           return successResponse(routeCtx.request, data);

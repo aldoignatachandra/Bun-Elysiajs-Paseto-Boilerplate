@@ -1,7 +1,8 @@
+import { BadRequestError, NotFoundError } from '../core/errors/app-error';
 import type { UnitOfWork } from '../repositories/unit-of-work';
-import type { Product as ProductRecord } from '../database/schema';
 import type {
   CreateProductInput,
+  GetProductInput,
   IProductsService,
   ListProductsInput,
   ListProductsOutput,
@@ -9,7 +10,6 @@ import type {
   UpdateProductInput,
   UpdateStockInput,
 } from './interfaces/products.service.interface';
-import { BadRequestError, NotFoundError } from '../core/errors/app-error';
 
 export class ProductsService implements IProductsService {
   private readonly unitOfWork: UnitOfWork;
@@ -23,28 +23,23 @@ export class ProductsService implements IProductsService {
     const limit = Math.max(1, Math.min(100, input.limit || 10));
     const offset = (page - 1) * limit;
 
-    const [allFiltered, paged] = await Promise.all([
-      this.unitOfWork.products.findAll({
-        search: input.search,
-        status: input.status,
-        includeDeleted: input.includeDeleted,
-        onlyDeleted: input.onlyDeleted,
-      }),
-      this.unitOfWork.products.findAll({
-        search: input.search,
-        status: input.status,
-        includeDeleted: input.includeDeleted,
-        onlyDeleted: input.onlyDeleted,
-        limit,
-        offset,
-      }),
-    ]);
+    const { data, total } = await this.unitOfWork.products.findWithFilters({
+      search: input.search,
+      includeDeleted: input.includeDeleted,
+      onlyDeleted: input.onlyDeleted,
+      hasVariant: input.hasVariant,
+      inStock: input.inStock,
+      minPrice: input.minPrice,
+      maxPrice: input.maxPrice,
+      includeVariants: input.includeVariants,
+      limit,
+      offset,
+    });
 
-    const total = allFiltered.length;
     const totalPages = Math.ceil(total / limit);
 
     return {
-      products: paged.map(product => ({ ...product })),
+      products: data,
       pagination: {
         page,
         limit,
@@ -56,53 +51,59 @@ export class ProductsService implements IProductsService {
     };
   }
 
-  async getById(id: string, includeDeleted = false): Promise<ProductDTO> {
-    const product = await this.unitOfWork.products.findById(id, includeDeleted);
+  async getById(input: GetProductInput): Promise<ProductDTO> {
+    const product = await this.unitOfWork.products.findByIdWithVariants(input.id, input.includeDeleted);
+
     if (!product) {
       throw new NotFoundError('Product not found');
+    }
+
+    if (!input.includeVariants) {
+      return {
+        ...product,
+        attributes: undefined,
+        variants: undefined,
+      };
     }
 
     return product;
   }
 
   async create(input: CreateProductInput): Promise<ProductDTO> {
-    if (input.stock < 0) {
+    if (input.price <= 0) {
+      throw new BadRequestError('Product price must be greater than 0');
+    }
+
+    if (input.stock !== undefined && input.stock < 0) {
       throw new BadRequestError('Stock cannot be negative');
     }
 
-    const created = await this.unitOfWork.products.create({
+    return await this.unitOfWork.products.createWithVariants({
       ownerId: input.ownerId,
       name: input.name,
-      description: input.description,
       price: input.price,
       stock: input.stock,
-      category: input.category,
-      status: input.status || 'ACTIVE',
+      attributes: input.attributes,
+      variants: input.variants,
     });
-
-    return created;
   }
 
   async update(input: UpdateProductInput): Promise<ProductDTO> {
-    const existing = await this.unitOfWork.products.findById(input.id, true);
-    if (!existing) {
-      throw new NotFoundError('Product not found');
+    if (input.price !== undefined && input.price <= 0) {
+      throw new BadRequestError('Product price must be greater than 0');
     }
 
     if (typeof input.stock === 'number' && input.stock < 0) {
       throw new BadRequestError('Stock cannot be negative');
     }
 
-    const updateData: Partial<ProductRecord> = {
-      ...(input.name !== undefined ? { name: input.name } : {}),
-      ...(input.description !== undefined ? { description: input.description } : {}),
-      ...(input.price !== undefined ? { price: input.price } : {}),
-      ...(input.stock !== undefined ? { stock: input.stock } : {}),
-      ...(input.category !== undefined ? { category: input.category } : {}),
-      ...(input.status !== undefined ? { status: input.status } : {}),
-    };
-
-    const updated = await this.unitOfWork.products.update(input.id, updateData);
+    const updated = await this.unitOfWork.products.updateWithVariants(input.id, {
+      name: input.name,
+      price: input.price,
+      stock: input.stock,
+      attributes: input.attributes,
+      variants: input.variants,
+    });
 
     if (!updated) {
       throw new NotFoundError('Product not found');
@@ -113,19 +114,23 @@ export class ProductsService implements IProductsService {
 
   async delete(id: string, force = false): Promise<{ message: string }> {
     const existing = await this.unitOfWork.products.findById(id, true);
+
     if (!existing) {
       throw new NotFoundError('Product not found');
     }
 
     if (force) {
       const deleted = await this.unitOfWork.products.delete(id);
+
       if (!deleted) {
         throw new NotFoundError('Product not found');
       }
+
       return { message: 'Product deleted successfully' };
     }
 
     const deleted = await this.unitOfWork.products.softDelete(id);
+
     if (!deleted) {
       throw new NotFoundError('Product not found');
     }
@@ -135,11 +140,13 @@ export class ProductsService implements IProductsService {
 
   async restore(id: string): Promise<ProductDTO> {
     const restored = await this.unitOfWork.products.restore(id);
+
     if (!restored) {
       throw new NotFoundError('Product not found');
     }
 
-    const product = await this.unitOfWork.products.findById(id, true);
+    const product = await this.unitOfWork.products.findByIdWithVariants(id, true);
+
     if (!product) {
       throw new NotFoundError('Product not found');
     }
@@ -150,6 +157,16 @@ export class ProductsService implements IProductsService {
   async updateStock(input: UpdateStockInput): Promise<{ id: string; stock: number }> {
     if (input.stock < 0) {
       throw new BadRequestError('Stock cannot be negative');
+    }
+
+    const existing = await this.unitOfWork.products.findById(input.id, true);
+
+    if (!existing) {
+      throw new NotFoundError('Product not found');
+    }
+
+    if (existing.hasVariant) {
+      throw new BadRequestError('Cannot update stock directly for products with variants');
     }
 
     const updated = await this.unitOfWork.products.updateStock(input.id, input.stock);

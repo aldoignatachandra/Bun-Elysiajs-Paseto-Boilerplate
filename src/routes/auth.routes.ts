@@ -1,53 +1,22 @@
 import type { Elysia } from 'elysia';
-import { z } from 'zod';
 import type { PasetoService } from '../core/paseto/paseto.service';
 import type { AuthService } from '../services/auth.service';
 import type { UsersService } from '../services/users.service';
 import { AuthController } from '../controllers/auth.controller';
 import { UsersController } from '../controllers/users.controller';
+import { successResponse } from '../core/http/response';
 import { requireAuth, type AuthContext } from '../middlewares/auth.middleware';
 import { enforceRateLimit, type RateLimitOptions } from '../middlewares/rate-limit.middleware';
-import { successResponse } from '../core/http/response';
-
-const registerSchema = z
-  .object({
-    email: z.string().email(),
-    password: z.string().min(8),
-    firstName: z.string().min(1).optional(),
-    lastName: z.string().min(1).optional(),
-    name: z.string().min(1).optional(),
-  })
-  .refine(value => Boolean((value.firstName && value.lastName) || value.name), {
-    message: 'firstName and lastName or name is required',
-  });
-
-const loginSchema = z.object({
-  email: z.string().min(1),
-  password: z.string().min(1),
-});
-
-const refreshSchema = z
-  .object({
-    token: z.string().optional(),
-    refreshToken: z.string().optional(),
-  })
-  .refine(value => Boolean(value.token || value.refreshToken), {
-    message: 'token or refreshToken is required',
-  });
-
-const changePasswordSchema = z
-  .object({
-    old_password: z.string().optional(),
-    new_password: z.string().optional(),
-    currentPassword: z.string().optional(),
-    newPassword: z.string().optional(),
-  })
-  .refine(value => Boolean(value.old_password || value.currentPassword), {
-    message: 'old_password or currentPassword is required',
-  })
-  .refine(value => Boolean(value.new_password || value.newPassword), {
-    message: 'new_password or newPassword is required',
-  });
+import {
+  changePasswordRequestSchema,
+  loginRequestSchema,
+  refreshRequestSchema,
+  registerRequestSchema,
+  type ChangePasswordRequestDTO,
+  type LoginRequestDTO,
+  type RefreshRequestDTO,
+  type RegisterRequestDTO,
+} from './dto/auth.dto';
 
 type RouteLimitConfig = Required<Pick<RateLimitOptions, 'maxRequests' | 'window' | 'strategy'>>;
 
@@ -75,7 +44,7 @@ function toAuthContext(ctx: { user?: AuthContext['user']; tokenId?: string | nul
   };
 }
 
-export function createAuthRoutes(app: Elysia, authService: AuthService, usersService: UsersService, pasetoService: PasetoService): Elysia {
+export function createAuthRoutes(app: Elysia, authService: AuthService, usersService: UsersService, pasetoService: PasetoService) {
   const authController = new AuthController(authService, pasetoService);
   const usersController = new UsersController(usersService);
   const auth = requireAuth(pasetoService, authService);
@@ -94,8 +63,8 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
       .post(
         '/register',
         async ctx => {
-          const routeCtx = ctx as RouteContext<z.infer<typeof registerSchema>>;
-          const body = registerSchema.parse(routeCtx.body);
+          const routeCtx = ctx as RouteContext<RegisterRequestDTO>;
+          const body = registerRequestSchema.parse(routeCtx.body);
 
           const firstName = body.firstName || body.name?.split(' ')[0] || 'User';
           const lastName = body.lastName || body.name?.split(' ').slice(1).join(' ') || '';
@@ -122,14 +91,14 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
         },
         {
           beforeHandle: [limiters.register],
-          body: registerSchema,
+          body: registerRequestSchema,
         }
       )
       .post(
         '/login',
         async ctx => {
-          const routeCtx = ctx as RouteContext<z.infer<typeof loginSchema>>;
-          const body = loginSchema.parse(routeCtx.body);
+          const routeCtx = ctx as RouteContext<LoginRequestDTO>;
+          const body = loginRequestSchema.parse(routeCtx.body);
           const result = await authController.login(body);
 
           const data = {
@@ -146,14 +115,14 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
         },
         {
           beforeHandle: [limiters.login],
-          body: loginSchema,
+          body: loginRequestSchema,
         }
       )
       .post(
         '/refresh',
         async ctx => {
-          const routeCtx = ctx as RouteContext<z.infer<typeof refreshSchema>>;
-          const body = refreshSchema.parse(routeCtx.body);
+          const routeCtx = ctx as RouteContext<RefreshRequestDTO>;
+          const body = refreshRequestSchema.parse(routeCtx.body);
           const result = await authController.refreshToken({
             refreshToken: body.token || body.refreshToken || '',
           });
@@ -171,7 +140,7 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
         },
         {
           beforeHandle: [limiters.refresh],
-          body: refreshSchema,
+          body: refreshRequestSchema,
         }
       )
       .post(
@@ -199,8 +168,8 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
       .post(
         '/change-password',
         async ctx => {
-          const routeCtx = ctx as RouteContext<z.infer<typeof changePasswordSchema>>;
-          const body = changePasswordSchema.parse(routeCtx.body);
+          const routeCtx = ctx as RouteContext<ChangePasswordRequestDTO>;
+          const body = changePasswordRequestSchema.parse(routeCtx.body);
           const oldPassword = body.old_password || body.currentPassword || '';
           const newPassword = body.new_password || body.newPassword || '';
 
@@ -216,7 +185,7 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
         },
         {
           beforeHandle: [auth, limiters.changePassword],
-          body: changePasswordSchema,
+          body: changePasswordRequestSchema,
         }
       )
   );

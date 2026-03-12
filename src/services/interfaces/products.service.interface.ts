@@ -1,12 +1,49 @@
+export interface ProductPriceRange {
+  min: number;
+  max: number;
+  display: string;
+}
+
+export interface ProductAttributeInput {
+  name: string;
+  values: string[];
+  displayOrder?: number;
+}
+
+export interface ProductVariantInput {
+  sku: string;
+  price?: number | null;
+  stock?: number;
+  isActive?: boolean;
+  attributeValues: Record<string, string>;
+}
+
+export interface ProductAttributeDTO {
+  id: string;
+  name: string;
+  values: string[];
+  displayOrder: number;
+}
+
+export interface ProductVariantDTO {
+  id: string;
+  sku: string;
+  price: number | null;
+  stockQuantity: number;
+  availableStock: number;
+  isActive: boolean;
+  attributeValues: Record<string, string>;
+}
+
 export interface ProductDTO {
   id: string;
   ownerId: string;
   name: string;
-  description: string | null;
-  price: string;
+  price: ProductPriceRange;
   stock: number;
-  category: string;
-  status: 'ACTIVE' | 'INACTIVE';
+  hasVariant: boolean;
+  attributes?: ProductAttributeDTO[];
+  variants?: ProductVariantDTO[];
   deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -16,9 +53,13 @@ export interface ListProductsInput {
   page: number;
   limit: number;
   search?: string;
-  status?: 'ACTIVE' | 'INACTIVE';
   includeDeleted?: boolean;
   onlyDeleted?: boolean;
+  hasVariant?: boolean;
+  inStock?: boolean;
+  minPrice?: number;
+  maxPrice?: number;
+  includeVariants?: boolean;
 }
 
 export interface ListProductsOutput {
@@ -36,21 +77,25 @@ export interface ListProductsOutput {
 export interface CreateProductInput {
   ownerId: string;
   name: string;
-  description?: string;
-  price: string;
-  stock: number;
-  category: string;
-  status?: 'ACTIVE' | 'INACTIVE';
+  price: number;
+  stock?: number;
+  attributes?: ProductAttributeInput[];
+  variants?: ProductVariantInput[];
 }
 
 export interface UpdateProductInput {
   id: string;
   name?: string;
-  description?: string;
-  price?: string;
+  price?: number;
   stock?: number;
-  category?: string;
-  status?: 'ACTIVE' | 'INACTIVE';
+  attributes?: ProductAttributeInput[];
+  variants?: ProductVariantInput[];
+}
+
+export interface GetProductInput {
+  id: string;
+  includeDeleted?: boolean;
+  includeVariants?: boolean;
 }
 
 export interface UpdateStockInput {
@@ -60,7 +105,7 @@ export interface UpdateStockInput {
 
 export interface IProductsService {
   list(input: ListProductsInput): Promise<ListProductsOutput>;
-  getById(id: string, includeDeleted?: boolean): Promise<ProductDTO>;
+  getById(input: GetProductInput): Promise<ProductDTO>;
   create(input: CreateProductInput): Promise<ProductDTO>;
   update(input: UpdateProductInput): Promise<ProductDTO>;
   delete(id: string, force?: boolean): Promise<{ message: string }>;

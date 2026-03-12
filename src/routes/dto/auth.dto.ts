@@ -1,21 +1,54 @@
-/**
- * Authentication DTOs
- *
- * Data Transfer Objects with Zod validation schemas for authentication endpoints.
- * These schemas ensure type safety and validate request/response data.
- *
- * @module AuthDTO
- */
-
 import { z } from 'zod';
-import { emailSchema, passwordSchema, nameSchema } from '../../core/validation/common.schema';
+import { emailSchema, nameSchema, passwordSchema } from '../../core/validation/common.schema';
 
-/**
- * Register Request DTO
- *
- * Schema for user registration requests.
- * Validates email, password, and name fields.
- */
+export const registerRequestSchema = z
+  .object({
+    email: emailSchema,
+    password: passwordSchema,
+    firstName: nameSchema.optional(),
+    lastName: nameSchema.optional(),
+    name: nameSchema.optional(),
+  })
+  .refine(value => Boolean((value.firstName && value.lastName) || value.name), {
+    message: 'firstName and lastName or name is required',
+  });
+
+export type RegisterRequestDTO = z.infer<typeof registerRequestSchema>;
+
+export const loginRequestSchema = z.object({
+  email: z.string().min(1),
+  password: z.string().min(1),
+});
+
+export type LoginRequestDTO = z.infer<typeof loginRequestSchema>;
+
+export const refreshRequestSchema = z
+  .object({
+    token: z.string().optional(),
+    refreshToken: z.string().optional(),
+  })
+  .refine(value => Boolean(value.token || value.refreshToken), {
+    message: 'token or refreshToken is required',
+  });
+
+export type RefreshRequestDTO = z.infer<typeof refreshRequestSchema>;
+
+export const changePasswordRequestSchema = z
+  .object({
+    old_password: z.string().optional(),
+    new_password: z.string().optional(),
+    currentPassword: z.string().optional(),
+    newPassword: z.string().optional(),
+  })
+  .refine(value => Boolean(value.old_password || value.currentPassword), {
+    message: 'old_password or currentPassword is required',
+  })
+  .refine(value => Boolean(value.new_password || value.newPassword), {
+    message: 'new_password or newPassword is required',
+  });
+
+export type ChangePasswordRequestDTO = z.infer<typeof changePasswordRequestSchema>;
+
 export const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
@@ -25,37 +58,19 @@ export const registerSchema = z.object({
 
 export type RegisterDTO = z.infer<typeof registerSchema>;
 
-/**
- * Login Request DTO
- *
- * Schema for user login requests.
- * Validates email and password credentials.
- */
 export const loginSchema = z.object({
-  email: emailSchema,
-  password: z.string().min(1, 'Password is required'),
+  email: z.string().min(1),
+  password: z.string().min(1),
 });
 
 export type LoginDTO = z.infer<typeof loginSchema>;
 
-/**
- * Refresh Token Request DTO
- *
- * Schema for token refresh requests.
- * Validates the refresh token.
- */
 export const refreshTokenSchema = z.object({
-  refreshToken: z.string().min(1, 'Refresh token is required'),
+  refreshToken: z.string().min(1),
 });
 
 export type RefreshTokenDTO = z.infer<typeof refreshTokenSchema>;
 
-/**
- * User Response DTO
- *
- * Schema for user data in responses.
- * Excludes sensitive information like password hash.
- */
 export const userResponseSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
@@ -70,11 +85,6 @@ export const userResponseSchema = z.object({
 
 export type UserResponse = z.infer<typeof userResponseSchema>;
 
-/**
- * Token Response DTO
- *
- * Schema for authentication token responses.
- */
 export const tokenResponseSchema = z.object({
   accessToken: z.string(),
   refreshToken: z.string(),
@@ -83,60 +93,46 @@ export const tokenResponseSchema = z.object({
 
 export type TokenResponse = z.infer<typeof tokenResponseSchema>;
 
-/**
- * Register Response DTO
- *
- * Schema for successful registration response.
- * Includes user data and authentication tokens.
- */
 export const registerResponseSchema = z.object({
-  user: userResponseSchema,
+  user: z.object({
+    id: z.string().uuid(),
+    email: z.string().email(),
+    firstName: z.string(),
+    lastName: z.string(),
+    isActive: z.boolean(),
+    emailVerified: z.boolean(),
+    createdAt: z.date(),
+  }),
   tokens: tokenResponseSchema,
 });
 
 export type RegisterResponse = z.infer<typeof registerResponseSchema>;
 
-/**
- * Login Response DTO
- *
- * Schema for successful login response.
- * Includes user data and authentication tokens.
- */
 export const loginResponseSchema = z.object({
-  user: userResponseSchema,
+  user: z.object({
+    id: z.string().uuid(),
+    email: z.string().email(),
+    firstName: z.string(),
+    lastName: z.string(),
+    isActive: z.boolean(),
+    emailVerified: z.boolean(),
+    lastLoginAt: z.date().nullable(),
+  }),
   tokens: tokenResponseSchema,
 });
 
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
 
-/**
- * Refresh Token Response DTO
- *
- * Schema for successful token refresh response.
- * Includes new authentication tokens.
- */
 export const refreshTokenResponseSchema = z.object({
   tokens: tokenResponseSchema,
 });
 
 export type RefreshTokenResponse = z.infer<typeof refreshTokenResponseSchema>;
 
-/**
- * Me Response DTO
- *
- * Schema for current user endpoint response.
- * Returns user data without tokens.
- */
 export const meResponseSchema = userResponseSchema;
 
 export type MeResponse = z.infer<typeof meResponseSchema>;
 
-/**
- * Error Response DTO
- *
- * Schema for error responses.
- * Provides consistent error structure across all endpoints.
- */
 export const errorResponseSchema = z.object({
   name: z.string(),
   code: z.string(),

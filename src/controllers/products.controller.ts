@@ -1,8 +1,8 @@
+import { BadRequestError, InternalServerError, NotFoundError, UnauthorizedError } from '../core/errors/app-error';
+import { logger } from '../core/logging/logger';
 import type { AuthContext } from '../middlewares/auth.middleware';
 import type { ProductsService } from '../services/products.service';
 import type { ListProductsInput, UpdateProductInput } from '../services/interfaces/products.service.interface';
-import { InternalServerError, NotFoundError, UnauthorizedError, BadRequestError } from '../core/errors/app-error';
-import { logger } from '../core/logging/logger';
 
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
@@ -20,17 +20,22 @@ export class ProductsController {
     }
   }
 
-  async getById(id: string, includeDeleted: boolean, authContext: AuthContext) {
+  async getById(id: string, options: { includeDeleted: boolean; includeVariants: boolean }, authContext: AuthContext) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
 
     try {
-      return await this.productsService.getById(id, includeDeleted);
+      return await this.productsService.getById({
+        id,
+        includeDeleted: options.includeDeleted,
+        includeVariants: options.includeVariants,
+      });
     } catch (error) {
       if (error instanceof NotFoundError) {
         throw error;
       }
+
       logger.error('Get product error', { error, productId: id });
       throw new InternalServerError('Failed to get product');
     }
@@ -39,11 +44,20 @@ export class ProductsController {
   async create(
     payload: {
       name: string;
-      description?: string;
-      price: string;
-      stock: number;
-      category: string;
-      status?: 'ACTIVE' | 'INACTIVE';
+      price: number;
+      stock?: number;
+      attributes?: Array<{
+        name: string;
+        values: string[];
+        displayOrder?: number;
+      }>;
+      variants?: Array<{
+        sku: string;
+        price?: number | null;
+        stock?: number;
+        isActive?: boolean;
+        attributeValues: Record<string, string>;
+      }>;
     },
     authContext: AuthContext
   ) {
@@ -60,12 +74,13 @@ export class ProductsController {
       if (error instanceof BadRequestError) {
         throw error;
       }
+
       logger.error('Create product error', { error, ownerId: authContext.user.id });
       throw new InternalServerError('Failed to create product');
     }
   }
 
-  async update(id: string, payload: UpdateProductInput, authContext: AuthContext) {
+  async update(id: string, payload: Omit<UpdateProductInput, 'id'>, authContext: AuthContext) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
@@ -79,6 +94,7 @@ export class ProductsController {
       if (error instanceof NotFoundError || error instanceof BadRequestError) {
         throw error;
       }
+
       logger.error('Update product error', { error, productId: id });
       throw new InternalServerError('Failed to update product');
     }
@@ -95,6 +111,7 @@ export class ProductsController {
       if (error instanceof NotFoundError) {
         throw error;
       }
+
       logger.error('Delete product error', { error, productId: id });
       throw new InternalServerError('Failed to delete product');
     }
@@ -111,6 +128,7 @@ export class ProductsController {
       if (error instanceof NotFoundError) {
         throw error;
       }
+
       logger.error('Restore product error', { error, productId: id });
       throw new InternalServerError('Failed to restore product');
     }
@@ -127,6 +145,7 @@ export class ProductsController {
       if (error instanceof NotFoundError || error instanceof BadRequestError) {
         throw error;
       }
+
       logger.error('Update product stock error', { error, productId: id });
       throw new InternalServerError('Failed to update product stock');
     }
