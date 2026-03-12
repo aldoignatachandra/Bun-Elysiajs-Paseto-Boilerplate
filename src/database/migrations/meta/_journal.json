@@ -22,6 +22,20 @@
       "when": 1773333600000,
       "tag": "0002_product_variants_attributes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1773312269531,
+      "tag": "0003_colossal_quentin_quire",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1773321472712,
+      "tag": "0004_pink_umar",
+      "breakpoints": true
     }
   ]
 }

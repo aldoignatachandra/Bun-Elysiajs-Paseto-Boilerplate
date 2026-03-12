@@ -8,6 +8,7 @@ export const createAttributeSchema = z.object({
 });
 
 export const createVariantSchema = z.object({
+  name: z.string().min(1).max(255),
   sku: z
     .string()
     .min(1)

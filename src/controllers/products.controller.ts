@@ -1,4 +1,4 @@
-import { BadRequestError, InternalServerError, NotFoundError, UnauthorizedError } from '../core/errors/app-error';
+import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError, UnauthorizedError } from '../core/errors/app-error';
 import { logger } from '../core/logging/logger';
 import type { AuthContext } from '../middlewares/auth.middleware';
 import type { ProductsService } from '../services/products.service';
@@ -52,6 +52,7 @@ export class ProductsController {
         displayOrder?: number;
       }>;
       variants?: Array<{
+        name: string;
         sku: string;
         price?: number | null;
         stock?: number;
@@ -80,7 +81,7 @@ export class ProductsController {
     }
   }
 
-  async update(id: string, payload: Omit<UpdateProductInput, 'id'>, authContext: AuthContext) {
+  async update(id: string, payload: UpdateProductInput, authContext: AuthContext) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
@@ -88,10 +89,16 @@ export class ProductsController {
     try {
       return await this.productsService.update({
         id,
-        ...payload,
+        name: payload.name,
+        price: payload.price,
+        stock: payload.stock,
+        attributes: payload.attributes,
+        variants: payload.variants,
+        currentUserId: authContext.user.id,
+        isAdmin: authContext.user.role === 'admin',
       });
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof ForbiddenError) {
         throw error;
       }
 
@@ -106,9 +113,12 @@ export class ProductsController {
     }
 
     try {
-      return await this.productsService.delete(id, force);
+      return await this.productsService.delete(id, force, {
+        performedBy: authContext.user.id,
+        isAdmin: authContext.user.role === 'admin',
+      });
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof NotFoundError || error instanceof ForbiddenError) {
         throw error;
       }
 
@@ -123,9 +133,12 @@ export class ProductsController {
     }
 
     try {
-      return await this.productsService.restore(id);
+      return await this.productsService.restore(id, {
+        performedBy: authContext.user.id,
+        isAdmin: authContext.user.role === 'admin',
+      });
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof NotFoundError || error instanceof ForbiddenError) {
         throw error;
       }
 
@@ -140,9 +153,14 @@ export class ProductsController {
     }
 
     try {
-      return await this.productsService.updateStock({ id, stock });
+      return await this.productsService.updateStock({
+        id,
+        stock,
+        currentUserId: authContext.user.id,
+        isAdmin: authContext.user.role === 'admin',
+      });
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof ForbiddenError) {
         throw error;
       }
 

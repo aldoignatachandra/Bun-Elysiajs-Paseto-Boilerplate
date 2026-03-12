@@ -5,10 +5,9 @@ export interface GetProfileInput {
 export interface UserProfile {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  isActive: boolean;
-  emailVerified: boolean;
+  username: string;
+  name: string | null;
+  role: string;
   lastLoginAt: Date | null;
   deletedAt: Date | null;
   createdAt: Date;
@@ -17,8 +16,8 @@ export interface UserProfile {
 
 export interface UpdateProfileInput {
   userId: string;
-  firstName?: string;
-  lastName?: string;
+  name?: string;
+  username?: string;
 }
 
 export interface UpdatePasswordInput {
@@ -39,10 +38,9 @@ export interface GetUsersOutput {
   users: Array<{
     id: string;
     email: string;
-    firstName: string;
-    lastName: string;
-    isActive: boolean;
-    emailVerified: boolean;
+    username: string;
+    name: string | null;
+    role: string;
     createdAt: Date;
     lastLoginAt: Date | null;
     deletedAt: Date | null;
@@ -59,20 +57,18 @@ export interface GetUsersOutput {
 
 export interface CreateUserInput {
   email: string;
+  username: string;
   password: string;
-  firstName: string;
-  lastName: string;
-  isActive?: boolean;
-  emailVerified?: boolean;
+  name?: string;
+  role?: string;
 }
 
 export interface UpdateUserInput {
   id: string;
   email?: string;
-  firstName?: string;
-  lastName?: string;
-  isActive?: boolean;
-  emailVerified?: boolean;
+  username?: string;
+  name?: string;
+  role?: string;
 }
 
 export interface GetActivityLogsInput {
@@ -116,7 +112,6 @@ export interface IUsersService {
   getUserStats(): Promise<{
     totalUsers: number;
     activeUsers: number;
-    verifiedUsers: number;
     newUsersThisMonth: number;
     newUsersThisWeek: number;
   }>;

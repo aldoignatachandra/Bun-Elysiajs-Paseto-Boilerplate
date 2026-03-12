@@ -122,11 +122,10 @@ export class UsersController {
   async createUser(
     dto: {
       email: string;
+      username: string;
       password: string;
-      firstName: string;
-      lastName: string;
-      isActive?: boolean;
-      emailVerified?: boolean;
+      name?: string;
+      role?: string;
     },
     authContext: AuthContext
   ) {

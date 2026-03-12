@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { emailSchema, nameSchema, paginationSchema, passwordSchema, uuidSchema } from '../../core/validation/common.schema';
+import { emailSchema, nameSchema, paginationSchema, passwordSchema, uuidSchema, usernameSchema } from '../../core/validation/common.schema';
 
 export const updateProfileSchema = z.object({
   firstName: nameSchema.optional(),
   lastName: nameSchema.optional(),
+  username: usernameSchema.optional(),
 });
 
 export type UpdateProfileDTO = z.infer<typeof updateProfileSchema>;
@@ -47,6 +48,7 @@ export type UpdatePasswordDTO = z.infer<typeof updatePasswordSchema>;
 
 export const createUserSchema = z.object({
   email: emailSchema,
+  username: usernameSchema,
   password: passwordSchema,
   firstName: nameSchema,
   lastName: nameSchema,
@@ -58,6 +60,7 @@ export type CreateUserDTO = z.infer<typeof createUserSchema>;
 
 export const updateUserSchema = z.object({
   email: emailSchema.optional(),
+  username: usernameSchema.optional(),
   firstName: nameSchema.optional(),
   lastName: nameSchema.optional(),
   isActive: z.boolean().optional(),

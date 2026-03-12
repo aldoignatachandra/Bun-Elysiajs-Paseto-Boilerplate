@@ -56,6 +56,22 @@ export const nameSchema = z.string().min(1, 'Name is required').max(100, 'Name i
 export const optionalNameSchema = nameSchema.optional().nullable();
 
 /**
+ * Username schema
+ * Validates username format: alphanumeric + underscore, 3-50 characters
+ */
+export const usernameSchema = z
+  .string()
+  .min(3, 'Username must be at least 3 characters')
+  .max(50, 'Username must be at most 50 characters')
+  .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain alphanumeric characters and underscores')
+  .trim();
+
+/**
+ * Optional username schema
+ */
+export const optionalUsernameSchema = usernameSchema.optional().nullable();
+
+/**
  * URL schema
  * Validates URL format
  */

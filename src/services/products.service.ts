@@ -1,4 +1,4 @@
-import { BadRequestError, NotFoundError } from '../core/errors/app-error';
+import { BadRequestError, NotFoundError, ForbiddenError } from '../core/errors/app-error';
 import type { UnitOfWork } from '../repositories/unit-of-work';
 import type {
   CreateProductInput,
@@ -10,12 +10,35 @@ import type {
   UpdateProductInput,
   UpdateStockInput,
 } from './interfaces/products.service.interface';
+import { ActivityService, type LogActivityInput } from './activity.service';
+
+export interface ProductActivityContext {
+  performedBy?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
 
 export class ProductsService implements IProductsService {
   private readonly unitOfWork: UnitOfWork;
+  private activityService: ActivityService | null = null;
 
   constructor(unitOfWork: UnitOfWork) {
     this.unitOfWork = unitOfWork;
+  }
+
+  private getActivityService(): ActivityService {
+    if (!this.activityService) {
+      this.activityService = new ActivityService(this.unitOfWork);
+    }
+    return this.activityService;
+  }
+
+  private async logActivity(input: LogActivityInput): Promise<void> {
+    try {
+      await this.getActivityService().logActivity(input);
+    } catch (error) {
+      console.error('Failed to log activity:', error);
+    }
   }
 
   async list(input: ListProductsInput): Promise<ListProductsOutput> {
@@ -58,6 +81,10 @@ export class ProductsService implements IProductsService {
       throw new NotFoundError('Product not found');
     }
 
+    if ((!input.isAdmin && product.ownerId !== input.currentUserId) || '') {
+      throw new ForbiddenError('You do not have permission to view this product');
+    }
+
     if (!input.includeVariants) {
       return {
         ...product,
@@ -69,7 +96,13 @@ export class ProductsService implements IProductsService {
     return product;
   }
 
-  async create(input: CreateProductInput): Promise<ProductDTO> {
+  private checkOwnership(productOwnerId: string, currentUserId: string, isAdmin?: boolean): void {
+    if (!isAdmin && productOwnerId !== currentUserId) {
+      throw new ForbiddenError('You do not have permission to modify this product');
+    }
+  }
+
+  async create(input: CreateProductInput & ProductActivityContext): Promise<ProductDTO> {
     if (input.price <= 0) {
       throw new BadRequestError('Product price must be greater than 0');
     }
@@ -78,7 +111,7 @@ export class ProductsService implements IProductsService {
       throw new BadRequestError('Stock cannot be negative');
     }
 
-    return await this.unitOfWork.products.createWithVariants({
+    const product = await this.unitOfWork.products.createWithVariants({
       ownerId: input.ownerId,
       name: input.name,
       price: input.price,
@@ -86,9 +119,21 @@ export class ProductsService implements IProductsService {
       attributes: input.attributes,
       variants: input.variants,
     });
+
+    await this.logActivity({
+      userId: input.ownerId,
+      action: 'product.created',
+      entity: 'products',
+      entityId: product.id,
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent,
+      details: { performedBy: input.performedBy, name: product.name },
+    });
+
+    return product;
   }
 
-  async update(input: UpdateProductInput): Promise<ProductDTO> {
+  async update(input: UpdateProductInput & ProductActivityContext): Promise<ProductDTO> {
     if (input.price !== undefined && input.price <= 0) {
       throw new BadRequestError('Product price must be greater than 0');
     }
@@ -97,7 +142,14 @@ export class ProductsService implements IProductsService {
       throw new BadRequestError('Stock cannot be negative');
     }
 
-    const updated = await this.unitOfWork.products.updateWithVariants(input.id, {
+    const existing = await this.unitOfWork.products.findById(input.id || '', true);
+    if (!existing) {
+      throw new NotFoundError('Product not found');
+    }
+
+    this.checkOwnership(existing.ownerId, input.currentUserId || '', input.isAdmin);
+
+    const updated = await this.unitOfWork.products.updateWithVariants(input.id || '', {
       name: input.name,
       price: input.price,
       stock: input.stock,
@@ -109,15 +161,32 @@ export class ProductsService implements IProductsService {
       throw new NotFoundError('Product not found');
     }
 
+    await this.logActivity({
+      userId: existing.ownerId,
+      action: 'product.updated',
+      entity: 'products',
+      entityId: input.id,
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent,
+      details: { performedBy: input.performedBy },
+    });
+
     return updated;
   }
 
-  async delete(id: string, force = false): Promise<{ message: string }> {
+  async delete(
+    id: string,
+    force = false,
+    activityContext?: ProductActivityContext & { currentUserId?: string; isAdmin?: boolean }
+  ): Promise<{ message: string }> {
     const existing = await this.unitOfWork.products.findById(id, true);
 
     if (!existing) {
       throw new NotFoundError('Product not found');
     }
+
+    const currentUserId = activityContext?.performedBy || '';
+    this.checkOwnership(existing.ownerId, currentUserId, activityContext?.isAdmin);
 
     if (force) {
       const deleted = await this.unitOfWork.products.delete(id);
@@ -135,10 +204,29 @@ export class ProductsService implements IProductsService {
       throw new NotFoundError('Product not found');
     }
 
+    await this.logActivity({
+      userId: existing.ownerId,
+      action: 'product.deleted',
+      entity: 'products',
+      entityId: id,
+      ipAddress: activityContext?.ipAddress,
+      userAgent: activityContext?.userAgent,
+      details: { performedBy: activityContext?.performedBy },
+    });
+
     return { message: 'Product deleted successfully' };
   }
 
-  async restore(id: string): Promise<ProductDTO> {
+  async restore(id: string, activityContext?: ProductActivityContext & { currentUserId?: string; isAdmin?: boolean }): Promise<ProductDTO> {
+    const existing = await this.unitOfWork.products.findById(id, true);
+
+    if (!existing) {
+      throw new NotFoundError('Product not found');
+    }
+
+    const currentUserId = activityContext?.performedBy || '';
+    this.checkOwnership(existing.ownerId, currentUserId, activityContext?.isAdmin);
+
     const restored = await this.unitOfWork.products.restore(id);
 
     if (!restored) {
@@ -151,10 +239,20 @@ export class ProductsService implements IProductsService {
       throw new NotFoundError('Product not found');
     }
 
+    await this.logActivity({
+      userId: product.ownerId,
+      action: 'product.restored',
+      entity: 'products',
+      entityId: id,
+      ipAddress: activityContext?.ipAddress,
+      userAgent: activityContext?.userAgent,
+      details: { performedBy: activityContext?.performedBy },
+    });
+
     return product;
   }
 
-  async updateStock(input: UpdateStockInput): Promise<{ id: string; stock: number }> {
+  async updateStock(input: UpdateStockInput & ProductActivityContext): Promise<{ id: string; stock: number }> {
     if (input.stock < 0) {
       throw new BadRequestError('Stock cannot be negative');
     }
@@ -165,6 +263,8 @@ export class ProductsService implements IProductsService {
       throw new NotFoundError('Product not found');
     }
 
+    this.checkOwnership(existing.ownerId, input.currentUserId || '', input.isAdmin);
+
     if (existing.hasVariant) {
       throw new BadRequestError('Cannot update stock directly for products with variants');
     }
@@ -174,6 +274,20 @@ export class ProductsService implements IProductsService {
     if (!updated) {
       throw new NotFoundError('Product not found');
     }
+
+    await this.logActivity({
+      userId: existing.ownerId,
+      action: 'product.stock_updated',
+      entity: 'products',
+      entityId: input.id,
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent,
+      details: {
+        performedBy: input.performedBy,
+        oldStock: existing.stock,
+        newStock: input.stock,
+      },
+    });
 
     return {
       id: updated.id,

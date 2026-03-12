@@ -16,14 +16,37 @@ import type {
 } from './interfaces/users.service.interface';
 import { NotFoundError, AuthenticationError, ConflictError } from '../core/errors/app-error';
 import { logger } from '../core/logging/logger';
+import { ActivityService, type LogActivityInput } from './activity.service';
+
+export interface UserActivityContext {
+  performedBy?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
 
 export class UsersService implements IUsersService {
   private readonly unitOfWork: UnitOfWork;
   private readonly passwordService: PasswordService;
+  private activityService: ActivityService | null = null;
 
   constructor(unitOfWork: UnitOfWork, passwordService: PasswordService) {
     this.unitOfWork = unitOfWork;
     this.passwordService = passwordService;
+  }
+
+  private getActivityService(): ActivityService {
+    if (!this.activityService) {
+      this.activityService = new ActivityService(this.unitOfWork);
+    }
+    return this.activityService;
+  }
+
+  private async logActivity(input: LogActivityInput): Promise<void> {
+    try {
+      await this.getActivityService().logActivity(input);
+    } catch (error) {
+      logger.error('Failed to log activity', error);
+    }
   }
 
   async getProfile(input: GetProfileInput): Promise<UserProfile> {
@@ -36,10 +59,9 @@ export class UsersService implements IUsersService {
     return {
       id: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      isActive: user.isActive,
-      emailVerified: user.emailVerified,
+      username: user.username,
+      name: user.name,
+      role: user.role,
       lastLoginAt: user.lastLoginAt,
       deletedAt: user.deletedAt,
       createdAt: user.createdAt,
@@ -47,7 +69,7 @@ export class UsersService implements IUsersService {
     };
   }
 
-  async updateProfile(input: UpdateProfileInput): Promise<UserProfile> {
+  async updateProfile(input: UpdateProfileInput & UserActivityContext): Promise<UserProfile> {
     const user = await this.unitOfWork.users.findById(input.userId, true);
 
     if (!user) {
@@ -56,12 +78,12 @@ export class UsersService implements IUsersService {
 
     const updateData: Partial<UserRecord> = {};
 
-    if (input.firstName !== undefined) {
-      updateData.firstName = input.firstName;
+    if (input.name !== undefined) {
+      updateData.name = input.name;
     }
 
-    if (input.lastName !== undefined) {
-      updateData.lastName = input.lastName;
+    if (input.username !== undefined) {
+      updateData.username = input.username;
     }
 
     const updatedUser = await this.unitOfWork.users.update(user.id, updateData);
@@ -72,13 +94,22 @@ export class UsersService implements IUsersService {
 
     logger.info('User profile updated', { userId: user.id });
 
+    await this.logActivity({
+      userId: user.id,
+      action: 'user.profile_updated',
+      entity: 'users',
+      entityId: user.id,
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent,
+      details: { performedBy: input.performedBy },
+    });
+
     return {
       id: updatedUser.id,
       email: updatedUser.email,
-      firstName: updatedUser.firstName,
-      lastName: updatedUser.lastName,
-      isActive: updatedUser.isActive,
-      emailVerified: updatedUser.emailVerified,
+      username: updatedUser.username,
+      name: updatedUser.name,
+      role: updatedUser.role,
       lastLoginAt: updatedUser.lastLoginAt,
       deletedAt: updatedUser.deletedAt,
       createdAt: updatedUser.createdAt,
@@ -86,28 +117,42 @@ export class UsersService implements IUsersService {
     };
   }
 
-  async updatePassword(input: UpdatePasswordInput): Promise<{ message: string }> {
-    const user = await this.unitOfWork.users.findById(input.userId, true);
+  async updatePassword(input: UpdatePasswordInput & UserActivityContext): Promise<{ message: string }> {
+    return this.unitOfWork.withTransaction(async uow => {
+      const user = await uow.users.findById(input.userId, true);
 
-    if (!user) {
-      throw new NotFoundError('User not found');
-    }
+      if (!user) {
+        throw new NotFoundError('User not found');
+      }
 
-    const isPasswordValid = await this.passwordService.verify(user.passwordHash, input.currentPassword);
+      const isPasswordValid = await this.passwordService.verify(user.passwordHash, input.currentPassword);
 
-    if (!isPasswordValid) {
-      throw new AuthenticationError('Current password is incorrect');
-    }
+      if (!isPasswordValid) {
+        throw new AuthenticationError('Current password is incorrect');
+      }
 
-    const newPasswordHash = await this.passwordService.hash(input.newPassword);
+      const newPasswordHash = await this.passwordService.hash(input.newPassword);
 
-    await this.unitOfWork.users.update(user.id, {
-      passwordHash: newPasswordHash,
+      await uow.users.update(user.id, {
+        passwordHash: newPasswordHash,
+      });
+
+      await uow.sessions.deleteByUserId(user.id);
+
+      logger.info('User password updated', { userId: user.id });
+
+      await uow.activityLogs.create({
+        userId: user.id,
+        action: 'user.password_changed',
+        entity: 'users',
+        entityId: user.id,
+        ipAddress: input.ipAddress,
+        userAgent: input.userAgent,
+        details: { performedBy: input.performedBy },
+      });
+
+      return { message: 'Password changed successfully' };
     });
-
-    logger.info('User password updated', { userId: user.id });
-
-    return { message: 'Password changed successfully' };
   }
 
   async getUsers(input: GetUsersInput): Promise<GetUsersOutput> {
@@ -137,10 +182,9 @@ export class UsersService implements IUsersService {
       users: paged.map(user => ({
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        isActive: user.isActive,
-        emailVerified: user.emailVerified,
+        username: user.username,
+        name: user.name,
+        role: user.role,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
         deletedAt: user.deletedAt,
@@ -156,7 +200,7 @@ export class UsersService implements IUsersService {
     };
   }
 
-  async createUser(input: CreateUserInput): Promise<UserProfile> {
+  async createUser(input: CreateUserInput & UserActivityContext): Promise<UserProfile> {
     const existingUser = await this.unitOfWork.users.findByEmail(input.email);
 
     if (existingUser) {
@@ -170,22 +214,30 @@ export class UsersService implements IUsersService {
 
     const user = await this.unitOfWork.users.create({
       email: input.email,
+      username: input.username,
       passwordHash,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      isActive: input.isActive ?? true,
-      emailVerified: input.emailVerified ?? false,
+      name: input.name ?? null,
+      role: input.role ?? 'user',
     });
 
     logger.info('User created by admin', { userId: user.id, email: user.email });
 
+    await this.logActivity({
+      userId: user.id,
+      action: 'user.registered',
+      entity: 'users',
+      entityId: user.id,
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent,
+      details: { performedBy: input.performedBy, email: user.email },
+    });
+
     return {
       id: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      isActive: user.isActive,
-      emailVerified: user.emailVerified,
+      username: user.username,
+      name: user.name,
+      role: user.role,
       lastLoginAt: user.lastLoginAt,
       deletedAt: user.deletedAt,
       createdAt: user.createdAt,
@@ -193,7 +245,7 @@ export class UsersService implements IUsersService {
     };
   }
 
-  async updateUser(input: UpdateUserInput): Promise<UserProfile> {
+  async updateUser(input: UpdateUserInput & UserActivityContext): Promise<UserProfile> {
     const user = await this.unitOfWork.users.findById(input.id, true);
 
     if (!user) {
@@ -213,20 +265,16 @@ export class UsersService implements IUsersService {
       updateData.email = input.email;
     }
 
-    if (input.firstName !== undefined) {
-      updateData.firstName = input.firstName;
+    if (input.name !== undefined) {
+      updateData.name = input.name;
     }
 
-    if (input.lastName !== undefined) {
-      updateData.lastName = input.lastName;
+    if (input.username !== undefined) {
+      updateData.username = input.username;
     }
 
-    if (input.isActive !== undefined) {
-      updateData.isActive = input.isActive;
-    }
-
-    if (input.emailVerified !== undefined) {
-      updateData.emailVerified = input.emailVerified;
+    if (input.role !== undefined) {
+      updateData.role = input.role;
     }
 
     const updatedUser = await this.unitOfWork.users.update(user.id, updateData);
@@ -237,13 +285,22 @@ export class UsersService implements IUsersService {
 
     logger.info('User updated by admin', { userId: user.id });
 
+    await this.logActivity({
+      userId: user.id,
+      action: 'user.profile_updated',
+      entity: 'users',
+      entityId: user.id,
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent,
+      details: { performedBy: input.performedBy },
+    });
+
     return {
       id: updatedUser.id,
       email: updatedUser.email,
-      firstName: updatedUser.firstName,
-      lastName: updatedUser.lastName,
-      isActive: updatedUser.isActive,
-      emailVerified: updatedUser.emailVerified,
+      username: updatedUser.username,
+      name: updatedUser.name,
+      role: updatedUser.role,
       lastLoginAt: updatedUser.lastLoginAt,
       deletedAt: updatedUser.deletedAt,
       createdAt: updatedUser.createdAt,
@@ -251,7 +308,7 @@ export class UsersService implements IUsersService {
     };
   }
 
-  async deleteUser(id: string, force = false): Promise<{ message: string }> {
+  async deleteUser(id: string, force = false, activityContext?: UserActivityContext): Promise<{ message: string }> {
     const user = await this.unitOfWork.users.findById(id, true);
 
     if (!user) {
@@ -274,30 +331,73 @@ export class UsersService implements IUsersService {
 
     logger.info('User soft deleted by admin', { userId: id });
 
+    await this.logActivity({
+      userId: id,
+      action: 'user.deleted',
+      entity: 'users',
+      entityId: id,
+      ipAddress: activityContext?.ipAddress,
+      userAgent: activityContext?.userAgent,
+      details: { performedBy: activityContext?.performedBy },
+    });
+
     return { message: 'User deleted successfully' };
   }
 
-  async activateUser(id: string): Promise<{ message: string }> {
+  async activateUser(id: string, activityContext?: UserActivityContext): Promise<{ message: string }> {
     const updated = await this.unitOfWork.users.setActive(id, true);
     if (!updated) {
       throw new NotFoundError('User not found');
     }
+
+    await this.logActivity({
+      userId: id,
+      action: 'user.activated',
+      entity: 'users',
+      entityId: id,
+      ipAddress: activityContext?.ipAddress,
+      userAgent: activityContext?.userAgent,
+      details: { performedBy: activityContext?.performedBy },
+    });
+
     return { message: 'User activated successfully' };
   }
 
-  async deactivateUser(id: string): Promise<{ message: string }> {
+  async deactivateUser(id: string, activityContext?: UserActivityContext): Promise<{ message: string }> {
     const updated = await this.unitOfWork.users.setActive(id, false);
     if (!updated) {
       throw new NotFoundError('User not found');
     }
+
+    await this.logActivity({
+      userId: id,
+      action: 'user.deactivated',
+      entity: 'users',
+      entityId: id,
+      ipAddress: activityContext?.ipAddress,
+      userAgent: activityContext?.userAgent,
+      details: { performedBy: activityContext?.performedBy },
+    });
+
     return { message: 'User deactivated successfully' };
   }
 
-  async restoreUser(id: string): Promise<{ message: string }> {
+  async restoreUser(id: string, activityContext?: UserActivityContext): Promise<{ message: string }> {
     const restored = await this.unitOfWork.users.restore(id);
     if (!restored) {
       throw new NotFoundError('User not found');
     }
+
+    await this.logActivity({
+      userId: id,
+      action: 'user.restored',
+      entity: 'users',
+      entityId: id,
+      ipAddress: activityContext?.ipAddress,
+      userAgent: activityContext?.userAgent,
+      details: { performedBy: activityContext?.performedBy },
+    });
+
     return { message: 'User restored successfully' };
   }
 
@@ -305,7 +405,6 @@ export class UsersService implements IUsersService {
     const page = Math.max(1, input.page || 1);
     const limit = Math.max(1, Math.min(100, input.limit || 10));
 
-    // Placeholder for future persistent audit log table.
     const logs: GetActivityLogsOutput['logs'] = [];
 
     return Promise.resolve({
@@ -324,27 +423,24 @@ export class UsersService implements IUsersService {
   async getUserStats(): Promise<{
     totalUsers: number;
     activeUsers: number;
-    verifiedUsers: number;
     newUsersThisMonth: number;
     newUsersThisWeek: number;
   }> {
-    const allUsers = await this.unitOfWork.users.findAll({ includeDeleted: true });
-
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - 7);
 
-    const totalUsers = allUsers.length;
-    const activeUsers = allUsers.filter(user => user.isActive).length;
-    const verifiedUsers = allUsers.filter(user => user.emailVerified).length;
-    const newUsersThisMonth = allUsers.filter(user => user.createdAt >= startOfMonth).length;
-    const newUsersThisWeek = allUsers.filter(user => user.createdAt >= startOfWeek).length;
+    const [totalUsers, activeUsers, newUsersThisMonth, newUsersThisWeek] = await Promise.all([
+      this.unitOfWork.users.count(true),
+      this.unitOfWork.users.count(false),
+      this.unitOfWork.users.countSince(startOfMonth),
+      this.unitOfWork.users.countSince(startOfWeek),
+    ]);
 
     return {
       totalUsers,
       activeUsers,
-      verifiedUsers,
       newUsersThisMonth,
       newUsersThisWeek,
     };

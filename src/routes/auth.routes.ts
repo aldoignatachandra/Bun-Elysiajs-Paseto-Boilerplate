@@ -71,6 +71,7 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
 
           const result = await authController.register({
             email: body.email,
+            username: body.username,
             password: body.password,
             firstName,
             lastName,

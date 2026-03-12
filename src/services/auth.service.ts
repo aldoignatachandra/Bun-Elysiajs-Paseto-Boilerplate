@@ -9,6 +9,7 @@
  * - PASETO token generation (v4.local for access, v4.public for refresh)
  * - Session management with refresh tokens
  * - Secure token validation
+ * - Activity logging
  *
  * @todo Add email verification flow
  * @todo Add password reset functionality
@@ -38,6 +39,12 @@ import type {
   ValidateAccessTokenOutput,
 } from './interfaces/auth.service.interface';
 import { ConflictError, AuthenticationError, ForbiddenError, InvalidTokenError, TokenExpiredError, NotFoundError } from '../core/errors/app-error';
+import { ActivityService, type LogActivityInput } from './activity.service';
+
+export interface AuthActivityContext {
+  ipAddress?: string;
+  userAgent?: string;
+}
 
 /**
  * Authentication Service Implementation
@@ -50,11 +57,27 @@ export class AuthService implements IAuthService {
   private readonly unitOfWork: any;
   private readonly pasetoService: PasetoService;
   private readonly passwordService: PasswordService;
+  private activityService: ActivityService | null = null;
 
   constructor(unitOfWork: unknown, pasetoService: PasetoService, passwordService: PasswordService) {
     this.unitOfWork = unitOfWork as UnitOfWork;
     this.pasetoService = pasetoService;
     this.passwordService = passwordService;
+  }
+
+  private getActivityService(): ActivityService {
+    if (!this.activityService) {
+      this.activityService = new ActivityService(this.unitOfWork);
+    }
+    return this.activityService;
+  }
+
+  private async logActivity(input: LogActivityInput): Promise<void> {
+    try {
+      await this.getActivityService().logActivity(input);
+    } catch (error) {
+      console.error('Failed to log activity:', error);
+    }
   }
 
   /**
@@ -67,131 +90,155 @@ export class AuthService implements IAuthService {
    * @returns User data and authentication tokens
    * @throws ConflictError if email already exists
    */
-  async register(input: RegisterInput): Promise<RegisterOutput> {
-    // Check if user with email already exists
-    const existingUser = await this.unitOfWork.users.findByEmail(input.email);
-    if (existingUser) {
-      throw new ConflictError('User with this email already exists', {
-        field: 'email',
-        value: input.email,
-      });
-    }
+  // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-return
+  async register(input: RegisterInput, activityContext?: AuthActivityContext): Promise<RegisterOutput> {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return this.unitOfWork.withTransaction(async (uow: UnitOfWork): Promise<RegisterOutput> => {
+      const { ipAddress, userAgent } = activityContext || {};
 
-    // Hash password
-    const passwordHash = await this.passwordService.hash(input.password);
+      const existingUser = await uow.users.findByEmail(input.email);
+      if (existingUser) {
+        throw new ConflictError('User with this email already exists', {
+          field: 'email',
+          value: input.email,
+        });
+      }
 
-    // Create user
-    const newUser = {
-      email: input.email,
-      passwordHash,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      isActive: true,
-      emailVerified: false,
-    };
+      const existingUsername = await uow.users.findByUsername(input.username);
+      if (existingUsername) {
+        throw new ConflictError('User with this username already exists', {
+          field: 'username',
+          value: input.username,
+        });
+      }
 
-    const user = await this.unitOfWork.users.create(newUser);
+      const passwordHash = await this.passwordService.hash(input.password);
 
-    // Generate tokens
-    const tokens = this.pasetoService.createTokenPair({
-      sub: user.id,
-      email: user.email,
-      role: 'user',
-    });
-
-    // Store refresh token session
-    const refreshTokenPayload = this.pasetoService.validateRefreshToken(tokens.refreshToken);
-    if (refreshTokenPayload.valid && refreshTokenPayload.payload) {
-      const session = {
-        userId: user.id,
-        tokenId: refreshTokenPayload.payload.jti,
-        refreshTokenHash: await this.passwordService.hash(tokens.refreshToken),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      const newUser = {
+        email: input.email,
+        username: input.username,
+        passwordHash,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        isActive: true,
+        emailVerified: false,
       };
-      await this.unitOfWork.sessions.create(session);
-    }
 
-    // Return user data and tokens
-    return {
-      user: {
-        id: user.id,
+      const user = await uow.users.create(newUser);
+
+      const tokens = this.pasetoService.createTokenPair({
+        sub: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        isActive: user.isActive,
-        emailVerified: user.emailVerified,
-        createdAt: user.createdAt,
-      },
-      tokens,
-    };
+        role: 'user',
+      });
+
+      const refreshTokenPayload = this.pasetoService.validateRefreshToken(tokens.refreshToken);
+      if (refreshTokenPayload.valid && refreshTokenPayload.payload) {
+        const session = {
+          userId: user.id,
+          token: tokens.refreshToken,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        };
+        await uow.sessions.create(session);
+      }
+
+      await uow.activityLogs.create({
+        userId: user.id,
+        action: 'user.registered',
+        entity: 'users',
+        entityId: user.id,
+        ipAddress,
+        userAgent,
+        details: { email: user.email, username: user.username },
+      });
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          createdAt: user.createdAt,
+        },
+        tokens,
+      };
+    });
   }
 
   /**
    * Authenticate user with email and password
    *
    * Verifies credentials and generates new token pair.
-   * Updates lastLoginAt timestamp on successful authentication.
+   * Implements SINGLE SESSION POLICY: Deletes ALL existing sessions before creating new one.
+   * Uses transaction for user + session + activity operations.
    *
    * @param input - Login credentials
    * @returns User data and authentication tokens
    * @throws AuthenticationError if credentials are invalid
    * @throws ForbiddenError if user account is inactive
    */
-  async login(input: LoginInput): Promise<LoginOutput> {
-    // Find user by email
-    const user = await this.unitOfWork.users.findByEmail(input.email);
-    if (!user) {
-      throw new AuthenticationError('Invalid email or password');
-    }
+  // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-return
+  async login(input: LoginInput, activityContext?: AuthActivityContext): Promise<LoginOutput> {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return this.unitOfWork.withTransaction(async (uow: UnitOfWork): Promise<LoginOutput> => {
+      const { ipAddress, userAgent } = activityContext || {};
 
-    // Check if user is active
-    if (!user.isActive) {
-      throw new ForbiddenError('User account is inactive. Please contact support.');
-    }
+      const user = await uow.users.findByEmail(input.email);
+      if (!user) {
+        throw new AuthenticationError('Invalid email or password');
+      }
 
-    // Verify password
-    const isPasswordValid = await this.passwordService.verify(user.passwordHash, input.password);
-    if (!isPasswordValid) {
-      throw new AuthenticationError('Invalid email or password');
-    }
+      if (user.deletedAt) {
+        throw new ForbiddenError('User account is inactive. Please contact support.');
+      }
 
-    // Update last login
-    await this.unitOfWork.users.update(user.id, {
-      lastLoginAt: new Date(),
-    });
+      const isPasswordValid = await this.passwordService.verify(user.passwordHash, input.password);
+      if (!isPasswordValid) {
+        throw new AuthenticationError('Invalid email or password');
+      }
 
-    // Generate tokens
-    const tokens = this.pasetoService.createTokenPair({
-      sub: user.id,
-      email: user.email,
-      role: 'user',
-    });
+      await uow.users.update(user.id, {
+        lastLoginAt: new Date(),
+      });
 
-    // Store refresh token session
-    const refreshTokenPayload = this.pasetoService.validateRefreshToken(tokens.refreshToken);
-    if (refreshTokenPayload.valid && refreshTokenPayload.payload) {
-      const session = {
-        userId: user.id,
-        tokenId: refreshTokenPayload.payload.jti,
-        refreshTokenHash: await this.passwordService.hash(tokens.refreshToken),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-      };
-      await this.unitOfWork.sessions.create(session);
-    }
+      await uow.sessions.deleteByUserId(user.id);
 
-    // Return user data and tokens
-    return {
-      user: {
-        id: user.id,
+      const tokens = this.pasetoService.createTokenPair({
+        sub: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        isActive: user.isActive,
-        emailVerified: user.emailVerified,
-        lastLoginAt: user.lastLoginAt,
-      },
-      tokens,
-    };
+        role: user.role,
+      });
+
+      const refreshTokenPayload = this.pasetoService.validateRefreshToken(tokens.refreshToken);
+      if (refreshTokenPayload.valid && refreshTokenPayload.payload) {
+        const session = {
+          userId: user.id,
+          token: tokens.refreshToken,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        };
+        await uow.sessions.create(session);
+      }
+
+      await uow.activityLogs.create({
+        userId: user.id,
+        action: 'user.logged_in',
+        entity: 'sessions',
+        ipAddress,
+        userAgent,
+        details: { email: user.email },
+      });
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          lastLoginAt: user.lastLoginAt,
+        },
+        tokens,
+      };
+    });
   }
 
   /**
@@ -207,7 +254,6 @@ export class AuthService implements IAuthService {
    * @throws NotFoundError if session is not found or revoked
    */
   async refreshToken(input: RefreshTokenInput): Promise<RefreshTokenOutput> {
-    // Validate refresh token
     const result = this.pasetoService.validateRefreshToken(input.refreshToken);
     if (!result.valid || !result.payload) {
       throw new InvalidTokenError('Invalid refresh token');
@@ -215,42 +261,36 @@ export class AuthService implements IAuthService {
 
     const payload = result.payload as TokenPayload & { tokenId: string };
 
-    // Check if session exists and is not revoked
     const session = await this.unitOfWork.sessions.findByTokenId(payload.tokenId);
     if (!session) {
       throw new NotFoundError('Session not found or has been revoked');
     }
 
-    if (session.isRevoked) {
+    if (session.revokedAt) {
       throw new InvalidTokenError('Refresh token has been revoked');
     }
 
-    // Check if session has expired
     if (session.expiresAt < new Date()) {
       throw new TokenExpiredError('Refresh token session has expired');
     }
 
-    // Get user
     const user = await this.unitOfWork.users.findById(session.userId);
-    if (!user || !user.isActive) {
+    if (!user || user.deletedAt) {
       throw new ForbiddenError('User account is inactive or does not exist');
     }
 
-    // Generate new tokens
     const tokens = this.pasetoService.createTokenPair({
       sub: user.id,
       email: user.email,
-      role: 'user',
+      role: user.role,
     });
 
-    // Create new session and revoke old one
     const newRefreshTokenPayload = this.pasetoService.validateRefreshToken(tokens.refreshToken);
     if (newRefreshTokenPayload.valid && newRefreshTokenPayload.payload) {
       const newSession = {
         userId: user.id,
-        tokenId: newRefreshTokenPayload.payload.jti,
-        refreshTokenHash: await this.passwordService.hash(tokens.refreshToken),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        token: tokens.refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       };
       await this.unitOfWork.sessions.create(newSession);
       await this.unitOfWork.sessions.revoke(session.id);
@@ -268,18 +308,27 @@ export class AuthService implements IAuthService {
    * @param input - User ID and token ID
    * @throws NotFoundError if session is not found
    */
-  async logout(input: LogoutInput): Promise<void> {
+  async logout(input: LogoutInput, activityContext?: AuthActivityContext): Promise<void> {
+    const { ipAddress, userAgent } = activityContext || {};
+
     const session = await this.unitOfWork.sessions.findByTokenId(input.tokenId);
     if (!session) {
       throw new NotFoundError('Session not found');
     }
 
-    // Verify session belongs to user
     if (session.userId !== input.userId) {
       throw new InvalidTokenError('Session does not belong to user');
     }
 
     await this.unitOfWork.sessions.revoke(session.id);
+
+    await this.logActivity({
+      userId: input.userId,
+      action: 'user.logged_out',
+      entity: 'sessions',
+      ipAddress,
+      userAgent,
+    });
   }
 
   /**

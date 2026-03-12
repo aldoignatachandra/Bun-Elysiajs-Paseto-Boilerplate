@@ -11,6 +11,7 @@ export interface ProductAttributeInput {
 }
 
 export interface ProductVariantInput {
+  name: string;
   sku: string;
   price?: number | null;
   stock?: number;
@@ -27,6 +28,7 @@ export interface ProductAttributeDTO {
 
 export interface ProductVariantDTO {
   id: string;
+  name: string;
   sku: string;
   price: number | null;
   stockQuantity: number;
@@ -84,7 +86,9 @@ export interface CreateProductInput {
 }
 
 export interface UpdateProductInput {
-  id: string;
+  id?: string;
+  currentUserId?: string;
+  isAdmin?: boolean;
   name?: string;
   price?: number;
   stock?: number;
@@ -94,12 +98,16 @@ export interface UpdateProductInput {
 
 export interface GetProductInput {
   id: string;
+  currentUserId?: string;
+  isAdmin?: boolean;
   includeDeleted?: boolean;
   includeVariants?: boolean;
 }
 
 export interface UpdateStockInput {
   id: string;
+  currentUserId?: string;
+  isAdmin?: boolean;
   stock: number;
 }
 

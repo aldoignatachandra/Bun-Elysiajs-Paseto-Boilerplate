@@ -9,6 +9,7 @@ import type { TokenPair } from '../../core/paseto/token.types';
 
 export interface RegisterInput {
   email: string;
+  username: string;
   password: string;
   firstName: string;
   lastName: string;
@@ -18,10 +19,8 @@ export interface RegisterOutput {
   user: {
     id: string;
     email: string;
-    firstName: string;
-    lastName: string;
-    isActive: boolean;
-    emailVerified: boolean;
+    name: string | null;
+    role: string;
     createdAt: Date;
   };
   tokens: TokenPair;
@@ -36,10 +35,8 @@ export interface LoginOutput {
   user: {
     id: string;
     email: string;
-    firstName: string;
-    lastName: string;
-    isActive: boolean;
-    emailVerified: boolean;
+    name: string | null;
+    role: string;
     lastLoginAt: Date | null;
   };
   tokens: TokenPair;

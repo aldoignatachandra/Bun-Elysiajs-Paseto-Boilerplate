@@ -54,6 +54,7 @@ export class AuthController {
 
       const result = await this.authService.register({
         email: dto.email,
+        username: dto.username,
         password: dto.password,
         firstName: dto.firstName,
         lastName: dto.lastName,
@@ -176,16 +177,21 @@ export class AuthController {
       // The user is already authenticated by the middleware
       // Return user data from context
       // In a real implementation, you might fetch fresh data from the database
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const user = authContext.user;
       return {
-        id: authContext.user.id,
-        email: authContext.user.email || '',
-        firstName: authContext.user.firstName || '',
-        lastName: authContext.user.lastName || '',
-        isActive: authContext.user.isActive ?? true,
-        emailVerified: authContext.user.emailVerified ?? false,
-        createdAt: authContext.user.createdAt || new Date(),
-        lastLoginAt: authContext.user.lastLoginAt || null,
-        updatedAt: authContext.user.updatedAt || new Date(),
+        id: user?.id ?? '',
+        email: user?.email ?? '',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        name: user?.name ?? null,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        role: user?.role ?? 'user',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        createdAt: user?.createdAt ?? new Date(),
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        lastLoginAt: user?.lastLoginAt ?? null,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        updatedAt: user?.updatedAt ?? new Date(),
       };
     } catch (error) {
       if (error instanceof UnauthorizedError) {

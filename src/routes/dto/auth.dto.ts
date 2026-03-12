@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { emailSchema, nameSchema, passwordSchema } from '../../core/validation/common.schema';
+import { emailSchema, nameSchema, passwordSchema, usernameSchema } from '../../core/validation/common.schema';
 
 export const registerRequestSchema = z
   .object({
     email: emailSchema,
+    username: usernameSchema,
     password: passwordSchema,
     firstName: nameSchema.optional(),
     lastName: nameSchema.optional(),
@@ -51,6 +52,7 @@ export type ChangePasswordRequestDTO = z.infer<typeof changePasswordRequestSchem
 
 export const registerSchema = z.object({
   email: emailSchema,
+  username: usernameSchema,
   password: passwordSchema,
   firstName: nameSchema,
   lastName: nameSchema,
@@ -74,10 +76,8 @@ export type RefreshTokenDTO = z.infer<typeof refreshTokenSchema>;
 export const userResponseSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
-  firstName: z.string(),
-  lastName: z.string(),
-  isActive: z.boolean(),
-  emailVerified: z.boolean(),
+  name: z.string().nullable(),
+  role: z.string(),
   createdAt: z.date(),
   lastLoginAt: z.date().nullable(),
   updatedAt: z.date(),
@@ -97,10 +97,8 @@ export const registerResponseSchema = z.object({
   user: z.object({
     id: z.string().uuid(),
     email: z.string().email(),
-    firstName: z.string(),
-    lastName: z.string(),
-    isActive: z.boolean(),
-    emailVerified: z.boolean(),
+    name: z.string().nullable(),
+    role: z.string(),
     createdAt: z.date(),
   }),
   tokens: tokenResponseSchema,
@@ -112,10 +110,8 @@ export const loginResponseSchema = z.object({
   user: z.object({
     id: z.string().uuid(),
     email: z.string().email(),
-    firstName: z.string(),
-    lastName: z.string(),
-    isActive: z.boolean(),
-    emailVerified: z.boolean(),
+    name: z.string().nullable(),
+    role: z.string(),
     lastLoginAt: z.date().nullable(),
   }),
   tokens: tokenResponseSchema,

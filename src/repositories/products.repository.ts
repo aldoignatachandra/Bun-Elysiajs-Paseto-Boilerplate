@@ -10,6 +10,7 @@ export interface ProductAttributePayload {
 }
 
 export interface ProductVariantPayload {
+  name: string;
   sku: string;
   price?: number | null;
   stock?: number;
@@ -36,6 +37,7 @@ export interface ProductView {
   }>;
   variants?: Array<{
     id: string;
+    name: string;
     sku: string;
     price: number | null;
     stockQuantity: number;
@@ -295,18 +297,19 @@ export class ProductRepository extends CRUDRepository<Product, string> {
       const attributes = attributeRows.map(attribute => ({
         id: attribute.id,
         name: attribute.name,
-        values: attribute.values,
+        values: attribute.values as string[],
         displayOrder: attribute.displayOrder,
       }));
 
       const variants = variantRows.map(variant => ({
         id: variant.id,
+        name: variant.name,
         sku: variant.sku,
         price: variant.price === null ? null : toNumber(variant.price),
         stockQuantity: variant.stockQuantity,
         availableStock: variant.stockQuantity - variant.stockReserved,
         isActive: variant.isActive,
-        attributeValues: variant.attributeValues,
+        attributeValues: variant.attributeValues as Record<string, string>,
       }));
 
       const variantPrices = variants.map(variant => variant.price).filter((price): price is number => typeof price === 'number' && price > 0);
@@ -364,7 +367,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
           attributes = inserted.map(attribute => ({
             id: attribute.id,
             name: attribute.name,
-            values: attribute.values,
+            values: attribute.values as string[],
             displayOrder: attribute.displayOrder,
           }));
         }
@@ -382,6 +385,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
             .insert(productVariants)
             .values(
               data.variants.map(variant => ({
+                name: variant.name,
                 productId: product.id,
                 sku: variant.sku,
                 price: variant.price === undefined || variant.price === null ? null : toDecimal(variant.price),
@@ -394,12 +398,13 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
           variants = inserted.map(variant => ({
             id: variant.id,
+            name: variant.name,
             sku: variant.sku,
             price: variant.price === null ? null : toNumber(variant.price),
             stockQuantity: variant.stockQuantity,
             availableStock: variant.stockQuantity - variant.stockReserved,
             isActive: variant.isActive,
-            attributeValues: variant.attributeValues,
+            attributeValues: variant.attributeValues as Record<string, string>,
           }));
         }
 
@@ -488,7 +493,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
             attributes = insertedAttributes.map(attribute => ({
               id: attribute.id,
               name: attribute.name,
-              values: attribute.values,
+              values: attribute.values as string[],
               displayOrder: attribute.displayOrder,
             }));
           }
@@ -501,7 +506,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
           attributes = existingAttributes.map(attribute => ({
             id: attribute.id,
             name: attribute.name,
-            values: attribute.values,
+            values: attribute.values as string[],
             displayOrder: attribute.displayOrder,
           }));
         }
@@ -514,6 +519,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
           const existingVariantMap = new Map(existingVariants.map(variant => [variant.sku, variant]));
           const processedSkus = new Set<string>();
           const variantsToInsert: Array<{
+            name: string;
             productId: string;
             sku: string;
             price: string | null;
@@ -545,6 +551,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
               processedSkus.add(variant.sku);
             } else {
               variantsToInsert.push({
+                name: variant.name,
                 productId: id,
                 sku: variant.sku,
                 price: variant.price === undefined || variant.price === null ? null : toDecimal(variant.price),
@@ -579,12 +586,13 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
           variants = finalVariants.map(variant => ({
             id: variant.id,
+            name: variant.name,
             sku: variant.sku,
             price: variant.price === null ? null : toNumber(variant.price),
             stockQuantity: variant.stockQuantity,
             availableStock: variant.stockQuantity - variant.stockReserved,
             isActive: variant.isActive,
-            attributeValues: variant.attributeValues,
+            attributeValues: variant.attributeValues as Record<string, string>,
           }));
         } else {
           const existingVariants = await tx
@@ -594,12 +602,13 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
           variants = existingVariants.map(variant => ({
             id: variant.id,
+            name: variant.name,
             sku: variant.sku,
             price: variant.price === null ? null : toNumber(variant.price),
             stockQuantity: variant.stockQuantity,
             availableStock: variant.stockQuantity - variant.stockReserved,
             isActive: variant.isActive,
-            attributeValues: variant.attributeValues,
+            attributeValues: variant.attributeValues as Record<string, string>,
           }));
         }
 

@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, isNotNull, isNull, or } from 'drizzle-orm';
+import { and, desc, eq, ilike, isNotNull, isNull, or, count, gte } from 'drizzle-orm';
 import { users } from '../database/schema';
 import type { User, NewUser } from '../database/schema';
 import { CRUDRepository, type FindOptions } from './base.repository';
@@ -21,7 +21,7 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
       if (options.search) {
         conditions.push(
-          or(ilike(users.email, `%${options.search}%`), ilike(users.firstName, `%${options.search}%`), ilike(users.lastName, `%${options.search}%`))
+          or(ilike(users.email, `%${options.search}%`), ilike(users.username, `%${options.search}%`), ilike(users.name, `%${options.search}%`))
         );
       }
 
@@ -84,6 +84,41 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
     }
   }
 
+  async findByUsername(username: string): Promise<User | null> {
+    try {
+      const result = await this.db.select().from(users).where(eq(users.username, username)).limit(1);
+      return result[0] || null;
+    } catch (error) {
+      this.logError('findByUsername', error);
+      return null;
+    }
+  }
+
+  async count(includeDeleted = false): Promise<number> {
+    try {
+      const result = includeDeleted
+        ? await this.db.select({ count: count() }).from(users)
+        : await this.db.select({ count: count() }).from(users).where(isNull(users.deletedAt));
+      return result[0]?.count ?? 0;
+    } catch (error) {
+      this.logError('count', error);
+      return 0;
+    }
+  }
+
+  async countSince(date: Date): Promise<number> {
+    try {
+      const result = await this.db
+        .select({ count: count() })
+        .from(users)
+        .where(and(isNull(users.deletedAt), gte(users.createdAt, date)));
+      return result[0]?.count ?? 0;
+    } catch (error) {
+      this.logError('countSince', error);
+      return 0;
+    }
+  }
+
   async create(data: NewUser): Promise<User> {
     try {
       const result = await this.db.insert(users).values(data).returning();
@@ -110,7 +145,11 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async setActive(id: string, active: boolean): Promise<boolean> {
     try {
-      const result = await this.db.update(users).set({ isActive: active, updatedAt: new Date() }).where(eq(users.id, id)).returning();
+      const result = await this.db
+        .update(users)
+        .set({ deletedAt: active ? null : new Date(), updatedAt: new Date() })
+        .where(eq(users.id, id))
+        .returning();
 
       return result.length > 0;
     } catch (error) {
@@ -123,7 +162,7 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
     try {
       const result = await this.db
         .update(users)
-        .set({ deletedAt: new Date(), isActive: false, updatedAt: new Date() })
+        .set({ deletedAt: new Date(), updatedAt: new Date() })
         .where(and(eq(users.id, id), isNull(users.deletedAt)))
         .returning();
 
@@ -136,7 +175,7 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async restore(id: string): Promise<boolean> {
     try {
-      const result = await this.db.update(users).set({ deletedAt: null, isActive: true, updatedAt: new Date() }).where(eq(users.id, id)).returning();
+      const result = await this.db.update(users).set({ deletedAt: null, updatedAt: new Date() }).where(eq(users.id, id)).returning();
 
       return result.length > 0;
     } catch (error) {
@@ -152,15 +191,6 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
     } catch (error) {
       this.logError('delete', error);
       return false;
-    }
-  }
-
-  protected async count(): Promise<number> {
-    try {
-      const rows = await this.db.select({ id: users.id }).from(users).where(isNull(users.deletedAt));
-      return rows.length;
-    } catch (error) {
-      return this.handleRepositoryError('count', error, 0);
     }
   }
 }

@@ -1,17 +1,17 @@
-import { eq, and, lt } from 'drizzle-orm';
-import { sessions } from '../database/schema';
-import type { Session, NewSession } from '../database/schema';
+import { eq, and, lt, isNull } from 'drizzle-orm';
+import { userSessions } from '../database/schema';
+import type { UserSession, NewUserSession } from '../database/schema';
 import { CRUDRepository } from './base.repository';
 import type { ISessionRepository } from './unit-of-work';
 
-export class SessionRepository extends CRUDRepository<Session, string> implements ISessionRepository {
+export class SessionRepository extends CRUDRepository<UserSession, string> implements ISessionRepository {
   get tableName(): string {
-    return 'sessions';
+    return 'user_sessions';
   }
 
-  async findById(id: string): Promise<Session | null> {
+  async findById(id: string): Promise<UserSession | null> {
     try {
-      const result = await this.db.select().from(sessions).where(eq(sessions.id, id)).limit(1);
+      const result = await this.db.select().from(userSessions).where(eq(userSessions.id, id)).limit(1);
       return result[0] || null;
     } catch (error) {
       this.logError('findById', error);
@@ -19,9 +19,19 @@ export class SessionRepository extends CRUDRepository<Session, string> implement
     }
   }
 
-  async findByTokenId(tokenId: string): Promise<Session | null> {
+  async findByToken(token: string): Promise<UserSession | null> {
     try {
-      const result = await this.db.select().from(sessions).where(eq(sessions.tokenId, tokenId)).limit(1);
+      const result = await this.db.select().from(userSessions).where(eq(userSessions.token, token)).limit(1);
+      return result[0] || null;
+    } catch (error) {
+      this.logError('findByToken', error);
+      return null;
+    }
+  }
+
+  async findByTokenId(tokenId: string): Promise<UserSession | null> {
+    try {
+      const result = await this.db.select().from(userSessions).where(eq(userSessions.id, tokenId)).limit(1);
       return result[0] || null;
     } catch (error) {
       this.logError('findByTokenId', error);
@@ -29,9 +39,19 @@ export class SessionRepository extends CRUDRepository<Session, string> implement
     }
   }
 
-  async create(data: NewSession): Promise<Session> {
+  async findByUserId(userId: string): Promise<UserSession[]> {
     try {
-      const result = await this.db.insert(sessions).values(data).returning();
+      const result = await this.db.select().from(userSessions).where(eq(userSessions.userId, userId));
+      return result;
+    } catch (error) {
+      this.logError('findByUserId', error);
+      return [];
+    }
+  }
+
+  async create(data: NewUserSession): Promise<UserSession> {
+    try {
+      const result = await this.db.insert(userSessions).values(data).returning();
       return result[0];
     } catch (error) {
       this.logError('create', error);
@@ -41,7 +61,11 @@ export class SessionRepository extends CRUDRepository<Session, string> implement
 
   async revoke(id: string): Promise<boolean> {
     try {
-      const result = await this.db.update(sessions).set({ isRevoked: true, updatedAt: new Date() }).where(eq(sessions.id, id)).returning();
+      const result = await this.db
+        .update(userSessions)
+        .set({ revokedAt: new Date(), updatedAt: new Date() })
+        .where(eq(userSessions.id, id))
+        .returning();
       return result.length > 0;
     } catch (error) {
       this.logError('revoke', error);
@@ -49,11 +73,35 @@ export class SessionRepository extends CRUDRepository<Session, string> implement
     }
   }
 
+  async revokeAllForUser(userId: string): Promise<boolean> {
+    try {
+      const result = await this.db
+        .update(userSessions)
+        .set({ revokedAt: new Date(), updatedAt: new Date() })
+        .where(and(eq(userSessions.userId, userId), isNull(userSessions.revokedAt)))
+        .returning();
+      return result.length > 0;
+    } catch (error) {
+      this.logError('revokeAllForUser', error);
+      return false;
+    }
+  }
+
+  async deleteByUserId(userId: string): Promise<boolean> {
+    try {
+      const result = await this.db.delete(userSessions).where(eq(userSessions.userId, userId)).returning();
+      return result.length > 0;
+    } catch (error) {
+      this.logError('deleteByUserId', error);
+      return false;
+    }
+  }
+
   async deleteExpired(): Promise<number> {
     try {
       const result = await this.db
-        .delete(sessions)
-        .where(and(lt(sessions.expiresAt, new Date()), eq(sessions.isRevoked, false)))
+        .delete(userSessions)
+        .where(and(lt(userSessions.expiresAt, new Date()), isNull(userSessions.revokedAt)))
         .returning();
       return result.length;
     } catch (error) {
@@ -62,12 +110,12 @@ export class SessionRepository extends CRUDRepository<Session, string> implement
     }
   }
 
-  async update(id: string, data: Partial<Session>): Promise<Session | null> {
+  async update(id: string, data: Partial<UserSession>): Promise<UserSession | null> {
     try {
       const result = await this.db
-        .update(sessions)
+        .update(userSessions)
         .set({ ...data, updatedAt: new Date() })
-        .where(eq(sessions.id, id))
+        .where(eq(userSessions.id, id))
         .returning();
       return result[0] || null;
     } catch (error) {
@@ -78,7 +126,7 @@ export class SessionRepository extends CRUDRepository<Session, string> implement
 
   async delete(id: string): Promise<boolean> {
     try {
-      const result = await this.db.delete(sessions).where(eq(sessions.id, id)).returning();
+      const result = await this.db.delete(userSessions).where(eq(userSessions.id, id)).returning();
       return result.length > 0;
     } catch (error) {
       this.logError('delete', error);
@@ -88,7 +136,7 @@ export class SessionRepository extends CRUDRepository<Session, string> implement
 
   protected async count(): Promise<number> {
     try {
-      const result = await this.db.select({ count: sessions.id }).from(sessions);
+      const result = await this.db.select({ count: userSessions.id }).from(userSessions);
       return result.length;
     } catch (error) {
       return this.handleRepositoryError('count', error, 0);
