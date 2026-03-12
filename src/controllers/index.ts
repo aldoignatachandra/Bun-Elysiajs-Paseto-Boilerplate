@@ -9,5 +9,4 @@
 
 export { AuthController } from './auth.controller';
 export { UsersController } from './users.controller';
-// Future controllers will be exported here
-// export { ProductsController } from './products.controller';
+export { ProductsController } from './products.controller';

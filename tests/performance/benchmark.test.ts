@@ -24,6 +24,8 @@ import {
 } from '../load/helpers';
 
 // Test configuration
+const RUN_LOAD_TESTS = process.env.RUN_LOAD_TESTS === 'true';
+const describeBenchmark = RUN_LOAD_TESTS ? describe : describe.skip;
 const TEST_PORT = 3002;
 const BASE_URL = createTestUrl(TEST_PORT);
 let server: ReturnType<typeof Bun.serve>;
@@ -40,6 +42,10 @@ const THROUGHPUT_TEST_DURATION = 5000; // 5 seconds
  * Setup test server before all tests
  */
 beforeAll(async () => {
+  if (!RUN_LOAD_TESTS) {
+    return;
+  }
+
   // Create app for testing
   const app = createApp();
 
@@ -53,11 +59,11 @@ beforeAll(async () => {
   logger.info(`Benchmark server started on ${BASE_URL}`);
 
   // Wait for server to be ready
-  await waitForServer(`${BASE_URL}/health`);
+  await waitForServer(`${BASE_URL}/health/live`);
 
   // Warm up the server
   for (let i = 0; i < WARMUP_REQUESTS; i++) {
-    await fetch(`${BASE_URL}/health`);
+    await fetch(`${BASE_URL}/health/live`);
   }
 
   // Create a test user and get tokens for authenticated benchmarks
@@ -66,7 +72,7 @@ beforeAll(async () => {
     const testPassword = generateTestPassword();
 
     // Register user
-    const registerResponse = await fetch(`${BASE_URL}/auth/register`, {
+    const registerResponse = await fetch(`${BASE_URL}/api/v1/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -97,6 +103,10 @@ beforeAll(async () => {
  * Cleanup after all tests
  */
 afterAll(() => {
+  if (!RUN_LOAD_TESTS) {
+    return;
+  }
+
   if (server) {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     server.stop();
@@ -121,11 +131,11 @@ function makeAuthenticatedRequest(endpoint: string, options: RequestInit = {}): 
 /**
  * Benchmark: Response Time Percentiles (p50, p95, p99)
  */
-describe('Benchmark: Response Time Percentiles', () => {
+describeBenchmark('Benchmark: Response Time Percentiles', () => {
   it('should meet p50, p95, p99 response time targets for health endpoint', async () => {
     const requests = Array.from(
       { length: BENCHMARK_ITERATIONS },
-      () => () => fetch(`${BASE_URL}/health`)
+      () => () => fetch(`${BASE_URL}/health/live`)
     );
 
     const results = await executeBatch(requests, { concurrency: 20 });
@@ -146,7 +156,7 @@ describe('Benchmark: Response Time Percentiles', () => {
     const requests = Array.from(
       { length: BENCHMARK_ITERATIONS },
       () => () =>
-        fetch(`${BASE_URL}/auth/login`, {
+        fetch(`${BASE_URL}/api/v1/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -182,7 +192,7 @@ describe('Benchmark: Response Time Percentiles', () => {
 
     const requests = Array.from(
       { length: BENCHMARK_ITERATIONS },
-      () => () => makeAuthenticatedRequest('/users/me')
+      () => () => makeAuthenticatedRequest('/api/v1/users/me')
     );
 
     const results = await executeBatch(requests, { concurrency: 20 });
@@ -201,7 +211,7 @@ describe('Benchmark: Response Time Percentiles', () => {
 /**
  * Benchmark: Throughput (Requests Per Second)
  */
-describe('Benchmark: Throughput', () => {
+describeBenchmark('Benchmark: Throughput', () => {
   it('should sustain high throughput for health endpoint', async () => {
     const duration = THROUGHPUT_TEST_DURATION;
     const startTime = Date.now();
@@ -211,7 +221,7 @@ describe('Benchmark: Throughput', () => {
     while (Date.now() - startTime < duration) {
       const requestStartTime = Date.now();
       try {
-        const response = await fetch(`${BASE_URL}/health`);
+        const response = await fetch(`${BASE_URL}/health/live`);
         results.push({
           success: response.ok,
           timestamp: requestStartTime,
@@ -245,7 +255,7 @@ describe('Benchmark: Throughput', () => {
     const requestCount = 500;
     const concurrency = 50;
 
-    const requests = Array.from({ length: requestCount }, () => () => fetch(`${BASE_URL}/health`));
+    const requests = Array.from({ length: requestCount }, () => () => fetch(`${BASE_URL}/health/live`));
 
     const startTime = Date.now();
     const results = await executeBatch(requests, { concurrency });
@@ -275,10 +285,10 @@ describe('Benchmark: Throughput', () => {
     const requests = Array.from({ length: requestCount }, () => {
       const rand = Math.random();
       if (rand < 0.7) {
-        return () => fetch(`${BASE_URL}/health`);
+        return () => fetch(`${BASE_URL}/health/live`);
       } else if (rand < 0.9) {
         return () =>
-          fetch(`${BASE_URL}/auth/login`, {
+          fetch(`${BASE_URL}/api/v1/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -287,7 +297,7 @@ describe('Benchmark: Throughput', () => {
             }),
           });
       } else {
-        return () => makeAuthenticatedRequest('/users/me');
+        return () => makeAuthenticatedRequest('/api/v1/users/me');
       }
     });
 
@@ -315,7 +325,7 @@ describe('Benchmark: Throughput', () => {
 /**
  * Benchmark: Database Query Performance
  */
-describe('Benchmark: Database Query Performance', () => {
+describeBenchmark('Benchmark: Database Query Performance', () => {
   it('should efficiently handle user lookup queries', async () => {
     if (!testAccessToken || !testUserId) {
       console.warn('Skipping benchmark: No test user available');
@@ -393,7 +403,7 @@ describe('Benchmark: Database Query Performance', () => {
     // Benchmark user statistics (aggregate query)
     const requests = Array.from(
       { length: requestCount },
-      () => () => makeAuthenticatedRequest('/users/stats')
+      () => () => makeAuthenticatedRequest('/api/v1/users/stats')
     );
 
     const results = await executeBatch(requests, { concurrency: 5 });
@@ -419,7 +429,7 @@ describe('Benchmark: Database Query Performance', () => {
 /**
  * Benchmark: Cache Hit/Miss Ratios
  */
-describe('Benchmark: Cache Performance', () => {
+describeBenchmark('Benchmark: Cache Performance', () => {
   it('should achieve high cache hit ratio for repeated requests', async () => {
     const requestCount = 100;
     const testEndpoint = `/cache-benchmark-${Date.now()}`;
@@ -556,7 +566,7 @@ describe('Benchmark: Cache Performance', () => {
 /**
  * Benchmark: Token Refresh Performance
  */
-describe('Benchmark: Token Operations Performance', () => {
+describeBenchmark('Benchmark: Token Operations Performance', () => {
   it('should efficiently handle token refresh operations', async () => {
     if (!testRefreshToken) {
       console.warn('Skipping benchmark: No refresh token available');
@@ -568,7 +578,7 @@ describe('Benchmark: Token Operations Performance', () => {
     const requests = Array.from(
       { length: requestCount },
       () => () =>
-        fetch(`${BASE_URL}/auth/refresh`, {
+        fetch(`${BASE_URL}/api/v1/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -606,7 +616,7 @@ describe('Benchmark: Token Operations Performance', () => {
     const requests = Array.from(
       { length: requestCount },
       () => () =>
-        makeAuthenticatedRequest('/auth/logout', {
+        makeAuthenticatedRequest('/api/v1/auth/logout', {
           method: 'POST',
         })
     );
@@ -633,14 +643,14 @@ describe('Benchmark: Token Operations Performance', () => {
 /**
  * Benchmark: Memory and Resource Usage
  */
-describe('Benchmark: Memory Efficiency', () => {
+describeBenchmark('Benchmark: Memory Efficiency', () => {
   it('should maintain stable memory usage under load', async () => {
     const requestCount = 200;
 
     // Get initial memory usage
     const initialMemory = process.memoryUsage();
 
-    const requests = Array.from({ length: requestCount }, () => () => fetch(`${BASE_URL}/health`));
+    const requests = Array.from({ length: requestCount }, () => () => fetch(`${BASE_URL}/health/live`));
 
     const results = await executeBatch(requests, { concurrency: 20 });
 

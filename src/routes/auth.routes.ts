@@ -1,181 +1,195 @@
-/**
- * Authentication Routes
- *
- * Defines all authentication-related API endpoints.
- * Uses Elysia framework with type-safe route handlers.
- *
- * Features:
- * - User registration
- * - User login
- * - Token refresh
- * - User logout (requires authentication)
- * - Get current user (requires authentication)
- * - Rate limiting on all endpoints
- * - Zod validation for all inputs
- * - Swagger/OpenAPI documentation
- *
- * @module AuthRoutes
- */
-
 import type { Elysia } from 'elysia';
+import { z } from 'zod';
 import type { PasetoService } from '../core/paseto/paseto.service';
 import type { AuthService } from '../services/auth.service';
-import { z } from 'zod';
+import type { UsersService } from '../services/users.service';
 import { AuthController } from '../controllers/auth.controller';
+import { UsersController } from '../controllers/users.controller';
 import { requireAuth } from '../middlewares/auth.middleware';
-import { rateLimit } from '../middlewares/rate-limit.middleware';
-import {
-  registerSchema,
-  loginSchema,
-  refreshTokenSchema,
-  registerResponseSchema,
-  loginResponseSchema,
-  refreshTokenResponseSchema,
-  meResponseSchema,
-  errorResponseSchema,
-} from './dto/auth.dto';
+import { enforceRateLimit } from '../middlewares/rate-limit.middleware';
+import { successResponse } from '../core/http/response';
 
-/**
- * Create authentication routes
- *
- * Sets up all authentication endpoints with proper middleware,
- * validation, and documentation.
- *
- * @param app - Elysia instance
- * @param authService - Authentication service instance
- * @param pasetoService - PASETO service instance
- * @returns Configured Elysia instance with auth routes
- */
+const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+  name: z.string().min(1).optional(),
+}).refine(value => Boolean((value.firstName && value.lastName) || value.name), {
+  message: 'firstName and lastName or name is required',
+});
+
+const loginSchema = z.object({
+  email: z.string().min(1),
+  password: z.string().min(1),
+});
+
+const refreshSchema = z
+  .object({
+    token: z.string().optional(),
+    refreshToken: z.string().optional(),
+  })
+  .refine(value => Boolean(value.token || value.refreshToken), {
+    message: 'token or refreshToken is required',
+  });
+
+const changePasswordSchema = z
+  .object({
+    old_password: z.string().optional(),
+    new_password: z.string().optional(),
+    currentPassword: z.string().optional(),
+    newPassword: z.string().optional(),
+  })
+  .refine(value => Boolean(value.old_password || value.currentPassword), {
+    message: 'old_password or currentPassword is required',
+  })
+  .refine(value => Boolean(value.new_password || value.newPassword), {
+    message: 'new_password or newPassword is required',
+  });
+
 export function createAuthRoutes(
   app: Elysia,
   authService: AuthService,
+  usersService: UsersService,
   pasetoService: PasetoService
 ): Elysia {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const authController = new AuthController(authService, pasetoService as any);
+  const usersController = new UsersController(usersService);
+
+  const authLimiter = enforceRateLimit({
+    maxRequests: 10,
+    window: 60,
+    strategy: 'ip',
+  });
+
+  const protectedLimiter = enforceRateLimit({
+    maxRequests: 30,
+    window: 60,
+    strategy: 'user_or_ip',
+  });
+
+  const auth = requireAuth(pasetoService, authService);
 
   return app.group('/auth', app =>
     app
-      // POST /auth/register - Register a new user
       .post(
         '/register',
-        async ({ body }) => {
-          return await authController.register(body as never);
+        async ctx => {
+          const firstName = ctx.body.firstName || ctx.body.name?.split(' ')[0] || 'User';
+          const lastName = ctx.body.lastName || ctx.body.name?.split(' ').slice(1).join(' ') || '';
+          const result = await authController.register({
+            email: ctx.body.email,
+            password: ctx.body.password,
+            firstName,
+            lastName,
+          });
+          const data = {
+            user: result.user,
+            token: result.tokens.accessToken,
+            accessToken: result.tokens.accessToken,
+            refresh_token: result.tokens.refreshToken,
+            refreshToken: result.tokens.refreshToken,
+            expires_in: result.tokens.expiresIn,
+            expiresIn: result.tokens.expiresIn,
+          };
+          ctx.set.status = 201;
+          return successResponse(ctx.request, data);
         },
         {
+          beforeHandle: [authLimiter],
           body: registerSchema,
-          response: {
-            200: registerResponseSchema,
-            400: errorResponseSchema,
-            409: errorResponseSchema,
-            422: errorResponseSchema,
-            500: errorResponseSchema,
-          },
-          detail: {
-            summary: 'Register a new user',
-            description: 'Creates a new user account with the provided credentials',
-            tags: ['Authentication'],
-            security: [],
-          },
         }
       )
-      // Apply rate limiting to auth endpoints
-      .derive(() => rateLimit({ maxRequests: 10, window: 60 })(app))
-      // POST /auth/login - User login
       .post(
         '/login',
-        async ({ body }) => {
-          return await authController.login(body as never);
+        async ctx => {
+          const result = await authController.login(ctx.body);
+          const data = {
+            user: result.user,
+            token: result.tokens.accessToken,
+            accessToken: result.tokens.accessToken,
+            refresh_token: result.tokens.refreshToken,
+            refreshToken: result.tokens.refreshToken,
+            expires_in: result.tokens.expiresIn,
+            expiresIn: result.tokens.expiresIn,
+          };
+          return successResponse(ctx.request, data);
         },
         {
+          beforeHandle: [authLimiter],
           body: loginSchema,
-          response: {
-            200: loginResponseSchema,
-            400: errorResponseSchema,
-            401: errorResponseSchema,
-            422: errorResponseSchema,
-            500: errorResponseSchema,
-          },
-          detail: {
-            summary: 'User login',
-            description: 'Authenticates a user with email and password',
-            tags: ['Authentication'],
-            security: [],
-          },
         }
       )
-      // POST /auth/refresh - Refresh access token
       .post(
         '/refresh',
-        async ({ body }) => {
-          return await authController.refreshToken(body as never);
+        async ctx => {
+          const result = await authController.refreshToken({
+            refreshToken: ctx.body.token || ctx.body.refreshToken || '',
+          });
+          const data = {
+            token: result.tokens.accessToken,
+            accessToken: result.tokens.accessToken,
+            refresh_token: result.tokens.refreshToken,
+            refreshToken: result.tokens.refreshToken,
+            expires_in: result.tokens.expiresIn,
+            expiresIn: result.tokens.expiresIn,
+          };
+          return successResponse(ctx.request, data);
         },
         {
-          body: refreshTokenSchema,
-          response: {
-            200: refreshTokenResponseSchema,
-            400: errorResponseSchema,
-            401: errorResponseSchema,
-            500: errorResponseSchema,
-          },
-          detail: {
-            summary: 'Refresh access token',
-            description: 'Refreshes an access token using a valid refresh token',
-            tags: ['Authentication'],
-            security: [],
-          },
+          beforeHandle: [authLimiter],
+          body: refreshSchema,
         }
       )
-      // POST /auth/logout - User logout (requires authentication)
       .post(
         '/logout',
-        async ({ user, tokenId }) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          return await authController.logout({ user, tokenId });
+        async ctx => {
+          const data = await authController.logout({
+            user: ctx.user,
+            tokenId: ctx.tokenId,
+          });
+          return successResponse(ctx.request, data);
         },
         {
-          beforeHandle: [
-            // @ts-expect-error - requireAuth adds user and tokenId to context
-            requireAuth(pasetoService, authService),
-          ],
-          response: {
-            200: z.object({
-              message: z.string(),
-            }),
-            401: errorResponseSchema,
-            500: errorResponseSchema,
-          },
-          detail: {
-            summary: 'User logout',
-            description: 'Logs out the current user and revokes their refresh token',
-            tags: ['Authentication'],
-            security: [{ bearerAuth: [] }],
-          },
+          beforeHandle: [auth, protectedLimiter],
         }
       )
-      // GET /auth/me - Get current user (requires authentication)
       .get(
         '/me',
-        async ({ user, tokenId }) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          return await authController.me({ user, tokenId });
+        async ctx => {
+          const data = await authController.me({
+            user: ctx.user,
+            tokenId: ctx.tokenId,
+          });
+          return successResponse(ctx.request, data);
         },
         {
-          beforeHandle: [
-            // @ts-expect-error - requireAuth adds user and tokenId to context
-            requireAuth(pasetoService, authService),
-          ],
-          response: {
-            200: meResponseSchema,
-            401: errorResponseSchema,
-            500: errorResponseSchema,
-          },
-          detail: {
-            summary: 'Get current user',
-            description: 'Returns the currently authenticated user',
-            tags: ['Authentication'],
-            security: [{ bearerAuth: [] }],
-          },
+          beforeHandle: [auth, protectedLimiter],
+        }
+      )
+      .post(
+        '/change-password',
+        async ctx => {
+          const oldPassword = ctx.body.old_password || ctx.body.currentPassword || '';
+          const newPassword = ctx.body.new_password || ctx.body.newPassword || '';
+
+          const data = await usersController.changePassword(
+            {
+              currentPassword: oldPassword,
+              newPassword,
+            },
+            {
+              user: ctx.user,
+              tokenId: ctx.tokenId,
+            }
+          );
+
+          return successResponse(ctx.request, data);
+        },
+        {
+          beforeHandle: [auth, protectedLimiter],
+          body: changePasswordSchema,
         }
       )
   );

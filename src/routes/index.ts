@@ -9,4 +9,4 @@
 
 export { createAuthRoutes } from './auth.routes';
 export { createUsersRoutes } from './users.routes';
-export { createUploadRoutes } from './upload.routes';
+export { createProductsRoutes } from './products.routes';

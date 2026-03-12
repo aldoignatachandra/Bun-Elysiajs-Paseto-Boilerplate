@@ -1,39 +1,5 @@
-/**
- * Users Controller
- *
- * Handles HTTP requests for user management operations.
- * Delegates business logic to the UsersService.
- *
- * Features:
- * - Get current user profile
- * - Update current user profile
- * - Change password
- * - List users (paginated)
- * - Get user by ID
- * - Update user (admin)
- * - Delete user (admin)
- * - Get user statistics
- *
- * @module UsersController
- */
-
 import type { UsersService } from '../services/users.service';
 import type { AuthContext } from '../middlewares/auth.middleware';
-import type {
-  UpdateProfileDTO,
-  UpdatePasswordDTO,
-  GetUsersQueryDTO,
-  CreateUserDTO,
-  UpdateUserDTO,
-  UpdateProfileResponse,
-  UpdatePasswordResponse,
-  UsersListResponse,
-  CreateUserResponse,
-  UpdateUserResponse,
-  DeleteUserResponse,
-  UserStatsResponse,
-  UserResponse,
-} from '../routes/dto/users.dto';
 import { logger } from '../core/logging/logger';
 import {
   NotFoundError,
@@ -41,35 +7,21 @@ import {
   UnauthorizedError,
   BadRequestError,
   InternalServerError,
+  ConflictError,
 } from '../core/errors/app-error';
 
-/**
- * Users Controller
- *
- * Processes user management requests and returns appropriate responses.
- * All methods are async and handle their own error logging.
- */
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  /**
-   * Get current user profile
-   *
-   * @param authContext - Authentication context from middleware
-   * @returns Current user profile
-   * @throws UnauthorizedError if not authenticated
-   */
-  async getMe(authContext: AuthContext): Promise<UserResponse> {
+  async getMe(authContext: AuthContext) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
 
     try {
-      const profile = await this.usersService.getProfile({
+      return await this.usersService.getProfile({
         userId: authContext.user.id,
       });
-
-      return profile;
     } catch (error) {
       if (error instanceof NotFoundError) {
         throw error;
@@ -80,15 +32,7 @@ export class UsersController {
     }
   }
 
-  /**
-   * Update current user profile
-   *
-   * @param dto - Profile update data
-   * @param authContext - Authentication context from middleware
-   * @returns Updated user profile
-   * @throws UnauthorizedError if not authenticated
-   */
-  async updateMe(dto: UpdateProfileDTO, authContext: AuthContext): Promise<UpdateProfileResponse> {
+  async updateMe(dto: { firstName?: string; lastName?: string }, authContext: AuthContext) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
@@ -100,7 +44,6 @@ export class UsersController {
       });
 
       logger.info('Profile updated', { userId: authContext.user.id });
-
       return profile;
     } catch (error) {
       if (error instanceof NotFoundError) {
@@ -112,19 +55,10 @@ export class UsersController {
     }
   }
 
-  /**
-   * Change current user password
-   *
-   * @param dto - Password update data
-   * @param authContext - Authentication context from middleware
-   * @returns Success message
-   * @throws UnauthorizedError if not authenticated
-   * @throws AuthenticationError if current password is invalid
-   */
   async changePassword(
-    dto: UpdatePasswordDTO,
+    dto: { currentPassword: string; newPassword: string },
     authContext: AuthContext
-  ): Promise<UpdatePasswordResponse> {
+  ) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
@@ -137,7 +71,6 @@ export class UsersController {
       });
 
       logger.info('Password changed', { userId: authContext.user.id });
-
       return result;
     } catch (error) {
       if (error instanceof AuthenticationError || error instanceof NotFoundError) {
@@ -149,60 +82,43 @@ export class UsersController {
     }
   }
 
-  /**
-   * List users with pagination
-   *
-   * @param query - Pagination and filter parameters
-   * @param authContext - Authentication context from middleware
-   * @returns Paginated user list
-   * @throws UnauthorizedError if not authenticated
-   * @throws ForbiddenError if not authorized
-   */
-  async getUsers(query: GetUsersQueryDTO, authContext: AuthContext): Promise<UsersListResponse> {
+  async getUsers(
+    query: {
+      page: number;
+      limit: number;
+      search?: string;
+      include_deleted?: boolean;
+      only_deleted?: boolean;
+    },
+    authContext: AuthContext
+  ) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
 
-    // Check if user has admin role (this would be implemented with RBAC)
-    // For now, we'll allow all authenticated users to list users
-    // In production, you'd check: if (!hasRole(authContext.user, 'admin')) { throw new ForbiddenError(); }
-
     try {
-      const result = await this.usersService.getUsers({
+      return await this.usersService.getUsers({
         page: query.page,
         limit: query.limit,
-        sortBy: query.sortBy,
-        sortOrder: query.sortOrder,
         search: query.search,
+        includeDeleted: query.include_deleted,
+        onlyDeleted: query.only_deleted,
       });
-
-      return result;
     } catch (error) {
       logger.error('List users error', { error });
       throw new InternalServerError('Failed to list users');
     }
   }
 
-  /**
-   * Get user by ID
-   *
-   * @param id - User ID
-   * @param authContext - Authentication context from middleware
-   * @returns User data
-   * @throws UnauthorizedError if not authenticated
-   * @throws NotFoundError if user not found
-   */
-  async getUserById(id: string, authContext: AuthContext): Promise<UserResponse> {
+  async getUserById(id: string, authContext: AuthContext) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
 
     try {
-      const profile = await this.usersService.getProfile({
+      return await this.usersService.getProfile({
         userId: id,
       });
-
-      return profile;
     } catch (error) {
       if (error instanceof NotFoundError) {
         throw error;
@@ -213,36 +129,25 @@ export class UsersController {
     }
   }
 
-  /**
-   * Create a new user (admin function)
-   *
-   * @param dto - User creation data
-   * @param authContext - Authentication context from middleware
-   * @returns Created user data
-   * @throws UnauthorizedError if not authenticated
-   * @throws ForbiddenError if not authorized
-   */
-  async createUser(dto: CreateUserDTO, authContext: AuthContext): Promise<CreateUserResponse> {
+  async createUser(
+    dto: {
+      email: string;
+      password: string;
+      firstName: string;
+      lastName: string;
+      isActive?: boolean;
+      emailVerified?: boolean;
+    },
+    authContext: AuthContext
+  ) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
 
-    // Check if user has admin role
-    // For now, we'll allow all authenticated users
-    // In production, you'd check: if (!hasRole(authContext.user, 'admin')) { throw new ForbiddenError(); }
-
     try {
-      const user = await this.usersService.createUser({
-        email: dto.email,
-        password: dto.password,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        isActive: dto.isActive,
-        emailVerified: dto.emailVerified,
-      });
+      const user = await this.usersService.createUser(dto);
 
       logger.info('User created', { userId: user.id, createdBy: authContext.user.id });
-
       return user;
     } catch (error) {
       if (error instanceof BadRequestError || error instanceof ConflictError) {
@@ -254,37 +159,25 @@ export class UsersController {
     }
   }
 
-  /**
-   * Update user (admin function)
-   *
-   * @param id - User ID to update
-   * @param dto - User update data
-   * @param authContext - Authentication context from middleware
-   * @returns Updated user data
-   * @throws UnauthorizedError if not authenticated
-   * @throws NotFoundError if user not found
-   */
   async updateUser(
     id: string,
-    dto: UpdateUserDTO,
+    dto: {
+      email?: string;
+      firstName?: string;
+      lastName?: string;
+      isActive?: boolean;
+      emailVerified?: boolean;
+    },
     authContext: AuthContext
-  ): Promise<UpdateUserResponse> {
+  ) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
 
-    // Check if user has admin role
-    // For now, we'll allow all authenticated users
-    // In production, you'd check: if (!hasRole(authContext.user, 'admin')) { throw new ForbiddenError(); }
-
     try {
-      const user = await this.usersService.updateUser({
-        id,
-        ...dto,
-      });
+      const user = await this.usersService.updateUser({ id, ...dto });
 
       logger.info('User updated', { userId: id, updatedBy: authContext.user.id });
-
       return user;
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof ConflictError) {
@@ -296,29 +189,15 @@ export class UsersController {
     }
   }
 
-  /**
-   * Delete user (admin function)
-   *
-   * @param id - User ID to delete
-   * @param authContext - Authentication context from middleware
-   * @returns Success message
-   * @throws UnauthorizedError if not authenticated
-   * @throws NotFoundError if user not found
-   */
-  async deleteUser(id: string, authContext: AuthContext): Promise<DeleteUserResponse> {
+  async deleteUser(id: string, force: boolean, authContext: AuthContext) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
 
-    // Check if user has admin role
-    // For now, we'll allow all authenticated users
-    // In production, you'd check: if (!hasRole(authContext.user, 'admin')) { throw new ForbiddenError(); }
-
     try {
-      const result = await this.usersService.deleteUser(id);
+      const result = await this.usersService.deleteUser(id, force);
 
-      logger.info('User deleted', { userId: id, deletedBy: authContext.user.id });
-
+      logger.info('User deleted', { userId: id, deletedBy: authContext.user.id, force });
       return result;
     } catch (error) {
       if (error instanceof NotFoundError) {
@@ -330,26 +209,86 @@ export class UsersController {
     }
   }
 
-  /**
-   * Get user statistics
-   *
-   * @param authContext - Authentication context from middleware
-   * @returns User statistics
-   * @throws UnauthorizedError if not authenticated
-   */
-  async getUserStats(authContext: AuthContext): Promise<UserStatsResponse> {
+  async activateUser(id: string, authContext: AuthContext) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
 
-    // Check if user has admin role
-    // For now, we'll allow all authenticated users
-    // In production, you'd check: if (!hasRole(authContext.user, 'admin')) { throw new ForbiddenError(); }
+    try {
+      return await this.usersService.activateUser(id);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+
+      logger.error('Activate user error', { error, userId: id });
+      throw new InternalServerError('Failed to activate user');
+    }
+  }
+
+  async deactivateUser(id: string, authContext: AuthContext) {
+    if (!authContext.user) {
+      throw new UnauthorizedError('Authentication required');
+    }
 
     try {
-      const stats = await this.usersService.getUserStats();
+      return await this.usersService.deactivateUser(id);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
 
-      return stats;
+      logger.error('Deactivate user error', { error, userId: id });
+      throw new InternalServerError('Failed to deactivate user');
+    }
+  }
+
+  async restoreUser(id: string, authContext: AuthContext) {
+    if (!authContext.user) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    try {
+      return await this.usersService.restoreUser(id);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+
+      logger.error('Restore user error', { error, userId: id });
+      throw new InternalServerError('Failed to restore user');
+    }
+  }
+
+  async getActivityLogs(
+    query: { page: number; limit: number; user_id?: string; action?: string; resource?: string },
+    authContext: AuthContext
+  ) {
+    if (!authContext.user) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    try {
+      return await this.usersService.getActivityLogs({
+        page: query.page,
+        limit: query.limit,
+        userId: query.user_id,
+        action: query.action,
+        resource: query.resource,
+      });
+    } catch (error) {
+      logger.error('Get activity logs error', { error });
+      throw new InternalServerError('Failed to get activity logs');
+    }
+  }
+
+  async getUserStats(authContext: AuthContext) {
+    if (!authContext.user) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    try {
+      return await this.usersService.getUserStats();
     } catch (error) {
       logger.error('Get user stats error', { error });
       throw new InternalServerError('Failed to get user statistics');

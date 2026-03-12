@@ -380,7 +380,8 @@ export async function waitForServer(url: string, maxAttempts = 30, delay = 500):
   for (let i = 0; i < maxAttempts; i++) {
     try {
       const response = await fetch(url);
-      if (response.ok) {
+      // For readiness we only need a reachable HTTP server.
+      if (response.status >= 100 && response.status < 600) {
         return;
       }
     } catch {

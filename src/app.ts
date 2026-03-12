@@ -1,22 +1,3 @@
-/**
- * Main Application File
- *
- * Creates and configures the Elysia application with all middleware,
- * routes, and error handling. This is the central entry point that
- * ties all components together into a working API server.
- *
- * Features:
- * - CORS configuration
- * - Request/response logging
- * - Global error handling
- * - Health check endpoint
- * - API routes (auth, users)
- * - Swagger documentation
- * - 404 handling
- *
- * @module App
- */
-
 import { Elysia } from 'elysia';
 import { cors } from '@elysiajs/cors';
 import { swagger } from '@elysiajs/swagger';
@@ -28,21 +9,16 @@ import { PasswordService } from './core/crypto/password.service';
 import { PasetoService } from './core/paseto/paseto.service';
 import { AuthService } from './services/auth.service';
 import { UsersService } from './services/users.service';
+import { ProductsService } from './services/products.service';
 import { createAuthRoutes } from './routes/auth.routes';
 import { createUsersRoutes } from './routes/users.routes';
+import { createProductsRoutes } from './routes/products.routes';
 import { AppError } from './core/errors/app-error';
 import { registerPlugins } from './plugins';
+import { requestId } from './middlewares/request-id.middleware';
+import { errorResponse } from './core/http/response';
 
-/**
- * Create and configure the Elysia application
- *
- * Sets up all middleware, routes, error handlers, and documentation.
- * Initializes all required services and dependencies.
- *
- * @returns Configured Elysia application instance
- */
 export function createApp(): Elysia {
-  // Initialize dependencies
   const db = getConnection();
   const unitOfWork = new UnitOfWork(db);
   const passwordService = new PasswordService();
@@ -55,100 +31,81 @@ export function createApp(): Elysia {
     accessTokenExpiryMinutes: Number(process.env.ACCESS_TOKEN_EXPIRY_MINUTES) || 15,
     refreshTokenExpiryDays: Number(process.env.REFRESH_TOKEN_EXPIRY_DAYS) || 7,
   });
+
   const authService = new AuthService(unitOfWork, pasetoService, passwordService);
   const usersService = new UsersService(unitOfWork, passwordService);
+  const productsService = new ProductsService(unitOfWork);
 
   const app = new Elysia()
-    // CORS configuration
     .use(
       cors({
         origin: process.env.CORS_ORIGIN || '*',
         credentials: process.env.CORS_CREDENTIALS === 'true',
         methods: (process.env.CORS_METHODS || 'GET,POST,PUT,DELETE,PATCH').split(','),
-        allowedHeaders: (process.env.CORS_ALLOWED_HEADERS || 'Content-Type,Authorization').split(
+        allowedHeaders: (process.env.CORS_ALLOWED_HEADERS || 'Content-Type,Authorization,X-Request-ID').split(
           ','
         ),
       })
     )
-    // Logging middleware
+    .use(requestId())
     .use(loggingPlugin)
-    // Register plugins (health check, metrics, tracing)
     .use(registerPlugins)
-    // Global error handler
-    .onError(({ error, set }) => {
+    .onError(ctx => {
+      const { error, set, request } = ctx;
+      const requestId = typeof (ctx as { requestId?: unknown }).requestId === 'string'
+        ? ((ctx as { requestId?: string }).requestId as string)
+        : undefined;
+
       logger.error('Unhandled error', error);
 
-      // Handle AppError instances
       if (error instanceof AppError) {
         set.status = error.status;
-        /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-        return {
-          success: false,
-          error: {
-            code: error.code,
-            message: error.message,
-            ...(error.details && { details: error.details }),
-            statusCode: error.status,
-          },
-        };
-        /* eslint-enable @typescript-eslint/no-unsafe-assignment */
+        return errorResponse(request, error.code, error.message, error.details, requestId);
       }
 
-      // Handle standard errors
       if (error instanceof Error) {
         set.status = 500;
-        return {
-          success: false,
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: 'An unexpected error occurred',
-            ...(process.env.NODE_ENV === 'development' && { details: error.message }),
-            statusCode: 500,
-          },
-        };
+        return errorResponse(
+          request,
+          'INTERNAL_ERROR',
+          'An unexpected error occurred',
+          process.env.NODE_ENV === 'development' ? error.message : undefined,
+          requestId
+        );
       }
 
-      // Handle unknown errors
       set.status = 500;
-      return {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'An unexpected error occurred',
-          statusCode: 500,
-        },
-      };
+      return errorResponse(request, 'INTERNAL_ERROR', 'An unexpected error occurred', undefined, requestId);
     })
-    // API Routes
-    .use(createAuthRoutes(new Elysia(), authService, pasetoService))
-    .use(createUsersRoutes(new Elysia(), usersService, authService, pasetoService))
-    // Swagger documentation (available in all environments for development)
+    .group('/api/v1', api =>
+      api
+        .use(createAuthRoutes(new Elysia(), authService, usersService, pasetoService))
+        .use(createUsersRoutes(new Elysia(), usersService, authService, pasetoService))
+        .use(createProductsRoutes(new Elysia(), productsService, authService, pasetoService))
+    )
     .use(
       swagger({
         documentation: {
           info: {
             title: 'Bun Elysia PASETO API',
             version: '1.0.0',
-            description: 'Production-ready monolith REST API with PASETO v4 authentication',
+            description: 'Monolith REST API with PASETO authentication',
           },
           tags: [
             { name: 'Authentication', description: 'User authentication endpoints' },
             { name: 'Users', description: 'User management endpoints' },
+            { name: 'Products', description: 'Product management endpoints' },
           ],
         },
       })
     )
-    // 404 handler - must be last
-    .all('*', ({ set }) => {
+    .all('*', ctx => {
+      const { set, request } = ctx;
       set.status = 404;
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Route not found',
-          statusCode: 404,
-        },
-      };
+      const requestId = typeof (ctx as { requestId?: unknown }).requestId === 'string'
+        ? ((ctx as { requestId?: string }).requestId as string)
+        : undefined;
+      return errorResponse(request, 'NOT_FOUND', 'Route not found', undefined, requestId);
     });
 
   logger.info('Application created successfully');

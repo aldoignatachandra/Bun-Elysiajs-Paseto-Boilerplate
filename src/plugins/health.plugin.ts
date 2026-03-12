@@ -1,4 +1,5 @@
 import { Elysia } from 'elysia';
+import { sql } from 'drizzle-orm';
 import { getConnection } from '@database/connection';
 import { getRedisConnection } from '@core/redis/connection';
 import { logger } from '@core/logging/logger';
@@ -40,7 +41,7 @@ async function checkDatabaseHealth(): Promise<HealthCheckResult> {
 
   try {
     const db = getConnection();
-    await db.execute('SELECT 1');
+    await db.execute(sql`SELECT 1`);
     const latency = performance.now() - startTime;
 
     return {
