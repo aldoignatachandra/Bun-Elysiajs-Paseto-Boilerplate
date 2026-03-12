@@ -3,6 +3,12 @@ import { Elysia } from 'elysia';
 import { loggingPlugin, getRequestMetadata } from '@/core/logging/middleware';
 import type { Context } from 'elysia';
 
+type MetadataResponse = {
+  requestId: string;
+  ip: string;
+  userAgent: string;
+};
+
 describe('Logging Middleware', () => {
   it('should extract request metadata correctly', () => {
     const mockContext = {
@@ -62,13 +68,11 @@ describe('Logging Middleware', () => {
   });
 
   it('should derive request metadata and logger in context', async () => {
-    const app = new Elysia()
-      .use(loggingPlugin)
-      .get('/test', ({ requestMetadata, requestLogger }) => {
-        expect(requestMetadata).toBeDefined();
-        expect(requestLogger).toBeDefined();
-        return 'ok';
-      });
+    const app = new Elysia().use(loggingPlugin).get('/test', ({ requestMetadata, requestLogger }) => {
+      expect(requestMetadata).toBeDefined();
+      expect(requestLogger).toBeDefined();
+      return 'ok';
+    });
 
     const response = await app.handle(new Request('http://localhost:3000/test'));
     expect(response.status).toBe(200);
@@ -111,7 +115,7 @@ describe('Logging Middleware', () => {
     });
 
     const response = await app.handle(request);
-    const data = await response.json();
+    const data = (await response.json()) as MetadataResponse;
 
     expect(data.requestId).toBe('custom-123');
     expect(data.ip).toBe('10.0.0.1');

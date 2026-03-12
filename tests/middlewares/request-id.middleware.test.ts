@@ -2,6 +2,11 @@ import { describe, it, expect } from 'bun:test';
 import { Elysia } from 'elysia';
 import { requestId } from '@/middlewares/request-id.middleware';
 
+type RequestIdResponse = {
+  requestId: string;
+  customData?: string;
+};
+
 describe('Request ID Middleware', () => {
   describe('Request ID Generation', () => {
     it('should generate a unique request ID when not present in headers', async () => {
@@ -32,7 +37,7 @@ describe('Request ID Middleware', () => {
       });
 
       const response = await app.handle(request);
-      const data = await response.json();
+      const data = (await response.json()) as RequestIdResponse;
 
       expect(response.status).toBe(200);
       expect(data.requestId).toBe(existingRequestId);
@@ -56,18 +61,17 @@ describe('Request ID Middleware', () => {
       });
 
       const response = await app.handle(new Request('http://localhost/test'));
-      const data = await response.json();
+      const data = (await response.json()) as RequestIdResponse;
       const requestIdHeader = response.headers.get('X-Request-ID');
 
-      expect(data.requestId).toBe(requestIdHeader);
+      expect(requestIdHeader).toBeDefined();
+      expect(data.requestId).toBe(requestIdHeader as string);
     });
 
     it('should handle custom header name option', async () => {
-      const app = new Elysia()
-        .use(requestId({ headerName: 'X-Correlation-ID' }))
-        .get('/test', ({ requestId }) => {
-          return { requestId };
-        });
+      const app = new Elysia().use(requestId({ headerName: 'X-Correlation-ID' })).get('/test', ({ requestId }) => {
+        return { requestId };
+      });
 
       const response = await app.handle(new Request('http://localhost/test'));
 
@@ -86,8 +90,8 @@ describe('Request ID Middleware', () => {
       const response1 = await app.handle(new Request('http://localhost/test'));
       const response2 = await app.handle(new Request('http://localhost/test'));
 
-      const data1 = await response1.json();
-      const data2 = await response2.json();
+      const data1 = (await response1.json()) as RequestIdResponse;
+      const data2 = (await response2.json()) as RequestIdResponse;
 
       expect(data1.requestId).not.toBe(data2.requestId);
     });
@@ -103,7 +107,7 @@ describe('Request ID Middleware', () => {
       });
 
       const response = await app.handle(request);
-      const data = await response.json();
+      const data = (await response.json()) as RequestIdResponse;
 
       expect(response.status).toBe(200);
       expect(data.requestId).toBeDefined();
@@ -148,7 +152,7 @@ describe('Request ID Middleware', () => {
       });
 
       const response = await app.handle(new Request('http://localhost/test'));
-      const data = await response.json();
+      const data = (await response.json()) as RequestIdResponse;
 
       // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -170,7 +174,7 @@ describe('Request ID Middleware', () => {
       });
 
       const response = await app.handle(request);
-      const data = await response.json();
+      const data = (await response.json()) as RequestIdResponse;
 
       // Empty string should be treated as missing and generate new ID
       expect(data.requestId).toBeDefined();
@@ -210,7 +214,7 @@ describe('Request ID Middleware', () => {
       });
 
       const response = await app.handle(request);
-      const data = await response.json();
+      const data = (await response.json()) as RequestIdResponse;
 
       expect(data.requestId).toBe(mixedCaseId);
     });
@@ -228,7 +232,7 @@ describe('Request ID Middleware', () => {
         });
 
       const response = await app.handle(new Request('http://localhost/test'));
-      const data = await response.json();
+      const data = (await response.json()) as RequestIdResponse;
 
       expect(response.status).toBe(200);
       expect(data.requestId).toBeDefined();

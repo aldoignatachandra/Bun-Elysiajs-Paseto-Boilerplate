@@ -160,9 +160,7 @@ describe('PasetoService - Token Generation (v4.local and v4.public)', () => {
       expect(result.payload?.type).toBe('refresh');
       // Use type guard to safely access tokenId
       if (result.payload && 'tokenId' in result.payload) {
-        expect((result.payload as unknown as RefreshTokenPayload).tokenId).toBe(
-          'stored-token-id-456'
-        );
+        expect((result.payload as unknown as RefreshTokenPayload).tokenId).toBe('stored-token-id-456');
       }
       expect(result.error).toBeNull();
     });
