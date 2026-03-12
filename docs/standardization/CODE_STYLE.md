@@ -402,11 +402,7 @@ Install the recommended extensions from `.vscode/extensions.json`:
 
 ```json
 {
-  "recommendations": [
-    "esbenp.prettier-vscode",
-    "dbaeumer.vscode-eslint",
-    "bun-typescript.vscode-bun"
-  ]
+  "recommendations": ["esbenp.prettier-vscode", "dbaeumer.vscode-eslint", "bun-typescript.vscode-bun"]
 }
 ```
 

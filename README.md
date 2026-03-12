@@ -46,7 +46,7 @@ This boilerplate is focused on core API domains only:
 - **Redis rate limiting**: supports IP-based and user-or-IP strategies.
 - **Go-style response envelope**: consistent response shape for success/error.
 - **Security baseline**: Argon2 password hashing, validation, auth middleware.
-- **Observability-ready**: health endpoints, structured logging, optional metrics/tracing plugins.
+- **Operational baseline**: health endpoints and structured request logging.
 - **Docker-ready**: production-like compose setup with API + PostgreSQL + Redis + Nginx.
 
 ---
@@ -105,8 +105,7 @@ bun-elysia-paseto-boilerplate/
 │   │   ├── http/
 │   │   ├── logging/
 │   │   ├── paseto/
-│   │   ├── redis/
-│   │   └── security/
+│   │   └── redis/
 │   ├── database/
 │   │   ├── migrations/
 │   │   └── schema/
@@ -116,10 +115,7 @@ bun-elysia-paseto-boilerplate/
 │   ├── routes/
 │   └── services/
 ├── tests/
-│   ├── core/
-│   ├── database/
-│   ├── load/
-│   ├── performance/
+│   ├── middlewares/
 │   └── unit/
 ├── infra/
 │   ├── docker/
@@ -210,22 +206,24 @@ Swagger UI:
 
 ## 🧰 Available Scripts
 
-| Script                         | Description                           |
-| :----------------------------- | :------------------------------------ |
-| `bun run dev`                  | Start development server (watch mode) |
-| `bun run start`                | Start production server               |
-| `bun run test`                 | Run default test suite                |
-| `bun run test:load`            | Run load/performance suites (opt-in)  |
-| `bun run test:coverage`        | Run tests with coverage               |
-| `bun run lint`                 | Lint source files                     |
-| `bun run lint:fix`             | Auto-fix lint issues                  |
-| `bun run format`               | Format repository files               |
-| `bun run format:check`         | Check formatting                      |
-| `bun run db:generate`          | Generate Drizzle migrations           |
-| `bun run db:migrate`           | Apply migrations                      |
-| `bun run db:seed`              | Seed database                         |
-| `bun run db:studio`            | Open Drizzle Studio                   |
-| `bun run generate:paseto-keys` | Generate PASETO keys                  |
+| Script                         | Description                             |
+| :----------------------------- | :-------------------------------------- |
+| `bun run dev`                  | Start development server (watch mode)   |
+| `bun run start`                | Start production server                 |
+| `bun run test`                 | Run default test suite                  |
+| `bun run test:unit`            | Run unit and middleware tests           |
+| `bun run test:integration`     | Run API smoke/integration test          |
+| `bun run test:coverage`        | Run unit coverage + print overall %     |
+| `bun run test:coverage:lcov`   | Run unit coverage with LCOV + overall % |
+| `bun run lint`                 | Lint source files                       |
+| `bun run lint:fix`             | Auto-fix lint issues                    |
+| `bun run format`               | Format repository files                 |
+| `bun run format:check`         | Check formatting                        |
+| `bun run db:generate`          | Generate Drizzle migrations             |
+| `bun run db:migrate`           | Apply migrations                        |
+| `bun run db:seed`              | Seed database                           |
+| `bun run db:studio`            | Open Drizzle Studio                     |
+| `bun run generate:paseto-keys` | Generate PASETO keys                    |
 
 ---
 
@@ -318,10 +316,10 @@ Default test run:
 bun run test
 ```
 
-Load/performance tests are intentionally opt-in:
+Coverage with overall percentage summary:
 
 ```bash
-bun run test:load
+bun run test:coverage
 ```
 
 ---

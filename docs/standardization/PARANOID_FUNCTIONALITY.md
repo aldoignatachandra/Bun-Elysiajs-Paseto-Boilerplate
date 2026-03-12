@@ -267,11 +267,7 @@ export abstract class ParanoidRepository<T> extends BaseRepository {
    * Restore soft-deleted record
    */
   async restore(id: string): Promise<boolean> {
-    const result = await this.db
-      .update(this.tableName)
-      .set({ deletedAt: null, updatedAt: new Date() })
-      .where(eq(this.tableName.id, id))
-      .returning();
+    const result = await this.db.update(this.tableName).set({ deletedAt: null, updatedAt: new Date() }).where(eq(this.tableName.id, id)).returning();
 
     return result.length > 0;
   }
@@ -280,10 +276,7 @@ export abstract class ParanoidRepository<T> extends BaseRepository {
    * Hard delete record
    */
   async delete(id: string): Promise<boolean> {
-    const result = await this.db
-      .delete(this.tableName)
-      .where(eq(this.tableName.id, id))
-      .returning();
+    const result = await this.db.delete(this.tableName).where(eq(this.tableName.id, id)).returning();
 
     return result.length > 0;
   }
@@ -295,14 +288,10 @@ export abstract class ParanoidRepository<T> extends BaseRepository {
 ```typescript
 // src/core/validation/paranoid.validation.ts
 export function validateParanoidOptions(options: ParanoidOptions): void {
-  const activeCount = [options.includeDeleted, options.onlyDeleted, options.onlyActive].filter(
-    Boolean
-  ).length;
+  const activeCount = [options.includeDeleted, options.onlyDeleted, options.onlyActive].filter(Boolean).length;
 
   if (activeCount > 1) {
-    throw new InvalidParanoidOptionsError(
-      'Only one of includeDeleted, onlyDeleted, or onlyActive can be true'
-    );
+    throw new InvalidParanoidOptionsError('Only one of includeDeleted, onlyDeleted, or onlyActive can be true');
   }
 }
 ```
@@ -524,9 +513,7 @@ import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 
 export async function up(db: Database) {
-  await db.schema
-    .alterTable('users')
-    .addColumn('deletedAt', 'timestamp with time zone', column => column.default(null).null());
+  await db.schema.alterTable('users').addColumn('deletedAt', 'timestamp with time zone', column => column.default(null).null());
 }
 
 export async function down(db: Database) {

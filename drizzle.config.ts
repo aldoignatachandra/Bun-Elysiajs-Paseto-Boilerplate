@@ -26,6 +26,6 @@ export default {
   out: './src/database/migrations',
   driver: 'pg',
   dbCredentials: {
-    url: config.DATABASE_URL,
+    connectionString: config.DATABASE_URL,
   },
 } satisfies Config;

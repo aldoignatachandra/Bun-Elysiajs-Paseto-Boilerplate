@@ -717,9 +717,7 @@ export function validateEnv(): Env {
   }
 
   if (!parsed.data.PASETO_PUBLIC_KEY || !parsed.data.PASETO_SECRET_KEY) {
-    throw new Error(
-      'PASETO_PUBLIC_KEY and PASETO_SECRET_KEY are required (format: k4.public/k4.secret)'
-    );
+    throw new Error('PASETO_PUBLIC_KEY and PASETO_SECRET_KEY are required (format: k4.public/k4.secret)');
   }
 
   return parsed.data;
@@ -944,8 +942,7 @@ class PinoLogger implements Logger {
   }
 
   error(message: string, error?: Error | unknown, context: LogContext = {}): void {
-    const errorContext =
-      error instanceof Error ? { error: this.serializeError(error), ...context } : context;
+    const errorContext = error instanceof Error ? { error: this.serializeError(error), ...context } : context;
     pinoLogger.error({ ...this.metadata, ...errorContext }, message);
   }
 
@@ -1217,9 +1214,7 @@ export function isTokenExpired(exp: number): boolean {
  * Ensures all required claims are present
  * @param payload - The payload to validate
  */
-export function validateTokenPayload(
-  payload: unknown
-): asserts payload is import('./token.types').TokenPayload {
+export function validateTokenPayload(payload: unknown): asserts payload is import('./token.types').TokenPayload {
   if (!payload || typeof payload !== 'object') {
     throw new InvalidTokenPayloadError('Payload must be an object');
   }
@@ -1303,26 +1298,9 @@ export function getTokenTypeFromPrefix(token: string): 'access' | 'refresh' | nu
  */
 import { encrypt, decrypt, sign, verify } from 'paseto-ts/v4';
 import { pasetoConfig } from '@config/paseto';
-import type {
-  TokenPayload,
-  AccessTokenPayload,
-  RefreshTokenPayload,
-  TokenPair,
-  TokenValidationResult,
-} from './token.types';
-import {
-  TokenValidationError,
-  TokenExpiredError,
-  InvalidTokenPayloadError,
-  KeyConfigError,
-} from './errors';
-import {
-  generateTokenId,
-  calculateExpiry,
-  calculateExpiryDays,
-  isTokenExpired,
-  validateTokenPayload,
-} from './utils';
+import type { TokenPayload, AccessTokenPayload, RefreshTokenPayload, TokenPair, TokenValidationResult } from './token.types';
+import { TokenValidationError, TokenExpiredError, InvalidTokenPayloadError, KeyConfigError } from './errors';
+import { generateTokenId, calculateExpiry, calculateExpiryDays, isTokenExpired, validateTokenPayload } from './utils';
 
 export class PasetoService {
   private readonly localKey: string;
@@ -1350,10 +1328,7 @@ export class PasetoService {
    * @param additionalClaims - Optional additional claims
    * @returns Encrypted PASETO token (v4.local.xxx...)
    */
-  async createAccessToken(
-    userId: string,
-    additionalClaims: Partial<AccessTokenPayload> = {}
-  ): Promise<string> {
+  async createAccessToken(userId: string, additionalClaims: Partial<AccessTokenPayload> = {}): Promise<string> {
     const payload: AccessTokenPayload = {
       iss: 'bun-elysia-paseto-boilerplate',
       sub: userId,
@@ -1368,9 +1343,7 @@ export class PasetoService {
         addIat: true, // Add 'iat' claim (issued at)
       });
     } catch (error) {
-      throw new KeyConfigError(
-        `Failed to create access token: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      throw new KeyConfigError(`Failed to create access token: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -1402,9 +1375,7 @@ export class PasetoService {
         // 7 days expiry is handled by token implementation
       });
     } catch (error) {
-      throw new KeyConfigError(
-        `Failed to create refresh token: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      throw new KeyConfigError(`Failed to create refresh token: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -1418,14 +1389,8 @@ export class PasetoService {
    * @param additionalClaims - Optional additional claims for access token
    * @returns Token pair with access and refresh tokens
    */
-  async createTokenPair(
-    userId: string,
-    additionalClaims: Partial<AccessTokenPayload> = {}
-  ): Promise<TokenPair> {
-    const [accessToken, refreshToken] = await Promise.all([
-      this.createAccessToken(userId, additionalClaims),
-      this.createRefreshToken(userId),
-    ]);
+  async createTokenPair(userId: string, additionalClaims: Partial<AccessTokenPayload> = {}): Promise<TokenPair> {
+    const [accessToken, refreshToken] = await Promise.all([this.createAccessToken(userId, additionalClaims), this.createRefreshToken(userId)]);
 
     return {
       accessToken,
@@ -2351,10 +2316,7 @@ export abstract class CRUDRepository<T, K> extends BaseRepository {
     const offset = (page - 1) * pageSize;
 
     try {
-      const [data, countResult] = await Promise.all([
-        this.findAll({ limit: pageSize, offset }),
-        this.count(),
-      ]);
+      const [data, countResult] = await Promise.all([this.findAll({ limit: pageSize, offset }), this.count()]);
 
       const total = Array.isArray(countResult) ? countResult.length : (countResult as number);
       const totalPages = Math.ceil(total / pageSize);
@@ -2584,10 +2546,7 @@ import { sessions } from '../database/schema';
 import type { Session, NewSession } from '../database/schema';
 import { CRUDRepository } from './base.repository';
 
-export class SessionRepository
-  extends CRUDRepository<Session, string>
-  implements ISessionRepository
-{
+export class SessionRepository extends CRUDRepository<Session, string> implements ISessionRepository {
   get tableName() {
     return sessions;
   }
@@ -2605,11 +2564,7 @@ export class SessionRepository
 
   async findByTokenId(tokenId: string): Promise<Session | null> {
     try {
-      const result = await this.db
-        .select()
-        .from(sessions)
-        .where(eq(sessions.tokenId, tokenId))
-        .limit(1);
+      const result = await this.db.select().from(sessions).where(eq(sessions.tokenId, tokenId)).limit(1);
 
       return result[0] || null;
     } catch (error) {
@@ -2630,11 +2585,7 @@ export class SessionRepository
 
   async revoke(id: string): Promise<boolean> {
     try {
-      const result = await this.db
-        .update(sessions)
-        .set({ isRevoked: true, updatedAt: new Date() })
-        .where(eq(sessions.id, id))
-        .returning();
+      const result = await this.db.update(sessions).set({ isRevoked: true, updatedAt: new Date() }).where(eq(sessions.id, id)).returning();
 
       return result.length > 0;
     } catch (error) {
@@ -2912,12 +2863,7 @@ export interface IAuthService {
 ```typescript
 // src/services/auth.service.ts
 import { injectable, inject } from 'tsyringe';
-import type {
-  IAuthService,
-  RegisterDto,
-  LoginDto,
-  AuthResponse,
-} from './interfaces/auth.service.interface';
+import type { IAuthService, RegisterDto, LoginDto, AuthResponse } from './interfaces/auth.service.interface';
 import type { IUserRepository, ISessionRepository } from '../repositories/unit-of-work';
 import type { UnitOfWork } from '../repositories/unit-of-work';
 import { RepositoryTokens } from './constants';
@@ -3101,9 +3047,7 @@ export class AuthService implements IAuthService {
     }
   }
 
-  private async generateAuthResponse(
-    user: import('../database/schema').User
-  ): Promise<AuthResponse> {
+  private async generateAuthResponse(user: import('../database/schema').User): Promise<AuthResponse> {
     const pasetoService = getPasetoService();
     const tokenPair = await pasetoService.createTokenPairForUser(user.id);
 
@@ -3127,9 +3071,7 @@ export class AuthService implements IAuthService {
     };
   }
 
-  private mapToUserDto(
-    user: import('../database/schema').User
-  ): import('./interfaces/auth.service.interface').UserDto {
+  private mapToUserDto(user: import('../database/schema').User): import('./interfaces/auth.service.interface').UserDto {
     return {
       id: user.id,
       email: user.email,
@@ -3190,10 +3132,7 @@ export const passwordSchema = z
   .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
   .regex(/[0-9]/, 'Password must contain at least one number');
 
-export const nameSchema = z
-  .string()
-  .min(2, 'Name must be at least 2 characters')
-  .max(100, 'Name must not exceed 100 characters');
+export const nameSchema = z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name must not exceed 100 characters');
 
 export const paginationSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -3245,12 +3184,7 @@ export function handleZodError(error: ZodError): ErrorResponse {
   };
 }
 
-export function createErrorResponse(
-  message: string,
-  code: string,
-  status: number = 500,
-  details?: unknown
-): ErrorResponse & { status: number } {
+export function createErrorResponse(message: string, code: string, status: number = 500, details?: unknown): ErrorResponse & { status: number } {
   return {
     success: false,
     error: {
@@ -3516,11 +3450,7 @@ interface RateLimitResult {
   reset: number;
 }
 
-export async function checkRateLimit(
-  identifier: string,
-  maxRequests: number,
-  windowSeconds: number
-): Promise<RateLimitResult> {
+export async function checkRateLimit(identifier: string, maxRequests: number, windowSeconds: number): Promise<RateLimitResult> {
   try {
     const redis = getRedisClient();
     const key = `ratelimit:${identifier}`;
@@ -3565,11 +3495,7 @@ export async function checkRateLimit(
   }
 }
 
-export function createRateLimitMiddleware(options: {
-  maxRequests?: number;
-  windowSeconds?: number;
-  keyPrefix?: string;
-}) {
+export function createRateLimitMiddleware(options: { maxRequests?: number; windowSeconds?: number; keyPrefix?: string }) {
   const maxRequests = options.maxRequests ?? config.env.RATE_LIMIT_MAX_REQUESTS;
   const windowSeconds = options.windowSeconds ?? config.env.RATE_LIMIT_WINDOW_SECONDS;
   const keyPrefix = options.keyPrefix ?? 'global';
@@ -3579,10 +3505,7 @@ export function createRateLimitMiddleware(options: {
       return;
     }
 
-    const ip =
-      context.request.headers.get('x-forwarded-for') ||
-      context.request.headers.get('x-real-ip') ||
-      'unknown';
+    const ip = context.request.headers.get('x-forwarded-for') || context.request.headers.get('x-real-ip') || 'unknown';
     const path = new URL(context.request.url).pathname;
     const identifier = `${keyPrefix}:${path}:${ip}`;
 
@@ -3726,10 +3649,7 @@ export class AuthController {
         throw new AppError('Not authenticated', 'NOT_AUTHENTICATED', 401);
       }
 
-      return successResponse(
-        { userId: user.userId, ...user.payload },
-        'User retrieved successfully'
-      );
+      return successResponse({ userId: user.userId, ...user.payload }, 'User retrieved successfully');
     } catch (error) {
       logger.error('Get user controller error', error);
       throw error;
@@ -4001,14 +3921,7 @@ export interface UserDto {
 ```typescript
 // src/services/users.service.ts
 import { injectable, inject } from 'tsyringe';
-import type {
-  IUsersService,
-  UpdateProfileDto,
-  UpdatePasswordDto,
-  CreateUserDto,
-  GetUsersDto,
-  UserDto,
-} from './interfaces/users.service.interface';
+import type { IUsersService, UpdateProfileDto, UpdatePasswordDto, CreateUserDto, GetUsersDto, UserDto } from './interfaces/users.service.interface';
 import type { IUserRepository } from '../repositories/unit-of-work';
 import { RepositoryTokens } from './constants';
 import { getPasswordService } from '@core/crypto/password.service';
@@ -4243,12 +4156,7 @@ git commit -m "feat: implement user management service"
 ```typescript
 // src/routes/dto/users.dto.ts
 import { z } from 'zod';
-import {
-  emailSchema,
-  passwordSchema,
-  nameSchema,
-  paginationSchema,
-} from '@core/validation/common.schema';
+import { emailSchema, passwordSchema, nameSchema, paginationSchema } from '@core/validation/common.schema';
 
 export const updateProfileSchema = z.object({
   firstName: nameSchema.optional(),
@@ -4313,12 +4221,7 @@ export const requireAdmin = requireRole(['ADMIN']);
 // src/controllers/users.controller.ts
 import { injectable, inject } from 'tsyringe';
 import type { IUsersService } from '../services/interfaces/users.service.interface';
-import type {
-  UpdateProfileDto,
-  UpdatePasswordDto,
-  CreateUserDto,
-  GetUsersDto,
-} from '../routes/dto/users.dto';
+import type { UpdateProfileDto, UpdatePasswordDto, CreateUserDto, GetUsersDto } from '../routes/dto/users.dto';
 import { successResponse } from '@core/validation/error.types';
 import { AppError } from '@core/errors/app-error';
 import { RepositoryTokens } from '../services/constants';
@@ -4404,12 +4307,7 @@ export class UsersController {
 // src/routes/users.routes.ts
 import { Elysia, t } from 'elysia';
 import { UsersController } from '../controllers/users.controller';
-import {
-  updateProfileSchema,
-  updatePasswordSchema,
-  createUserSchema,
-  getUsersQuerySchema,
-} from './dto/users.dto';
+import { updateProfileSchema, updatePasswordSchema, createUserSchema, getUsersQuerySchema } from './dto/users.dto';
 import { requireAuth } from '../middlewares/auth.middleware';
 import { requireAdmin } from '../middlewares/role.middleware';
 import { rateLimit } from '../middlewares/rate-limit.middleware';
@@ -4620,16 +4518,7 @@ git commit -m "feat: implement user management routes and controllers"
 
 ```typescript
 // src/database/schema/products.schema.ts
-import {
-  boolean,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-  numeric,
-  integer,
-  jsonb,
-} from 'drizzle-orm/pg-core';
+import { boolean, pgTable, text, timestamp, uuid, numeric, integer, jsonb } from 'drizzle-orm/pg-core';
 
 export const products = pgTable('products', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -4736,11 +4625,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
   async softDelete(id: string): Promise<boolean> {
     try {
-      const result = await this.db
-        .update(products)
-        .set({ deletedAt: new Date(), updatedAt: new Date() })
-        .where(eq(products.id, id))
-        .returning();
+      const result = await this.db.update(products).set({ deletedAt: new Date(), updatedAt: new Date() }).where(eq(products.id, id)).returning();
 
       return result.length > 0;
     } catch (error) {
@@ -4751,11 +4636,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
   async restore(id: string): Promise<boolean> {
     try {
-      const result = await this.db
-        .update(products)
-        .set({ deletedAt: null, updatedAt: new Date() })
-        .where(eq(products.id, id))
-        .returning();
+      const result = await this.db.update(products).set({ deletedAt: null, updatedAt: new Date() }).where(eq(products.id, id)).returning();
 
       return result.length > 0;
     } catch (error) {
@@ -4916,13 +4797,7 @@ export interface IProductsService {
 ```typescript
 // src/services/products.service.ts
 import { injectable, inject } from 'tsyringe';
-import type {
-  IProductsService,
-  CreateProductDto,
-  UpdateProductDto,
-  GetProductsDto,
-  ProductDto,
-} from './interfaces/products.service.interface';
+import type { IProductsService, CreateProductDto, UpdateProductDto, GetProductsDto, ProductDto } from './interfaces/products.service.interface';
 import type { IProductRepository } from '../repositories/products.repository';
 import { AppError } from '@core/errors/app-error';
 import { logger } from '@core/logging/logger';
@@ -4947,9 +4822,7 @@ export class ProductsService implements IProductsService {
     if (dto.search) {
       const searchLower = dto.search.toLowerCase();
       filtered = filtered.filter(
-        p =>
-          p.name.toLowerCase().includes(searchLower) ||
-          (p.description && p.description.toLowerCase().includes(searchLower))
+        p => p.name.toLowerCase().includes(searchLower) || (p.description && p.description.toLowerCase().includes(searchLower))
       );
     }
     if (dto.minPrice !== undefined) {
@@ -5018,11 +4891,7 @@ export class ProductsService implements IProductsService {
     return this.mapToDto(product);
   }
 
-  async updateProduct(
-    id: string,
-    ownerId: string,
-    dto: UpdateProductDto
-  ): Promise<ProductDto | null> {
+  async updateProduct(id: string, ownerId: string, dto: UpdateProductDto): Promise<ProductDto | null> {
     const product = await this.uow.products.findById(id);
 
     if (!product || product.deletedAt) {
@@ -5225,11 +5094,7 @@ export type GetProductsDto = z.infer<typeof getProductsQuerySchema>;
 // src/controllers/products.controller.ts
 import { injectable, inject } from 'tsyringe';
 import type { IProductsService } from '../services/interfaces/products.service.interface';
-import type {
-  CreateProductDto,
-  UpdateProductDto,
-  GetProductsDto,
-} from '../routes/dto/products.dto';
+import type { CreateProductDto, UpdateProductDto, GetProductsDto } from '../routes/dto/products.dto';
 import { successResponse } from '@core/validation/error.types';
 import { AppError } from '@core/errors/app-error';
 import { RepositoryTokens } from '../services/constants';
@@ -5237,9 +5102,7 @@ import { logger } from '@core/logging/logger';
 
 @injectable()
 export class ProductsController {
-  constructor(
-    @inject(RepositoryTokens.ProductsService) private productsService: IProductsService
-  ) {}
+  constructor(@inject(RepositoryTokens.ProductsService) private productsService: IProductsService) {}
 
   async getProducts(context: import('elysia').Context, dto: GetProductsDto) {
     const user = context.user as import('../middlewares/auth.middleware').AuthContext | undefined;
@@ -5326,11 +5189,7 @@ export class ProductsController {
 // src/routes/products.routes.ts
 import { Elysia, t } from 'elysia';
 import { ProductsController } from '../controllers/products.controller';
-import {
-  createProductSchema,
-  updateProductSchema,
-  getProductsQuerySchema,
-} from './dto/products.dto';
+import { createProductSchema, updateProductSchema, getProductsQuerySchema } from './dto/products.dto';
 import { requireAuth } from '../middlewares/auth.middleware';
 import { rateLimit } from '../middlewares/rate-limit.middleware';
 import { handleZodError, handleAppError } from '@core/validation/error.handler';
@@ -5655,10 +5514,7 @@ export function createHealthRoutes(): Elysia {
           checks.redis.status = 'fail';
         }
 
-        const overallStatus: HealthStatus['status'] =
-          checks.database.status === 'pass' && checks.redis.status === 'pass'
-            ? 'healthy'
-            : 'unhealthy';
+        const overallStatus: HealthStatus['status'] = checks.database.status === 'pass' && checks.redis.status === 'pass' ? 'healthy' : 'unhealthy';
 
         return {
           ...checks,
@@ -5788,8 +5644,7 @@ let testRedis: any = null;
 
 beforeAll(async () => {
   // Setup test database connection
-  process.env.DATABASE_URL =
-    process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/test_db';
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/test_db';
 
   // Setup test Redis
   process.env.REDIS_DB = '15'; // Use separate DB for tests
@@ -6611,11 +6466,7 @@ export const healthPlugin = () =>
 
         // Determine overall status
         const statuses = Object.values(checks).map(c => c.status);
-        const overallStatus: HealthResponse['status'] = statuses.includes('fail')
-          ? 'fail'
-          : statuses.includes('warn')
-            ? 'warn'
-            : 'pass';
+        const overallStatus: HealthResponse['status'] = statuses.includes('fail') ? 'fail' : statuses.includes('warn') ? 'warn' : 'pass';
 
         const response: HealthResponse = {
           status: overallStatus,
@@ -6708,8 +6559,7 @@ export const securityHeadersPlugin = (config: SecurityHeadersConfig = {}) =>
       const hstsSubDomains = config.hstsIncludeSubDomains !== false;
       const hstsPreload = config.hstsPreload ? '; preload' : '';
 
-      set.headers['Strict-Transport-Security'] =
-        `max-age=${hstsMaxAge}${hstsSubDomains ? '; includeSubDomains' : ''}${hstsPreload}`;
+      set.headers['Strict-Transport-Security'] = `max-age=${hstsMaxAge}${hstsSubDomains ? '; includeSubDomains' : ''}${hstsPreload}`;
     }
 
     // X-Frame-Options
@@ -6724,12 +6574,7 @@ export const securityHeadersPlugin = (config: SecurityHeadersConfig = {}) =>
     set.headers['Referrer-Policy'] = config.referrerPolicy || 'no-referrer';
 
     // Permissions-Policy
-    const permissions = config.permissionsPolicy || [
-      'camera=()',
-      'microphone=()',
-      'geolocation=(self)',
-      'interest-cohort=()',
-    ];
+    const permissions = config.permissionsPolicy || ['camera=()', 'microphone=()', 'geolocation=(self)', 'interest-cohort=()'];
     set.headers['Permissions-Policy'] = permissions.join(', ');
 
     // X-XSS-Protection (legacy, CSP is better)
@@ -6791,11 +6636,7 @@ export const compressionPlugin = (config: CompressionConfig = {}) =>
 
     // Check if response should be compressed
     const contentType = set.headers['Content-Type'];
-    const shouldCompress =
-      contentType &&
-      compressibleTypes.some(
-        type => type.endsWith('*') || contentType.includes(type.replace('*', ''))
-      );
+    const shouldCompress = contentType && compressibleTypes.some(type => type.endsWith('*') || contentType.includes(type.replace('*', '')));
 
     // Only compress if response is large enough
     const responseSize = JSON.stringify(response).length;
@@ -6896,12 +6737,7 @@ class MetricsCollector {
     });
   }
 
-  histogram(
-    name: string,
-    value: number,
-    labels?: Record<string, string>,
-    buckets?: number[]
-  ): void {
+  histogram(name: string, value: number, labels?: Record<string, string>, buckets?: number[]): void {
     this.addMetric({
       name,
       type: 'histogram',
@@ -6913,12 +6749,7 @@ class MetricsCollector {
   }
 
   timing(name: string, duration: number, labels?: Record<string, string>): void {
-    this.histogram(
-      name,
-      duration,
-      labels,
-      [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
-    );
+    this.histogram(name, duration, labels, [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]);
   }
 
   incrementHttpRequests(method: string, path: string, status: number): void {
@@ -7137,12 +6968,7 @@ class Tracer {
     }
   }
 
-  addLog(
-    spanId: string,
-    level: string,
-    message: string,
-    attributes?: Record<string, unknown>
-  ): void {
+  addLog(spanId: string, level: string, message: string, attributes?: Record<string, unknown>): void {
     const span = this.spans.get(spanId);
     if (span) {
       span.logs.push({
@@ -7222,10 +7048,7 @@ export const tracingPlugin = () =>
       };
 
       // Start span for this request
-      const span = tracer.startSpan(
-        `${request.method} ${new URL(request.url).pathname}`,
-        context.spanId
-      );
+      const span = tracer.startSpan(`${request.method} ${new URL(request.url).pathname}`, context.spanId);
 
       // Add to context
       set.traceContext = context;
@@ -7243,14 +7066,9 @@ export const tracingPlugin = () =>
     .onError(({ set, error }) => {
       // Add error log to span
       if (set.span) {
-        tracer.addLog(
-          set.span.spanId,
-          'error',
-          error instanceof Error ? error.message : 'Unknown error',
-          {
-            stack: error instanceof Error ? error.stack : undefined,
-          }
-        );
+        tracer.addLog(set.span.spanId, 'error', error instanceof Error ? error.message : 'Unknown error', {
+          stack: error instanceof Error ? error.stack : undefined,
+        });
       }
     });
 ```
@@ -7695,9 +7513,7 @@ class ApiVersionManager {
 
     return {
       since: sunsetDate?.toISOString() || '',
-      sunsetAt: sunsetDate
-        ? new Date(sunsetDate.getTime() + 180 * 24 * 60 * 60 * 1000).toISOString()
-        : '',
+      sunsetAt: sunsetDate ? new Date(sunsetDate.getTime() + 180 * 24 * 60 * 60 * 1000).toISOString() : '',
       migrateTo: this.config.defaultVersion,
     };
   }
@@ -7887,11 +7703,7 @@ class CacheService {
     await this.invalidatePattern(`*:${tag}`);
   }
 
-  async getOrSet<T>(
-    key: string,
-    factory: () => Promise<T>,
-    options: CacheOptions = {}
-  ): Promise<T> {
+  async getOrSet<T>(key: string, factory: () => Promise<T>, options: CacheOptions = {}): Promise<T> {
     const cached = await this.get<T>(key);
 
     if (cached.hit && cached.value) {
@@ -7943,9 +7755,7 @@ export const cachingPlugin = (
   new Elysia({ name: 'caching-plugin' })
     .onBeforeHandle(async ({ request, set }) => {
       const url = new URL(request.url);
-      const isCacheable =
-        options.cacheablePaths?.some(path => url.pathname.startsWith(path)) ||
-        request.method === 'GET';
+      const isCacheable = options.cacheablePaths?.some(path => url.pathname.startsWith(path)) || request.method === 'GET';
 
       if (!isCacheable) {
         set.cacheable = false;
@@ -8075,13 +7885,7 @@ class StorageService {
     }
 
     // Validate file type
-    const allowedTypes = options?.allowedTypes ?? [
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'application/pdf',
-    ];
+    const allowedTypes = options?.allowedTypes ?? ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
 
     if (allowedTypes.length > 0 && !allowedTypes.includes(file.type)) {
       throw new Error(`File type ${file.type} is not allowed`);
@@ -8678,8 +8482,7 @@ describe('API Load Tests', () => {
     const totalTime = performance.now() - startTime;
 
     const successful = results.filter(r => r.status === 200);
-    const averageLatency =
-      results.reduce((sum, r) => sum + r.latency - startTime, 0) / results.length;
+    const averageLatency = results.reduce((sum, r) => sum + r.latency - startTime, 0) / results.length;
 
     console.log({
       totalRequests: results.length,
