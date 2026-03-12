@@ -5,7 +5,6 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import * as schema from './schema';
-import { metricsCollector } from '@/core/metrics/collector';
 import { logger } from '@/core/logging/logger';
 
 const { Pool } = pg;
@@ -60,24 +59,6 @@ function getPoolStats(poolInstance: any): PoolStats {
 }
 
 /**
- * Record pool metrics to metrics collector
- */
-function recordPoolMetrics(stats: PoolStats): void {
-  // Register metrics if not already registered (by setting a value)
-  metricsCollector.gauge('db_pool_active_connections', stats.totalCount);
-  metricsCollector.gauge('db_pool_idle_connections', stats.idleCount);
-  metricsCollector.gauge('db_pool_waiting_connections', stats.waitingCount);
-
-  // Calculate pool utilization
-  const maxPool = getDatabaseConfig().pool.max;
-  const utilization = maxPool > 0 ? stats.totalCount / maxPool : 0;
-  metricsCollector.gauge('db_pool_utilization', utilization);
-
-  // Register connection errors counter (initialize at 0)
-  metricsCollector.counter('db_pool_connection_errors_total', 0);
-}
-
-/**
  * Setup pool event listeners
  */
 function setupPoolEventListeners(poolInstance: pg.Pool): void {
@@ -86,7 +67,6 @@ function setupPoolEventListeners(poolInstance: pg.Pool): void {
     if (isShuttingDown) return;
 
     const stats = getPoolStats(poolInstance);
-    recordPoolMetrics(stats);
 
     logger.debug('Database client connected', {
       activeConnections: stats.totalCount,
@@ -100,7 +80,6 @@ function setupPoolEventListeners(poolInstance: pg.Pool): void {
     if (isShuttingDown) return;
 
     const stats = getPoolStats(poolInstance);
-    recordPoolMetrics(stats);
 
     logger.debug('Database client removed', {
       activeConnections: stats.totalCount,
@@ -116,8 +95,6 @@ function setupPoolEventListeners(poolInstance: pg.Pool): void {
     logger.error('Database pool error', err, {
       error: err instanceof Error ? err.message : String(err),
     });
-
-    metricsCollector.counter('db_pool_connection_errors_total', 1);
   });
 
   // Log pool acquisition events for debugging
@@ -169,13 +146,6 @@ export function getConnection() {
     sslEnabled: !!config.ssl,
   });
 
-  // Register initial pool metrics (with zeros since pool is just created)
-  recordPoolMetrics({
-    totalCount: 0,
-    idleCount: 0,
-    waitingCount: 0,
-  });
-
   db = drizzle(pool, { schema });
 
   return db;
@@ -193,10 +163,7 @@ export async function closeConnection(): Promise<void> {
 
   try {
     logger.info('Closing database connection pool...');
-
-    // Record final metrics
     const stats = getPoolStats(pool);
-    recordPoolMetrics(stats);
 
     await pool.end();
 

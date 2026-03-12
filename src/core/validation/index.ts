@@ -5,5 +5,3 @@
  */
 
 export * from './common.schema';
-export * from './error.types';
-export * from './error.handler';
