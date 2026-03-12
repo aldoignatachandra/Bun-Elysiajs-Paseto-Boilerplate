@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import type { UnitOfWork } from '../repositories/unit-of-work';
 import type { PasswordService } from '../core/crypto/password.service';
+import type { User as UserRecord } from '../database/schema';
 import type {
   IUsersService,
   GetProfileInput,
@@ -15,19 +14,15 @@ import type {
   GetActivityLogsInput,
   GetActivityLogsOutput,
 } from './interfaces/users.service.interface';
-import {
-  NotFoundError,
-  AuthenticationError,
-  ConflictError,
-} from '../core/errors/app-error';
+import { NotFoundError, AuthenticationError, ConflictError } from '../core/errors/app-error';
 import { logger } from '../core/logging/logger';
 
 export class UsersService implements IUsersService {
-  private readonly unitOfWork: any;
+  private readonly unitOfWork: UnitOfWork;
   private readonly passwordService: PasswordService;
 
-  constructor(unitOfWork: unknown, passwordService: PasswordService) {
-    this.unitOfWork = unitOfWork as UnitOfWork;
+  constructor(unitOfWork: UnitOfWork, passwordService: PasswordService) {
+    this.unitOfWork = unitOfWork;
     this.passwordService = passwordService;
   }
 
@@ -59,7 +54,7 @@ export class UsersService implements IUsersService {
       throw new NotFoundError('User not found');
     }
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: Partial<UserRecord> = {};
 
     if (input.firstName !== undefined) {
       updateData.firstName = input.firstName;
@@ -98,10 +93,7 @@ export class UsersService implements IUsersService {
       throw new NotFoundError('User not found');
     }
 
-    const isPasswordValid = await this.passwordService.verify(
-      user.passwordHash,
-      input.currentPassword
-    );
+    const isPasswordValid = await this.passwordService.verify(user.passwordHash, input.currentPassword);
 
     if (!isPasswordValid) {
       throw new AuthenticationError('Current password is incorrect');
@@ -142,7 +134,7 @@ export class UsersService implements IUsersService {
     const totalPages = Math.ceil(total / limit);
 
     return {
-      users: paged.map((user: UserProfile) => ({
+      users: paged.map(user => ({
         id: user.id,
         email: user.email,
         firstName: user.firstName,
@@ -208,7 +200,7 @@ export class UsersService implements IUsersService {
       throw new NotFoundError('User not found');
     }
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: Partial<UserRecord> = {};
 
     if (input.email !== undefined) {
       const existingUser = await this.unitOfWork.users.findByEmail(input.email);
@@ -309,14 +301,14 @@ export class UsersService implements IUsersService {
     return { message: 'User restored successfully' };
   }
 
-  async getActivityLogs(input: GetActivityLogsInput): Promise<GetActivityLogsOutput> {
+  getActivityLogs(input: GetActivityLogsInput): Promise<GetActivityLogsOutput> {
     const page = Math.max(1, input.page || 1);
     const limit = Math.max(1, Math.min(100, input.limit || 10));
 
     // Placeholder for future persistent audit log table.
     const logs: GetActivityLogsOutput['logs'] = [];
 
-    return {
+    return Promise.resolve({
       logs,
       pagination: {
         page,
@@ -326,7 +318,7 @@ export class UsersService implements IUsersService {
         hasNextPage: false,
         hasPreviousPage: false,
       },
-    };
+    });
   }
 
   async getUserStats(): Promise<{
@@ -344,10 +336,10 @@ export class UsersService implements IUsersService {
     startOfWeek.setDate(now.getDate() - 7);
 
     const totalUsers = allUsers.length;
-    const activeUsers = allUsers.filter((u: UserProfile) => u.isActive).length;
-    const verifiedUsers = allUsers.filter((u: UserProfile) => u.emailVerified).length;
-    const newUsersThisMonth = allUsers.filter((u: UserProfile) => u.createdAt >= startOfMonth).length;
-    const newUsersThisWeek = allUsers.filter((u: UserProfile) => u.createdAt >= startOfWeek).length;
+    const activeUsers = allUsers.filter(user => user.isActive).length;
+    const verifiedUsers = allUsers.filter(user => user.emailVerified).length;
+    const newUsersThisMonth = allUsers.filter(user => user.createdAt >= startOfMonth).length;
+    const newUsersThisWeek = allUsers.filter(user => user.createdAt >= startOfWeek).length;
 
     return {
       totalUsers,

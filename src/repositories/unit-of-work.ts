@@ -1,46 +1,12 @@
 import type { Database } from './base.repository';
 import type { User, Session, Product, NewUser, NewSession, NewProduct } from '../database/schema';
 import { logger } from '../core/logging/logger';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let UserRepositoryClass: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let SessionRepositoryClass: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let ProductRepositoryClass: any = null;
-
-function getUserRepositoryClass() {
-  if (!UserRepositoryClass) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    UserRepositoryClass = require('./users.repository').UserRepository;
-  }
-  return UserRepositoryClass;
-}
-
-function getSessionRepositoryClass() {
-  if (!SessionRepositoryClass) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    SessionRepositoryClass = require('./sessions.repository').SessionRepository;
-  }
-  return SessionRepositoryClass;
-}
-
-function getProductRepositoryClass() {
-  if (!ProductRepositoryClass) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    ProductRepositoryClass = require('./products.repository').ProductRepository;
-  }
-  return ProductRepositoryClass;
-}
+import { UserRepository } from './users.repository';
+import { SessionRepository } from './sessions.repository';
+import { ProductRepository } from './products.repository';
 
 export interface IUserRepository {
-  findAll(options?: {
-    limit?: number;
-    offset?: number;
-    search?: string;
-    includeDeleted?: boolean;
-    onlyDeleted?: boolean;
-  }): Promise<User[]>;
+  findAll(options?: { limit?: number; offset?: number; search?: string; includeDeleted?: boolean; onlyDeleted?: boolean }): Promise<User[]>;
   findById(id: string, includeDeleted?: boolean): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   create(user: NewUser): Promise<User>;
@@ -78,70 +44,68 @@ export interface IProductRepository {
 }
 
 export class UnitOfWork implements AsyncDisposable {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private transaction: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-  private _users: InstanceType<ReturnType<typeof getUserRepositoryClass>> | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-  private _sessions: InstanceType<ReturnType<typeof getSessionRepositoryClass>> | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-  private _products: InstanceType<ReturnType<typeof getProductRepositoryClass>> | null = null;
+  private transactionActive = false;
+  private _users: IUserRepository | null = null;
+  private _sessions: ISessionRepository | null = null;
+  private _products: IProductRepository | null = null;
 
   constructor(private db: Database) {}
 
-  get users(): InstanceType<ReturnType<typeof getUserRepositoryClass>> {
+  get users(): IUserRepository {
     if (!this._users) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const UserRepoClass = getUserRepositoryClass();
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-      this._users = new UserRepoClass(this.db);
+      this._users = new UserRepository(this.db);
     }
+
     return this._users;
   }
 
-  get sessions(): InstanceType<ReturnType<typeof getSessionRepositoryClass>> {
+  get sessions(): ISessionRepository {
     if (!this._sessions) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const SessionRepoClass = getSessionRepositoryClass();
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-      this._sessions = new SessionRepoClass(this.db);
+      this._sessions = new SessionRepository(this.db);
     }
+
     return this._sessions;
   }
 
-  get products(): InstanceType<ReturnType<typeof getProductRepositoryClass>> {
+  get products(): IProductRepository {
     if (!this._products) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const ProductRepoClass = getProductRepositoryClass();
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-      this._products = new ProductRepoClass(this.db);
+      this._products = new ProductRepository(this.db);
     }
+
     return this._products;
   }
 
   beginTransaction(): void {
-    if (this.transaction) {
+    if (this.transactionActive) {
       throw new Error('Transaction already started');
     }
+
+    this.transactionActive = true;
   }
 
   commit(): void {
-    if (!this.transaction) {
+    if (!this.transactionActive) {
       throw new Error('No active transaction');
     }
+
+    this.transactionActive = false;
   }
 
   rollback(): void {
-    if (!this.transaction) {
+    if (!this.transactionActive) {
       throw new Error('No active transaction');
     }
+
+    this.transactionActive = false;
     logger.warn('Transaction rolled back');
   }
 
-  async [Symbol.asyncDispose](): Promise<void> {
-    if (this.transaction) {
+  [Symbol.asyncDispose](): Promise<void> {
+    if (this.transactionActive) {
       this.rollback();
     }
+
+    return Promise.resolve();
   }
 }
 

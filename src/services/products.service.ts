@@ -1,4 +1,5 @@
 import type { UnitOfWork } from '../repositories/unit-of-work';
+import type { Product as ProductRecord } from '../database/schema';
 import type {
   CreateProductInput,
   IProductsService,
@@ -11,11 +12,10 @@ import type {
 import { BadRequestError, NotFoundError } from '../core/errors/app-error';
 
 export class ProductsService implements IProductsService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private readonly unitOfWork: any;
+  private readonly unitOfWork: UnitOfWork;
 
-  constructor(unitOfWork: unknown) {
-    this.unitOfWork = unitOfWork as UnitOfWork;
+  constructor(unitOfWork: UnitOfWork) {
+    this.unitOfWork = unitOfWork;
   }
 
   async list(input: ListProductsInput): Promise<ListProductsOutput> {
@@ -44,7 +44,7 @@ export class ProductsService implements IProductsService {
     const totalPages = Math.ceil(total / limit);
 
     return {
-      products: paged.map((product: ProductDTO) => ({ ...product })),
+      products: paged.map(product => ({ ...product })),
       pagination: {
         page,
         limit,
@@ -93,14 +93,16 @@ export class ProductsService implements IProductsService {
       throw new BadRequestError('Stock cannot be negative');
     }
 
-    const updated = await this.unitOfWork.products.update(input.id, {
+    const updateData: Partial<ProductRecord> = {
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.description !== undefined ? { description: input.description } : {}),
       ...(input.price !== undefined ? { price: input.price } : {}),
       ...(input.stock !== undefined ? { stock: input.stock } : {}),
       ...(input.category !== undefined ? { category: input.category } : {}),
       ...(input.status !== undefined ? { status: input.status } : {}),
-    });
+    };
+
+    const updated = await this.unitOfWork.products.update(input.id, updateData);
 
     if (!updated) {
       throw new NotFoundError('Product not found');
