@@ -36,10 +36,7 @@ function getClientIp(request: Request): string {
   return 'unknown';
 }
 
-function buildDefaultKey(
-  ctx: { request: Request; user?: { id?: string } | null },
-  strategy: 'ip' | 'user_or_ip'
-): string {
+function buildDefaultKey(ctx: { request: Request; user?: { id?: string } | null }, strategy: 'ip' | 'user_or_ip'): string {
   const path = new URL(ctx.request.url).pathname;
   const method = ctx.request.method;
 

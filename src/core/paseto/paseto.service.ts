@@ -12,20 +12,8 @@
  */
 
 import { encrypt, decrypt, sign, verify } from 'paseto-ts/v4';
-import type {
-  TokenPayload,
-  AccessTokenPayload,
-  RefreshTokenPayload,
-  TokenPair,
-  TokenValidationResult,
-  TokenType,
-} from './token.types';
-import {
-  KeyConfigError,
-  InvalidTokenPayloadError,
-  TokenExpiredError,
-  TokenValidationError,
-} from './errors';
+import type { TokenPayload, AccessTokenPayload, RefreshTokenPayload, TokenPair, TokenValidationResult, TokenType } from './token.types';
+import { KeyConfigError, InvalidTokenPayloadError, TokenExpiredError, TokenValidationError } from './errors';
 import { validateTokenPayload, getTokenTypeFromPrefix, isTokenExpired } from './utils';
 
 export interface PasetoServiceConfig {
@@ -150,19 +138,13 @@ export class PasetoService {
         options.addExp = true;
       }
 
-      const token = encrypt(
-        this.symmetricKey,
-        tokenPayload,
-        options as Parameters<typeof encrypt>[2]
-      );
+      const token = encrypt(this.symmetricKey, tokenPayload, options as Parameters<typeof encrypt>[2]);
       return token;
     } catch (error) {
       if (error instanceof InvalidTokenPayloadError) {
         throw error;
       }
-      throw new TokenValidationError(
-        `Failed to create access token: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      throw new TokenValidationError(`Failed to create access token: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -222,9 +204,7 @@ export class PasetoService {
       if (error instanceof InvalidTokenPayloadError) {
         throw error;
       }
-      throw new TokenValidationError(
-        `Failed to create refresh token: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      throw new TokenValidationError(`Failed to create refresh token: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -232,12 +212,7 @@ export class PasetoService {
    * Create both access and refresh tokens as a pair
    * This is the main method for authentication flows
    */
-  public createTokenPair(basePayload: {
-    sub: string;
-    email?: string;
-    role?: string;
-    permissions?: string[];
-  }): TokenPair {
+  public createTokenPair(basePayload: { sub: string; email?: string; role?: string; permissions?: string[] }): TokenPair {
     const now = Math.floor(Date.now() / 1000);
     const accessJti = crypto.randomUUID();
     const refreshJti = crypto.randomUUID();
@@ -496,9 +471,7 @@ export function getPasetoService(config?: PasetoServiceConfig): PasetoService {
 export const paseto = new Proxy<PasetoService>({} as PasetoService, {
   get(target, prop) {
     if (!pasetoInstance) {
-      throw new KeyConfigError(
-        'PasetoService not initialized. Call getPasetoService() with config first.'
-      );
+      throw new KeyConfigError('PasetoService not initialized. Call getPasetoService() with config first.');
     }
     // Use type assertion with 'unknown' as an intermediate type for safer casting
     return (pasetoInstance as unknown as Record<string, unknown>)[prop as string];

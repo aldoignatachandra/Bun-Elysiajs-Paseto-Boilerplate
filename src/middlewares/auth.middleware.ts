@@ -21,7 +21,6 @@
  * ```
  */
 
-import type { Elysia } from 'elysia';
 import type { PasetoService } from '../core/paseto/paseto.service';
 import type { AuthService } from '../services/auth.service';
 import { UnauthorizedError, InvalidTokenError } from '../core/errors/app-error';
@@ -60,41 +59,37 @@ export interface AuthContext {
  *
  * @param pasetoService - PASETO service instance
  * @param authService - Authentication service instance
- * @returns Elysia middleware plugin
+ * @returns Elysia beforeHandle hook
  */
-export function requireAuth(pasetoService: PasetoService, authService: AuthService) {
-  return (app: Elysia) =>
-    app.derive(async ({ request }) => {
-      // Extract token from Authorization header
-      const authHeader = request.headers.get('Authorization');
-      const token = extractTokenFromHeader(authHeader);
+export function requireAuth(_pasetoService: PasetoService, authService: AuthService) {
+  return async ({ request }: { request: Request }) => {
+    const authHeader = request.headers.get('Authorization');
+    const token = extractTokenFromHeader(authHeader);
 
-      if (!token) {
-        logger.warn('Authentication failed: No token provided');
-        throw new UnauthorizedError('Authentication required');
-      }
+    if (!token) {
+      logger.warn('Authentication failed: No token provided');
+      throw new UnauthorizedError('Authentication required');
+    }
 
-      // Validate token
-      const result = await authService.validateAccessToken({ token });
+    const result = await authService.validateAccessToken({ token });
 
-      if (!result.valid || !result.userId || !result.payload) {
-        logger.warn('Authentication failed: Invalid token', { error: result.error });
-        throw new InvalidTokenError(result.error || 'Invalid token');
-      }
+    if (!result.valid || !result.userId || !result.payload) {
+      logger.warn('Authentication failed: Invalid token', { error: result.error });
+      throw new InvalidTokenError(result.error || 'Invalid token');
+    }
 
-      // Attach user to context
-      const payload = result.payload;
-      return {
-        user: {
-          id: result.userId,
-          email: typeof payload.email === 'string' ? payload.email : undefined,
-          role: typeof payload.role === 'string' ? payload.role : undefined,
-          permissions: Array.isArray(payload.permissions) ? payload.permissions : undefined,
-          ...payload,
-        },
-        tokenId: typeof payload.jti === 'string' ? payload.jti : null,
-      } satisfies AuthContext;
-    });
+    const payload = result.payload;
+    return {
+      user: {
+        id: result.userId,
+        email: typeof payload.email === 'string' ? payload.email : undefined,
+        role: typeof payload.role === 'string' ? payload.role : undefined,
+        permissions: Array.isArray(payload.permissions) ? payload.permissions : undefined,
+        ...payload,
+      },
+      tokenId: typeof payload.jti === 'string' ? payload.jti : null,
+    } satisfies AuthContext;
+  };
 }
 
 /**
@@ -110,59 +105,52 @@ export function requireAuth(pasetoService: PasetoService, authService: AuthServi
  *
  * @param pasetoService - PASETO service instance
  * @param authService - Authentication service instance
- * @returns Elysia middleware plugin
+ * @returns Elysia beforeHandle hook
  */
-export function optionalAuth(pasetoService: PasetoService, authService: AuthService) {
-  return (app: Elysia) =>
-    app.derive(async ({ request }) => {
-      // Extract token from Authorization header
-      const authHeader = request.headers.get('Authorization');
-      const token = extractTokenFromHeader(authHeader);
+export function optionalAuth(_pasetoService: PasetoService, authService: AuthService) {
+  return async ({ request }: { request: Request }) => {
+    const authHeader = request.headers.get('Authorization');
+    const token = extractTokenFromHeader(authHeader);
 
-      // No token provided, continue without user
-      if (!token) {
+    if (!token) {
+      return {
+        user: null,
+        tokenId: null,
+      } satisfies AuthContext;
+    }
+
+    try {
+      const result = await authService.validateAccessToken({ token });
+
+      if (!result.valid || !result.userId || !result.payload) {
+        logger.debug('Optional authentication failed: Invalid token', {
+          error: result.error,
+        });
         return {
           user: null,
           tokenId: null,
         } satisfies AuthContext;
       }
 
-      // Validate token
-      try {
-        const result = await authService.validateAccessToken({ token });
-
-        if (!result.valid || !result.userId || !result.payload) {
-          // Invalid token, continue without user
-          logger.debug('Optional authentication failed: Invalid token', {
-            error: result.error,
-          });
-          return {
-            user: null,
-            tokenId: null,
-          } satisfies AuthContext;
-        }
-
-        // Attach user to context
-        const payload = result.payload;
-        return {
-          user: {
-            id: result.userId,
-            email: typeof payload.email === 'string' ? payload.email : undefined,
-            role: typeof payload.role === 'string' ? payload.role : undefined,
-            permissions: Array.isArray(payload.permissions) ? payload.permissions : undefined,
-            ...payload,
-          },
-          tokenId: typeof payload.jti === 'string' ? payload.jti : null,
-        } satisfies AuthContext;
-      } catch (error) {
-        // Error during validation, continue without user
-        logger.warn('Optional authentication error', { error });
-        return {
-          user: null,
-          tokenId: null,
-        } satisfies AuthContext;
-      }
-    });
+      const payload = result.payload;
+      return {
+        user: {
+          id: result.userId,
+          email: typeof payload.email === 'string' ? payload.email : undefined,
+          role: typeof payload.role === 'string' ? payload.role : undefined,
+          permissions: Array.isArray(payload.permissions) ? payload.permissions : undefined,
+          ...payload,
+        },
+        tokenId: typeof payload.jti === 'string' ? payload.jti : null,
+      } satisfies AuthContext;
+    } catch (error) {
+      logger.warn('Optional authentication error', { error });
+      return {
+        user: null,
+        tokenId: null,
+      } satisfies AuthContext;
+    }
+  };
 }
 
 /**

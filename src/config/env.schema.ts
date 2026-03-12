@@ -75,9 +75,7 @@ export function validateEnv(): Env {
   }
 
   if (!parsed.data.PASETO_PUBLIC_KEY || !parsed.data.PASETO_SECRET_KEY) {
-    throw new Error(
-      'PASETO_PUBLIC_KEY and PASETO_SECRET_KEY are required (format: k4.public/k4.secret)'
-    );
+    throw new Error('PASETO_PUBLIC_KEY and PASETO_SECRET_KEY are required (format: k4.public/k4.secret)');
   }
 
   return parsed.data;

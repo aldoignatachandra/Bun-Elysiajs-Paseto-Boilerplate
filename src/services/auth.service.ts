@@ -37,14 +37,7 @@ import type {
   ValidateAccessTokenInput,
   ValidateAccessTokenOutput,
 } from './interfaces/auth.service.interface';
-import {
-  ConflictError,
-  AuthenticationError,
-  ForbiddenError,
-  InvalidTokenError,
-  TokenExpiredError,
-  NotFoundError,
-} from '../core/errors/app-error';
+import { ConflictError, AuthenticationError, ForbiddenError, InvalidTokenError, TokenExpiredError, NotFoundError } from '../core/errors/app-error';
 
 /**
  * Authentication Service Implementation

@@ -54,19 +54,5 @@ export function loggingPlugin<T extends Elysia>(app: T) {
         status: typeof status === 'number' ? status : 200,
         duration: `${duration.toFixed(2)}ms`,
       });
-    })
-    .onError((context: Context) => {
-      const { startTime, requestLogger } = context as unknown as RequestContext;
-      const duration = performance.now() - startTime;
-      const status = context.set.status || 500;
-
-      requestLogger.error('Request failed', undefined, {
-        method: context.request.method,
-        path: new URL(context.request.url).pathname,
-        status: typeof status === 'number' ? status : 500,
-        duration: `${duration.toFixed(2)}ms`,
-      });
-
-      return context;
     });
 }

@@ -76,8 +76,7 @@ class PinoLogger implements Logger {
   }
 
   error(message: string, error?: unknown, context: LogContext = {}): void {
-    const errorContext =
-      error instanceof Error ? { error: this.serializeError(error), ...context } : context;
+    const errorContext = error instanceof Error ? { error: this.serializeError(error), ...context } : context;
     getPinoLoggerInstance().error({ ...this.metadata, ...errorContext }, message);
   }
 

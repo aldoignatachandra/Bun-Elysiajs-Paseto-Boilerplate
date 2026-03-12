@@ -90,10 +90,7 @@ async function checkRedisHealth(): Promise<HealthCheckResult> {
 /**
  * Determine overall health status
  */
-function getOverallStatus(
-  database: HealthCheckResult,
-  redis: HealthCheckResult
-): 'ok' | 'degraded' {
+function getOverallStatus(database: HealthCheckResult, redis: HealthCheckResult): 'ok' | 'degraded' {
   if (database.status === 'ok' && redis.status === 'ok') {
     return 'ok';
   }

@@ -83,12 +83,14 @@ export function requestId(options: RequestIdOptions = {}) {
       })
       .onAfterHandle(({ requestId, set }) => {
         // Set request ID header on response
-        set.headers[opts.headerName] = requestId;
+        const headerValue = typeof requestId === 'string' ? requestId : crypto.randomUUID();
+        set.headers[opts.headerName] = headerValue;
       })
       .onError(({ requestId, set }) => {
         // Ensure request ID is set even on error responses
         if (!set.headers[opts.headerName]) {
-          set.headers[opts.headerName] = requestId;
+          const headerValue = typeof requestId === 'string' ? requestId : crypto.randomUUID();
+          set.headers[opts.headerName] = headerValue;
         }
       });
 }

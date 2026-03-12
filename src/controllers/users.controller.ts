@@ -1,14 +1,7 @@
 import type { UsersService } from '../services/users.service';
 import type { AuthContext } from '../middlewares/auth.middleware';
 import { logger } from '../core/logging/logger';
-import {
-  NotFoundError,
-  AuthenticationError,
-  UnauthorizedError,
-  BadRequestError,
-  InternalServerError,
-  ConflictError,
-} from '../core/errors/app-error';
+import { NotFoundError, AuthenticationError, UnauthorizedError, BadRequestError, InternalServerError, ConflictError } from '../core/errors/app-error';
 
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -55,10 +48,7 @@ export class UsersController {
     }
   }
 
-  async changePassword(
-    dto: { currentPassword: string; newPassword: string },
-    authContext: AuthContext
-  ) {
+  async changePassword(dto: { currentPassword: string; newPassword: string }, authContext: AuthContext) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
@@ -260,10 +250,7 @@ export class UsersController {
     }
   }
 
-  async getActivityLogs(
-    query: { page: number; limit: number; user_id?: string; action?: string; resource?: string },
-    authContext: AuthContext
-  ) {
+  async getActivityLogs(query: { page: number; limit: number; user_id?: string; action?: string; resource?: string }, authContext: AuthContext) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }

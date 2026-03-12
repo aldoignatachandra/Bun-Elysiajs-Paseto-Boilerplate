@@ -27,12 +27,7 @@ import type {
   MeResponse,
 } from '../routes/dto/auth.dto';
 import { logger } from '../core/logging/logger';
-import {
-  ConflictError,
-  AuthenticationError,
-  UnauthorizedError,
-  InternalServerError,
-} from '../core/errors/app-error';
+import { ConflictError, AuthenticationError, UnauthorizedError, InternalServerError } from '../core/errors/app-error';
 
 /**
  * Authentication Controller

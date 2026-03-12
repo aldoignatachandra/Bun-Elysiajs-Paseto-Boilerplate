@@ -18,7 +18,7 @@ import { registerPlugins } from './plugins';
 import { requestId } from './middlewares/request-id.middleware';
 import { errorResponse } from './core/http/response';
 
-export function createApp(): Elysia {
+export function createApp() {
   const db = getConnection();
   const unitOfWork = new UnitOfWork(db);
   const passwordService = new PasswordService();
@@ -42,9 +42,7 @@ export function createApp(): Elysia {
         origin: process.env.CORS_ORIGIN || '*',
         credentials: process.env.CORS_CREDENTIALS === 'true',
         methods: (process.env.CORS_METHODS || 'GET,POST,PUT,DELETE,PATCH').split(','),
-        allowedHeaders: (process.env.CORS_ALLOWED_HEADERS || 'Content-Type,Authorization,X-Request-ID').split(
-          ','
-        ),
+        allowedHeaders: (process.env.CORS_ALLOWED_HEADERS || 'Content-Type,Authorization,X-Request-ID').split(','),
       })
     )
     .use(requestId())
@@ -52,9 +50,8 @@ export function createApp(): Elysia {
     .use(registerPlugins)
     .onError(ctx => {
       const { error, set, request } = ctx;
-      const requestId = typeof (ctx as { requestId?: unknown }).requestId === 'string'
-        ? ((ctx as { requestId?: string }).requestId as string)
-        : undefined;
+      const requestId =
+        typeof (ctx as { requestId?: unknown }).requestId === 'string' ? ((ctx as { requestId?: string }).requestId as string) : undefined;
 
       logger.error('Unhandled error', error);
 
@@ -102,12 +99,12 @@ export function createApp(): Elysia {
     .all('*', ctx => {
       const { set, request } = ctx;
       set.status = 404;
-      const requestId = typeof (ctx as { requestId?: unknown }).requestId === 'string'
-        ? ((ctx as { requestId?: string }).requestId as string)
-        : undefined;
+      const requestId =
+        typeof (ctx as { requestId?: unknown }).requestId === 'string' ? ((ctx as { requestId?: string }).requestId as string) : undefined;
       return errorResponse(request, 'NOT_FOUND', 'Route not found', undefined, requestId);
     });
 
   logger.info('Application created successfully');
+
   return app;
 }

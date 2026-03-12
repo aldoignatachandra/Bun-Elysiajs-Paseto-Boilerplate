@@ -95,10 +95,7 @@ export abstract class CRUDRepository<T, K> extends BaseRepository {
     const offset = (page - 1) * pageSize;
 
     try {
-      const [data, countResult] = await Promise.all([
-        this.findAll({ limit: pageSize, offset }),
-        this.count(),
-      ]);
+      const [data, countResult] = await Promise.all([this.findAll({ limit: pageSize, offset }), this.count()]);
 
       const total = Array.isArray(countResult) ? countResult.length : countResult;
       const totalPages = Math.ceil(total / pageSize);

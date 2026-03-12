@@ -4,10 +4,7 @@ import type { Session, NewSession } from '../database/schema';
 import { CRUDRepository } from './base.repository';
 import type { ISessionRepository } from './unit-of-work';
 
-export class SessionRepository
-  extends CRUDRepository<Session, string>
-  implements ISessionRepository
-{
+export class SessionRepository extends CRUDRepository<Session, string> implements ISessionRepository {
   get tableName(): string {
     return 'sessions';
   }
@@ -24,11 +21,7 @@ export class SessionRepository
 
   async findByTokenId(tokenId: string): Promise<Session | null> {
     try {
-      const result = await this.db
-        .select()
-        .from(sessions)
-        .where(eq(sessions.tokenId, tokenId))
-        .limit(1);
+      const result = await this.db.select().from(sessions).where(eq(sessions.tokenId, tokenId)).limit(1);
       return result[0] || null;
     } catch (error) {
       this.logError('findByTokenId', error);
@@ -48,11 +41,7 @@ export class SessionRepository
 
   async revoke(id: string): Promise<boolean> {
     try {
-      const result = await this.db
-        .update(sessions)
-        .set({ isRevoked: true, updatedAt: new Date() })
-        .where(eq(sessions.id, id))
-        .returning();
+      const result = await this.db.update(sessions).set({ isRevoked: true, updatedAt: new Date() }).where(eq(sessions.id, id)).returning();
       return result.length > 0;
     } catch (error) {
       this.logError('revoke', error);

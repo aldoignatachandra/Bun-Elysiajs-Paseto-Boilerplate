@@ -48,14 +48,18 @@ export class AppError extends Error {
   }
 
   toJSON(): Record<string, unknown> {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return {
+    const errorJson: Record<string, unknown> = {
       name: this.name,
       code: this.code,
       message: this.message,
       status: this.status,
-      ...(this.details && { details: this.details }),
     };
+
+    if (this.details !== undefined) {
+      errorJson.details = this.details;
+    }
+
+    return errorJson;
   }
 }
 

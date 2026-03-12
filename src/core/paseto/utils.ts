@@ -28,9 +28,7 @@ export function isTokenExpired(exp: string | number): boolean {
   return Math.floor(Date.now() / 1000) >= exp;
 }
 
-export function validateTokenPayload(
-  payload: unknown
-): asserts payload is import('./token.types').TokenPayload {
+export function validateTokenPayload(payload: unknown): asserts payload is import('./token.types').TokenPayload {
   if (!payload || typeof payload !== 'object') {
     throw new InvalidTokenPayloadError('Payload must be an object');
   }

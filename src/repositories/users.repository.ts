@@ -21,11 +21,7 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
       if (options.search) {
         conditions.push(
-          or(
-            ilike(users.email, `%${options.search}%`),
-            ilike(users.firstName, `%${options.search}%`),
-            ilike(users.lastName, `%${options.search}%`)
-          )
+          or(ilike(users.email, `%${options.search}%`), ilike(users.firstName, `%${options.search}%`), ilike(users.lastName, `%${options.search}%`))
         );
       }
 
@@ -114,11 +110,7 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async setActive(id: string, active: boolean): Promise<boolean> {
     try {
-      const result = await this.db
-        .update(users)
-        .set({ isActive: active, updatedAt: new Date() })
-        .where(eq(users.id, id))
-        .returning();
+      const result = await this.db.update(users).set({ isActive: active, updatedAt: new Date() }).where(eq(users.id, id)).returning();
 
       return result.length > 0;
     } catch (error) {
@@ -144,11 +136,7 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async restore(id: string): Promise<boolean> {
     try {
-      const result = await this.db
-        .update(users)
-        .set({ deletedAt: null, isActive: true, updatedAt: new Date() })
-        .where(eq(users.id, id))
-        .returning();
+      const result = await this.db.update(users).set({ deletedAt: null, isActive: true, updatedAt: new Date() }).where(eq(users.id, id)).returning();
 
       return result.length > 0;
     } catch (error) {

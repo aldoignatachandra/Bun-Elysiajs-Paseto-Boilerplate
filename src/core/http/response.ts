@@ -27,12 +27,7 @@ export function buildMeta(request: Request, requestId?: string): ApiMeta {
   };
 }
 
-export function successResponse<T>(
-  request: Request,
-  data?: T,
-  message?: string,
-  requestId?: string
-): ApiResponse<T> {
+export function successResponse<T>(request: Request, data?: T, message?: string, requestId?: string): ApiResponse<T> {
   return {
     success: true,
     ...(message ? { message } : {}),
@@ -41,13 +36,7 @@ export function successResponse<T>(
   };
 }
 
-export function errorResponse(
-  request: Request,
-  code: string,
-  message: string,
-  details?: unknown,
-  requestId?: string
-): ApiResponse<ApiErrorBody> {
+export function errorResponse(request: Request, code: string, message: string, details?: unknown, requestId?: string): ApiResponse<ApiErrorBody> {
   return {
     success: false,
     message,

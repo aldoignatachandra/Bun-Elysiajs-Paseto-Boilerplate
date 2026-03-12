@@ -17,13 +17,7 @@ export const uuidSchema = z.string().uuid('Invalid UUID format');
  * Email schema
  * Validates email format with reasonable constraints
  */
-export const emailSchema = z
-  .string()
-  .min(1, 'Email is required')
-  .email('Invalid email format')
-  .max(254, 'Email is too long')
-  .toLowerCase()
-  .trim();
+export const emailSchema = z.string().min(1, 'Email is required').email('Invalid email format').max(254, 'Email is too long').toLowerCase().trim();
 
 /**
  * Password schema
@@ -47,10 +41,7 @@ export const passwordSchema = z
  * Simple password schema (less strict)
  * For cases where strong password requirements are not needed
  */
-export const simplePasswordSchema = z
-  .string()
-  .min(6, 'Password must be at least 6 characters')
-  .max(128, 'Password is too long');
+export const simplePasswordSchema = z.string().min(6, 'Password must be at least 6 characters').max(128, 'Password is too long');
 
 /**
  * Name schema (first name, last name, etc.)

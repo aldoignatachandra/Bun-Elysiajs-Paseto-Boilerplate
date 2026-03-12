@@ -25,9 +25,7 @@ const server = Bun.serve({
 });
 
 logger.info(`🚀 Server started on http://${server.hostname}:${server.port}`);
-logger.info(
-  `📚 Swagger documentation available at http://${server.hostname}:${server.port}/swagger`
-);
+logger.info(`📚 Swagger documentation available at http://${server.hostname}:${server.port}/swagger`);
 logger.info(`💚 Health check available at http://${server.hostname}:${server.port}/health`);
 
 // Export for potential testing or module usage
