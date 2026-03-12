@@ -8,6 +8,13 @@
       "when": 1773036267634,
       "tag": "0000_yummy_the_hunter",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1773288857000,
+      "tag": "0001_api_parity_monolith_cleanup",
+      "breakpoints": true
     }
   ]
 }

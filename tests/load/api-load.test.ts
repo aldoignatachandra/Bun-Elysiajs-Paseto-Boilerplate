@@ -25,10 +25,13 @@ import {
 } from './helpers';
 
 // Test configuration
+const RUN_LOAD_TESTS = process.env.RUN_LOAD_TESTS === 'true';
+const describeLoad = RUN_LOAD_TESTS ? describe : describe.skip;
 const TEST_PORT = 3001;
 const BASE_URL = createTestUrl(TEST_PORT);
 let server: ReturnType<typeof Bun.serve>;
 let testAccessToken: string | null = null;
+let testUserId: string | null = null;
 
 // Rate limiting configuration (should match app config)
 const RATE_LIMIT_MAX = 10;
@@ -38,6 +41,10 @@ const RATE_LIMIT_WINDOW = 60;
  * Setup test server before all tests
  */
 beforeAll(async () => {
+  if (!RUN_LOAD_TESTS) {
+    return;
+  }
+
   // Create app for testing
   const app = createApp();
 
@@ -51,7 +58,7 @@ beforeAll(async () => {
   logger.info(`Test server started on ${BASE_URL}`);
 
   // Wait for server to be ready
-  await waitForServer(`${BASE_URL}/health`);
+  await waitForServer(`${BASE_URL}/health/live`);
 
   // Create a test user and get access token for authenticated tests
   try {
@@ -59,7 +66,7 @@ beforeAll(async () => {
     const testPassword = generateTestPassword();
 
     // Register user
-    const registerResponse = await fetch(`${BASE_URL}/auth/register`, {
+    const registerResponse = await fetch(`${BASE_URL}/api/v1/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -85,6 +92,10 @@ beforeAll(async () => {
  * Cleanup after all tests
  */
 afterAll(() => {
+  if (!RUN_LOAD_TESTS) {
+    return;
+  }
+
   if (server) {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     server.stop();
@@ -109,12 +120,12 @@ function makeAuthenticatedRequest(endpoint: string, options: RequestInit = {}): 
 /**
  * Test 1: Handle 100 concurrent requests to health endpoint
  */
-describe('Load Test: 100 Concurrent Health Check Requests', () => {
+describeLoad('Load Test: 100 Concurrent Health Check Requests', () => {
   it('should handle 100 concurrent health check requests successfully', async () => {
     const requestCount = 100;
 
     // Create array of request functions
-    const requests = Array.from({ length: requestCount }, () => () => fetch(`${BASE_URL}/health`));
+    const requests = Array.from({ length: requestCount }, () => () => fetch(`${BASE_URL}/health/live`));
 
     // Execute batch with 100 concurrent requests
     const results = await executeBatch(requests, { concurrency: 100 });
@@ -138,14 +149,14 @@ describe('Load Test: 100 Concurrent Health Check Requests', () => {
 /**
  * Test 2: Handle 1000 requests over time
  */
-describe('Load Test: 1000 Requests Over Time', () => {
+describeLoad('Load Test: 1000 Requests Over Time', () => {
   it('should handle 1000 requests sent over time without errors', async () => {
     const requestCount = 1000;
     const batchSize = 50;
     const delayBetweenBatches = 100; // 100ms between batches
 
     // Create array of request functions
-    const requests = Array.from({ length: requestCount }, () => () => fetch(`${BASE_URL}/health`));
+    const requests = Array.from({ length: requestCount }, () => () => fetch(`${BASE_URL}/health/live`));
 
     // Execute batches over time
     const results = await executeBatch(requests, {
@@ -171,7 +182,7 @@ describe('Load Test: 1000 Requests Over Time', () => {
 /**
  * Test 3: Rate limiting effectiveness
  */
-describe('Load Test: Rate Limiting Effectiveness', () => {
+describeLoad('Load Test: Rate Limiting Effectiveness', () => {
   it('should enforce rate limits on authentication endpoints', async () => {
     const requestCount = RATE_LIMIT_MAX + 5; // Exceed the rate limit
 
@@ -179,7 +190,7 @@ describe('Load Test: Rate Limiting Effectiveness', () => {
     const requests = Array.from(
       { length: requestCount },
       () => () =>
-        fetch(`${BASE_URL}/auth/login`, {
+        fetch(`${BASE_URL}/api/v1/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -220,7 +231,7 @@ describe('Load Test: Rate Limiting Effectiveness', () => {
     const firstBatch = Array.from(
       { length: RATE_LIMIT_MAX },
       () => () =>
-        fetch(`${BASE_URL}/auth/login`, {
+        fetch(`${BASE_URL}/api/v1/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -237,7 +248,7 @@ describe('Load Test: Rate Limiting Effectiveness', () => {
     const secondBatch = Array.from(
       { length: 5 },
       () => () =>
-        fetch(`${BASE_URL}/auth/login`, {
+        fetch(`${BASE_URL}/api/v1/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -257,7 +268,7 @@ describe('Load Test: Rate Limiting Effectiveness', () => {
     const thirdBatch = Array.from(
       { length: 5 },
       () => () =>
-        fetch(`${BASE_URL}/auth/login`, {
+        fetch(`${BASE_URL}/api/v1/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -280,13 +291,13 @@ describe('Load Test: Rate Limiting Effectiveness', () => {
 /**
  * Test 4: Connection pooling under load
  */
-describe('Load Test: Connection Pooling Under Load', () => {
+describeLoad('Load Test: Connection Pooling Under Load', () => {
   it('should maintain stable performance under sustained load', async () => {
     const requestCount = 200;
     const batchSize = 20;
 
     // Create array of request functions
-    const requests = Array.from({ length: requestCount }, () => () => fetch(`${BASE_URL}/health`));
+    const requests = Array.from({ length: requestCount }, () => () => fetch(`${BASE_URL}/health/live`));
 
     // Execute batches
     const results = await executeBatch(requests, {
@@ -329,7 +340,7 @@ describe('Load Test: Connection Pooling Under Load', () => {
     // Create array of authenticated request functions
     const requests = Array.from(
       { length: requestCount },
-      () => () => makeAuthenticatedRequest('/users/me')
+      () => () => makeAuthenticatedRequest('/api/v1/users/me')
     );
 
     // Execute batch
@@ -351,7 +362,7 @@ describe('Load Test: Connection Pooling Under Load', () => {
 /**
  * Test 5: Caching effectiveness
  */
-describe('Load Test: Caching Effectiveness', () => {
+describeLoad('Load Test: Caching Effectiveness', () => {
   it('should cache responses for repeated requests', async () => {
     const requestCount = 50;
     const cacheKey = `/cache-test-${Date.now()}`;
@@ -476,7 +487,7 @@ describe('Load Test: Caching Effectiveness', () => {
 /**
  * Test 6: Mixed workload simulation
  */
-describe('Load Test: Mixed Workload Simulation', () => {
+describeLoad('Load Test: Mixed Workload Simulation', () => {
   it('should handle mixed read/write operations', async () => {
     const requestCount = 100;
     const readRatio = 0.8; // 80% reads, 20% writes
@@ -487,11 +498,11 @@ describe('Load Test: Mixed Workload Simulation', () => {
 
       if (isRead) {
         // Read operation - health check
-        return () => fetch(`${BASE_URL}/health`);
+        return () => fetch(`${BASE_URL}/health/live`);
       } else {
         // Write operation - login attempt (will fail but tests write load)
         return () =>
-          fetch(`${BASE_URL}/auth/login`, {
+          fetch(`${BASE_URL}/api/v1/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

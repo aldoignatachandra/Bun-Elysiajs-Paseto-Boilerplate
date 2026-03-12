@@ -9,6 +9,7 @@ export const users = pgTable('users', {
   isActive: boolean('is_active').notNull().default(true),
   emailVerified: boolean('email_verified').notNull().default(false),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
