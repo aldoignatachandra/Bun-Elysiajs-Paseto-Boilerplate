@@ -138,10 +138,7 @@ export function enforceRateLimit(options: RateLimitOptions = {}) {
 export function rateLimit(options: RateLimitOptions = {}) {
   const beforeHandle = enforceRateLimit(options);
 
-  return (app: Elysia) =>
-    app.onBeforeHandle(async ctx => {
-      return await beforeHandle(ctx as { request: Request; user?: { id?: string } | null });
-    });
+  return (app: Elysia) => app.onBeforeHandle(ctx => beforeHandle(ctx as { request: Request; user?: { id?: string } | null }));
 }
 
 export function rateLimitByUser(options: RateLimitOptions = {}) {

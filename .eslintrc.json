@@ -17,8 +17,12 @@
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/explicit-module-boundary-types": "off",
     "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-require-imports": "error",
     "@typescript-eslint/no-floating-promises": "error",
     "@typescript-eslint/no-misused-promises": "error",
+    "func-style": ["error", "declaration", { "allowArrowFunctions": true }],
+    "prefer-arrow-callback": ["error", { "allowNamedFunctions": false, "allowUnboundThis": true }],
+    "arrow-body-style": ["error", "as-needed"],
     "no-console": ["warn", { "allow": ["warn", "error"] }]
   },
   "ignorePatterns": ["dist", "node_modules", "*.js"]

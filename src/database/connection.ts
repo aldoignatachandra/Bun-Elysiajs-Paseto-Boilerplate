@@ -4,6 +4,7 @@
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+import { getConfig } from '@config/index';
 import * as schema from './schema';
 import { logger } from '@/core/logging/logger';
 
@@ -29,11 +30,17 @@ interface PoolStats {
 }
 
 function getDatabaseConfig(): DatabaseConfig {
-  // Lazy-load config to avoid circular dependencies
+  // Resolve config at runtime so tests/bootstrap can still use env fallback.
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
-    const { databaseConfig } = require('@config/database');
-    return databaseConfig as DatabaseConfig;
+    const config = getConfig();
+    return {
+      url: config.DATABASE_URL,
+      pool: {
+        min: config.DATABASE_POOL_MIN,
+        max: config.DATABASE_POOL_MAX,
+      },
+      ssl: config.DATABASE_SSL ? { rejectUnauthorized: false } : undefined,
+    };
   } catch {
     // Fallback config if config module isn't available yet
     return {

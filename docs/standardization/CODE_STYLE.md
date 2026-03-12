@@ -28,7 +28,7 @@ This project uses Prettier and ESLint to maintain consistent code formatting and
   "semi": true,
   "trailingComma": "es5",
   "singleQuote": true,
-  "printWidth": 100,
+  "printWidth": 150,
   "tabWidth": 2,
   "useTabs": false,
   "arrowParens": "avoid",
@@ -44,7 +44,7 @@ This project uses Prettier and ESLint to maintain consistent code formatting and
 | **Quotes**          | Single quotes  | `'string'` instead of `"string"`           |
 | **Semicolons**      | Required       | Always terminate statements                |
 | **Trailing Commas** | ES5            | Multi-line structures have trailing commas |
-| **Line Width**      | 100 characters | Maximum line length for readability        |
+| **Line Width**      | 150 characters | Maximum line length for readability        |
 | **Arrow Params**    | Omit parens    | `x => x` instead of `(x) => x`             |
 | **End of Line**     | LF             | Unix-style line endings                    |
 
@@ -223,6 +223,34 @@ import type { User } from '@database/schema';
 // 5. Relative imports (avoid when possible)
 import { localHelper } from './helpers';
 ```
+
+### Function Style Rules
+
+```typescript
+// ✅ Preferred: function declarations for named/module APIs
+export function createApp() {
+  // ...
+}
+
+// ✅ Preferred: arrow functions for callbacks/inline closures
+const ids = users.map(user => user.id);
+
+// ✅ Preferred: class methods as method syntax
+class UserService {
+  async findById(id: string) {
+    // ...
+  }
+}
+
+// ❌ Avoid: CommonJS require in TS/ESM files
+// const { getConfig } = require('./config');
+```
+
+Enforced by ESLint:
+
+- `func-style`: prefer declarations (`allowArrowFunctions: true`)
+- `prefer-arrow-callback`: prefer arrows for callbacks
+- `@typescript-eslint/no-require-imports`: disallow `require(...)` in TypeScript
 
 ### Class Organization
 

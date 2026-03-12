@@ -1,30 +1,9 @@
 /* eslint-disable no-console */
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { logger } from '../src/core/logging/logger';
 import { getConnection, closeConnection } from '../src/database/connection';
 
-interface Logger {
-  info: (message: string, ...args: unknown[]) => void;
-  error: (message: string, ...args: unknown[]) => void;
-}
-
-// Lazy-load logger to avoid circular dependencies
-function getLogger(): Logger {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
-    const { logger } = require('../src/core/logging/logger');
-    return logger as Logger;
-  } catch {
-    // Fallback if logger isn't available
-    return {
-      info: console.log,
-      error: console.error,
-    };
-  }
-}
-
 async function main(): Promise<void> {
-  const logger = getLogger();
-
   try {
     const db = getConnection();
     logger.info('Running migrations...');

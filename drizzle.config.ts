@@ -1,4 +1,5 @@
 import type { Config } from 'drizzle-kit';
+import { getConfig as getAppConfig } from './src/config';
 
 interface AppConfig {
   DATABASE_URL: string;
@@ -7,10 +8,7 @@ interface AppConfig {
 // Lazy-load config to avoid environment validation during module load
 function getConfig(): AppConfig {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
-    const { getConfig } = require('./src/config');
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    return getConfig() as AppConfig;
+    return getAppConfig() as AppConfig;
   } catch {
     // Fallback to process.env if config module isn't available yet
     return {

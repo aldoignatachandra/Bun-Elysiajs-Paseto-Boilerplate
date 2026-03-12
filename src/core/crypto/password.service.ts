@@ -1,4 +1,5 @@
 import argon2 from 'argon2';
+import { logger } from '../logging/logger';
 import type { Logger } from '../logging/types';
 
 /**
@@ -19,6 +20,15 @@ import type { Logger } from '../logging/types';
  */
 export class PasswordService {
   private readonly options: argon2.Options;
+  private readonly fallbackLogger: Logger = {
+    debug: () => {},
+    info: () => {},
+    warn: () => {},
+    error: (message: string, error?: unknown) => {
+      console.error(message, error);
+    },
+    child: () => this.fallbackLogger,
+  };
 
   constructor() {
     this.options = {
@@ -82,22 +92,7 @@ export class PasswordService {
    * Get logger instance (lazy-loaded to avoid circular dependencies)
    */
   private getLogger(): Logger {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
-      const { logger } = require('../logging/logger');
-      return logger as Logger;
-    } catch {
-      // Fallback if logger isn't available
-      return {
-        debug: () => {},
-        info: () => {},
-        warn: () => {},
-        error: (message: string, error?: unknown) => {
-          console.error(message, error);
-        },
-        child: () => this.getLogger(),
-      };
-    }
+    return logger ?? this.fallbackLogger;
   }
 }
 

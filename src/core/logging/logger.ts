@@ -1,4 +1,5 @@
 import pino from 'pino';
+import { getConfig } from '@config/index';
 import type { LogContext, LogMetadata, Logger } from './types';
 
 interface LoggerConfig {
@@ -11,11 +12,15 @@ interface LoggerConfig {
 let pinoLoggerInstance: pino.Logger | null = null;
 
 function getLoggerConfig(): LoggerConfig {
-  // Lazy-load config to avoid environment validation during module load
+  // Resolve config at runtime so logger can still work in limited test/bootstrap contexts.
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
-    const { loggerConfig } = require('@config/logger');
-    return loggerConfig as LoggerConfig;
+    const config = getConfig();
+    return {
+      level: config.LOG_LEVEL as pino.LevelWithSilent,
+      pretty: config.LOG_PRETTY && config.NODE_ENV !== 'production',
+      format: config.LOG_FORMAT,
+      redact: ['req.headers.authorization', 'req.headers.cookie'],
+    };
   } catch {
     // Fallback config if config module isn't available yet
     return {
