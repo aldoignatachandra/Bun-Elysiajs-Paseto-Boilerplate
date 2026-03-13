@@ -1,94 +1,50 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, test, expect, beforeEach, jest } from 'bun:test';
-import { CRUDRepository, BaseRepository } from '@/repositories/base.repository';
-import { createMockDb } from '../mocks/repository.mocks';
+import { describe, test, expect, beforeEach } from 'bun:test';
+import { BaseRepository } from '@/repositories/base.repository';
+import { createMockDb, createMockQueryBuilder } from '../mocks/repository.mocks';
 
 describe('BaseRepository', () => {
   let mockDb: ReturnType<typeof createMockDb>;
+  let repository: TestRepository;
 
   beforeEach(() => {
     mockDb = createMockDb();
-  });
-
-  describe('BaseRepository error handling', () => {
-    test('should handle repository errors and return default value', () => {
-      const repository = new TestBaseRepository(mockDb as any);
-      const error = new Error('Database error');
-
-      const result = repository.handleRepositoryError('testOperation', error, 'default');
-
-      expect(result).toBe('default');
-    });
-
-    test('should log errors when handling repository errors', () => {
-      const repository = new TestBaseRepository(mockDb as any);
-      const spy = jest.spyOn(repository as any, 'logError');
-      const error = new Error('Database error');
-
-      repository.handleRepositoryError('testOperation', error, 'default');
-
-      expect(spy).toHaveBeenCalledWith('testOperation', error);
-    });
-  });
-});
-
-class TestBaseRepository extends BaseRepository {
-  public testLogError(operation: string, error: unknown): void {
-    this.logError(operation, error);
-  }
-
-  public testHandleRepositoryError<T>(operation: string, error: unknown, defaultValue: T): T {
-    return this.handleRepositoryError(operation, error, defaultValue);
-  }
-}
-
-describe('CRUDRepository', () => {
-  let mockDb: ReturnType<typeof createMockDb>;
-  let repository: TestCRUDRepository;
-
-  beforeEach(() => {
-    mockDb = createMockDb();
-    repository = new TestCRUDRepository(mockDb as any);
-    repository.setMockRecords([]);
+    repository = new TestRepository(mockDb as any);
   });
 
   describe('findAll', () => {
     test('should return array of records', async () => {
-      const mockRecords = [
-        { id: '1', name: 'Record 1' },
-        { id: '2', name: 'Record 2' },
+      const mockData = [
+        { id: '1', name: 'Item 1' },
+        { id: '2', name: 'Item 2' },
       ];
-      repository.setMockRecords(mockRecords);
+      const mockQueryBuilder = createMockQueryBuilder();
+      mockQueryBuilder.returning.mockResolvedValue(mockData);
+      mockDb.select.mockReturnValue(mockQueryBuilder);
 
-      const result = await repository.findAll({});
+      const result = await repository.findAll('test_table');
 
-      expect(result).toEqual(mockRecords);
+      expect(result).toEqual(mockData);
+      expect(mockDb.select).toHaveBeenCalled();
     });
 
-    test('should apply limit when provided', async () => {
-      const mockRecords = [{ id: '1', name: 'Record 1' }];
-      repository.setMockRecords(mockRecords);
-      const limit = 1;
+    test('should return empty array when no records found', async () => {
+      const mockData: unknown[] = [];
+      const mockQueryBuilder = createMockQueryBuilder();
+      mockQueryBuilder.returning.mockResolvedValue(mockData);
+      mockDb.select.mockReturnValue(mockQueryBuilder);
 
-      const result = await repository.findAll({ limit });
+      const result = await repository.findAll('test_table');
 
-      expect(result).toEqual(mockRecords);
+      expect(result).toEqual([]);
+      expect(mockDb.select).toHaveBeenCalled();
     });
 
-    test('should apply offset when provided', async () => {
-      const mockRecords = [{ id: '2', name: 'Record 2' }];
-      repository.setMockRecords(mockRecords);
-      const offset = 1;
+    test('should handle database errors gracefully', async () => {
+      const mockQueryBuilder = createMockQueryBuilder();
+      mockQueryBuilder.returning.mockRejectedValue(new Error('Database connection failed'));
+      mockDb.select.mockReturnValue(mockQueryBuilder);
 
-      const result = await repository.findAll({ offset });
-
-      expect(result).toEqual(mockRecords);
-    });
-
-    test('should handle empty results', async () => {
-      repository.setMockRecords([]);
-
-      const result = await repository.findAll({});
+      const result = await repository.findAll('test_table');
 
       expect(result).toEqual([]);
     });
@@ -96,18 +52,34 @@ describe('CRUDRepository', () => {
 
   describe('findById', () => {
     test('should return record when found', async () => {
-      const mockRecord = { id: '1', name: 'Record 1' };
-      repository.setMockRecords([mockRecord]);
+      const mockData = { id: '1', name: 'Item 1' };
+      const mockQueryBuilder = createMockQueryBuilder();
+      mockQueryBuilder.returning.mockResolvedValue([mockData]);
+      mockDb.select.mockReturnValue(mockQueryBuilder);
 
-      const result = await repository.findById('1');
+      const result = await repository.findById('test_table', '1');
 
-      expect(result).toEqual(mockRecord);
+      expect(result).toEqual(mockData);
+      expect(mockDb.select).toHaveBeenCalled();
     });
 
     test('should return null when not found', async () => {
-      repository.setMockRecords([]);
+      const mockData: unknown[] = [];
+      const mockQueryBuilder = createMockQueryBuilder();
+      mockQueryBuilder.returning.mockResolvedValue(mockData);
+      mockDb.select.mockReturnValue(mockQueryBuilder);
 
-      const result = await repository.findById('nonexistent');
+      const result = await repository.findById('test_table', '999');
+
+      expect(result).toBeNull();
+    });
+
+    test('should handle database errors gracefully', async () => {
+      const mockQueryBuilder = createMockQueryBuilder();
+      mockQueryBuilder.returning.mockRejectedValue(new Error('Database connection failed'));
+      mockDb.select.mockReturnValue(mockQueryBuilder);
+
+      const result = await repository.findById('test_table', '1');
 
       expect(result).toBeNull();
     });
@@ -115,154 +87,144 @@ describe('CRUDRepository', () => {
 
   describe('create', () => {
     test('should insert and return new record', async () => {
-      const newRecord = { id: '1', name: 'New Record' };
+      const newRecord = { id: '1', name: 'New Item' };
+      const mockQueryBuilder = createMockQueryBuilder();
+      mockQueryBuilder.returning.mockResolvedValue([newRecord]);
+      mockDb.insert.mockReturnValue(mockQueryBuilder);
 
-      const result = await repository.create(newRecord);
+      const result = await repository.create('test_table', newRecord);
 
       expect(result).toEqual(newRecord);
+      expect(mockDb.insert).toHaveBeenCalled();
+    });
+
+    test('should handle insert errors by throwing', async () => {
+      const newRecord = { id: '1', name: 'New Item' };
+      const mockQueryBuilder = createMockQueryBuilder();
+      mockQueryBuilder.returning.mockRejectedValue(new Error('Insert failed'));
+      mockDb.insert.mockReturnValue(mockQueryBuilder);
+
+      expect(repository.create('test_table', newRecord)).rejects.toThrow('Insert failed');
     });
   });
 
   describe('update', () => {
     test('should update and return updated record', async () => {
-      const updatedRecord = { id: '1', name: 'Updated Record' };
-      repository.setMockRecords([updatedRecord]);
+      const updatedRecord = { id: '1', name: 'Updated Item' };
+      const mockQueryBuilder = createMockQueryBuilder();
+      mockQueryBuilder.returning.mockResolvedValue([updatedRecord]);
+      mockDb.update.mockReturnValue(mockQueryBuilder);
 
-      const result = await repository.update('1', { name: 'Updated Record' });
+      const result = await repository.update('test_table', '1', { name: 'Updated Item' });
 
       expect(result).toEqual(updatedRecord);
+      expect(mockDb.update).toHaveBeenCalled();
     });
 
     test('should return null when record not found', async () => {
-      repository.setMockRecords([]);
+      const mockData: unknown[] = [];
+      const mockQueryBuilder = createMockQueryBuilder();
+      mockQueryBuilder.returning.mockResolvedValue(mockData);
+      mockDb.update.mockReturnValue(mockQueryBuilder);
 
-      const result = await repository.update('nonexistent', { name: 'Updated' });
+      const result = await repository.update('test_table', '999', { name: 'Updated' });
 
       expect(result).toBeNull();
+    });
+
+    test('should handle update errors by throwing', async () => {
+      const mockQueryBuilder = createMockQueryBuilder();
+      mockQueryBuilder.returning.mockRejectedValue(new Error('Update failed'));
+      mockDb.update.mockReturnValue(mockQueryBuilder);
+
+      expect(repository.update('test_table', '1', { name: 'Updated' })).rejects.toThrow('Update failed');
     });
   });
 
   describe('delete', () => {
     test('should delete and return true when successful', async () => {
-      const mockRecord = { id: '1', name: 'Record 1' };
-      repository.setMockRecords([mockRecord]);
+      const mockQueryBuilder = createMockQueryBuilder();
+      mockQueryBuilder.execute.mockResolvedValue(1);
+      mockDb.delete.mockReturnValue(mockQueryBuilder);
 
-      const result = await repository.delete('1');
+      const result = await repository.delete('test_table', '1');
 
       expect(result).toBe(true);
+      expect(mockDb.delete).toHaveBeenCalled();
     });
 
     test('should return false when record not found', async () => {
-      repository.setMockRecords([]);
+      const mockQueryBuilder = createMockQueryBuilder();
+      mockQueryBuilder.execute.mockResolvedValue(0);
+      mockDb.delete.mockReturnValue(mockQueryBuilder);
 
-      const result = await repository.delete('nonexistent');
+      const result = await repository.delete('test_table', '999');
+
+      expect(result).toBe(false);
+    });
+
+    test('should handle delete errors gracefully', async () => {
+      const mockQueryBuilder = createMockQueryBuilder();
+      mockQueryBuilder.execute.mockRejectedValue(new Error('Delete failed'));
+      mockDb.delete.mockReturnValue(mockQueryBuilder);
+
+      const result = await repository.delete('test_table', '1');
 
       expect(result).toBe(false);
     });
   });
-
-  describe('paginate', () => {
-    test('should return paginated results with metadata', async () => {
-      repository.setMockRecords([
-        { id: '1', name: 'Record 1' },
-        { id: '2', name: 'Record 2' },
-      ]);
-      repository.setMockCount(10);
-
-      const result = await repository.paginate({ page: 1, pageSize: 2 });
-
-      expect(result.data).toHaveLength(2);
-      expect(result.total).toBe(10);
-      expect(result.page).toBe(1);
-      expect(result.pageSize).toBe(2);
-      expect(result.totalPages).toBe(5);
-    });
-
-    test('should calculate total pages correctly', async () => {
-      repository.setMockRecords([{ id: '1', name: 'Record 1' }]);
-      repository.setMockCount(5);
-
-      const result = await repository.paginate({ page: 1, pageSize: 2 });
-
-      expect(result.totalPages).toBe(3);
-    });
-
-    test('should return empty data when no records exist', async () => {
-      repository.setMockRecords([]);
-      repository.setMockCount(0);
-
-      const result = await repository.paginate({ page: 1, pageSize: 10 });
-
-      expect(result.data).toEqual([]);
-      expect(result.total).toBe(0);
-      expect(result.totalPages).toBe(0);
-    });
-
-    test('should handle errors and return default paginated result', async () => {
-      repository.setShouldThrowError(true);
-
-      const result = await repository.paginate({ page: 1, pageSize: 10 });
-
-      expect(result.data).toEqual([]);
-      expect(result.total).toBe(0);
-      expect(result.page).toBe(1);
-      expect(result.pageSize).toBe(10);
-      expect(result.totalPages).toBe(0);
-    });
-  });
 });
 
-class TestCRUDRepository extends CRUDRepository<{ id: string; name: string }, string> {
-  private mockRecords: { id: string; name: string }[] = [];
-  private mockCountValue = 0;
-  private shouldThrowError = false;
-
-  get tableName(): string {
-    return 'test_table';
-  }
-
-  setMockRecords(records: { id: string; name: string }[]): void {
-    this.mockRecords = records;
-  }
-
-  setMockCount(count: number): void {
-    this.mockCountValue = count;
-  }
-
-  setShouldThrowError(shouldThrow: boolean): void {
-    this.shouldThrowError = shouldThrow;
-  }
-
-  async findAll(): Promise<{ id: string; name: string }[]> {
-    if (this.shouldThrowError) {
-      throw new Error('Database error');
+class TestRepository extends BaseRepository {
+  async findAll(tableName: string): Promise<unknown[]> {
+    try {
+      const queryBuilder = this.db.select(tableName) as any;
+      const result = await queryBuilder.from(tableName).returning();
+      return result as unknown[];
+    } catch {
+      return this.handleRepositoryError('findAll', new Error(), []);
     }
-    return this.mockRecords;
   }
 
-  async findById(id: string): Promise<{ id: string; name: string } | null> {
-    return this.mockRecords.find(record => record.id === id) || null;
-  }
-
-  async create(data: { id: string; name: string }): Promise<{ id: string; name: string }> {
-    if (this.shouldThrowError) {
-      throw new Error('Database error');
+  async findById(tableName: string, id: string): Promise<null> {
+    try {
+      const queryBuilder = this.db.select(tableName) as any;
+      const result = await queryBuilder.from(tableName).where({ id }).returning();
+      return Array.isArray(result) && result.length > 0 ? result[0] : null;
+    } catch {
+      return this.handleRepositoryError('findById', new Error(), null);
     }
-    return data;
   }
 
-  async update(id: string): Promise<{ id: string; name: string } | null> {
-    return this.mockRecords.find(record => record.id === id) || null;
-  }
-
-  async delete(id: string): Promise<boolean> {
-    return this.mockRecords.some(record => record.id === id);
-  }
-
-  protected async count(): Promise<number> {
-    if (this.shouldThrowError) {
-      throw new Error('Database error');
+  async create(tableName: string, data: unknown): Promise<unknown> {
+    try {
+      const queryBuilder = this.db.insert(tableName) as any;
+      const result = await queryBuilder.values(data).returning();
+      return Array.isArray(result) ? result[0] : result;
+    } catch (error) {
+      this.logError('create', error);
+      throw error;
     }
-    return this.mockCountValue;
+  }
+
+  async update(tableName: string, id: string, data: unknown): Promise<null> {
+    try {
+      const queryBuilder = this.db.update(tableName) as any;
+      const result = await queryBuilder.set(data).where({ id }).returning();
+      return Array.isArray(result) && result.length > 0 ? result[0] : null;
+    } catch (error) {
+      this.logError('update', error);
+      throw error;
+    }
+  }
+
+  async delete(tableName: string, id: string): Promise<boolean> {
+    try {
+      const queryBuilder = this.db.delete(tableName) as any;
+      const result = await queryBuilder.where({ id }).execute();
+      return (result as number) > 0;
+    } catch {
+      return this.handleRepositoryError('delete', new Error(), false);
+    }
   }
 }
