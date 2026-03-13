@@ -46,6 +46,12 @@ const envSchema = z.object({
     .default('true'),
   LOG_FORMAT: z.enum(['json', 'pretty']).default('json'),
 
+  // Metrics
+  METRICS_ENABLED: z
+    .enum(['true', 'false'])
+    .transform(v => v === 'true')
+    .optional(),
+
   // CORS
   CORS_ORIGIN: z.string().default('*'),
   CORS_CREDENTIALS: z
