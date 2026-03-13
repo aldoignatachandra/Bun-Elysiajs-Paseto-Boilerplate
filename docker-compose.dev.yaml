@@ -1,0 +1,227 @@
+# Docker Compose Development Configuration
+# Purpose: Complete development environment for Bun Elysia PASETO API
+# Usage: docker-compose -f docker-compose.dev.yaml up
+
+version: '3.9'
+
+# Network configuration
+networks:
+  app-network:
+    name: bun-elysia-paseto-dev
+    driver: bridge
+
+# Volume configuration
+volumes:
+  postgres_data:
+    name: bun-elysia-paseto-postgres-data
+    driver: local
+  postgres_config:
+    name: bun-elysia-paseto-postgres-config
+    driver: local
+  redis_data:
+    name: bun-elysia-paseto-redis-data
+    driver: local
+  pgadmin_data:
+    name: bun-elysia-paseto-pgadmin-data
+    driver: local
+
+# Service definitions
+services:
+  # API Service
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile.dev
+    container_name: bun-elysia-paseto-api-dev
+    restart: unless-stopped
+    ports:
+      - '${API_PORT:-3000}:3000'
+    environment:
+      # Server
+      - NODE_ENV=development
+      - PORT=3000
+      - HOST=0.0.0.0
+
+      # Database
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-bun_elysia_paseto}
+      - DATABASE_POOL_MIN=2
+      - DATABASE_POOL_MAX=10
+      - DATABASE_SSL=false
+
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=0
+
+      # PASETO
+      - PASETO_LOCAL_KEY=${PASETO_LOCAL_KEY}
+      - PASETO_PUBLIC_KEY=${PASETO_PUBLIC_KEY}
+      - PASETO_SECRET_KEY=${PASETO_SECRET_KEY}
+
+      # Token Expiry
+      - ACCESS_TOKEN_EXPIRY_MINUTES=${ACCESS_TOKEN_EXPIRY_MINUTES:-15}
+      - REFRESH_TOKEN_EXPIRY_DAYS=${REFRESH_TOKEN_EXPIRY_DAYS:-7}
+
+      # Rate Limiting
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
+      - RATE_LIMIT_WINDOW_SECONDS=${RATE_LIMIT_WINDOW_SECONDS:-60}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-100}
+
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - LOG_PRETTY=true
+      - LOG_FORMAT=json
+
+      # CORS
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - CORS_CREDENTIALS=${CORS_CREDENTIALS:-true}
+      - CORS_METHODS=${CORS_METHODS:-GET,POST,PUT,DELETE,PATCH}
+      - CORS_ALLOWED_HEADERS=${CORS_ALLOWED_HEADERS:-Content-Type,Authorization,X-Request-ID}
+
+      # Security
+      - BCRYPT_ROUNDS=${BCRYPT_ROUNDS:-12}
+    volumes:
+      # Source code mount for hot reload
+      - ./src:/app/src:ro
+      # Environment file
+      - ./.env:/app/.env:ro
+      # Migration files
+      - ./src/database/migrations:/app/migrations:ro
+      # Node modules (use container's node_modules)
+      - /app/node_modules
+    networks:
+      - app-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  # PostgreSQL Service
+  postgres:
+    image: postgres:16-alpine
+    container_name: bun-elysia-paseto-postgres-dev
+    restart: unless-stopped
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-bun_elysia_paseto}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - postgres_config:/etc/postgresql
+      - ./docker/postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    networks:
+      - app-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-bun_elysia_paseto}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    command: >
+      postgres
+        -c shared_preload_libraries=pg_stat_statements
+        -c pg_stat_statements.track=all
+        -c max_connections=200
+        -c shared_buffers=256MB
+        -c effective_cache_size=1GB
+        -c maintenance_work_mem=64MB
+        -c checkpoint_completion_target=0.9
+        -c wal_buffers=16MB
+        -c default_statistics_target=100
+        -c random_page_cost=1.1
+        -c effective_io_concurrency=200
+        -c work_mem=1310kB
+        -c min_wal_size=1GB
+        -c max_wal_size=4GB
+
+  # Redis Service
+  redis:
+    image: redis:7-alpine
+    container_name: bun-elysia-paseto-redis-dev
+    restart: unless-stopped
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    command: >
+      redis-server
+        --appendonly yes
+        --appendfsync everysec
+        --save 900 1
+        --save 300 10
+        --save 60 10000
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+        --lazyfree-lazy-eviction yes
+        --lazyfree-lazy-expire yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  # pgAdmin Service
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: bun-elysia-paseto-pgadmin-dev
+    restart: unless-stopped
+    ports:
+      - '${PGADMIN_PORT:-5050}:80'
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL:-admin@bun-elysia-paseto.local}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD:-admin}
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - app-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:80/misc/ping']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Redis Commander Service
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: bun-elysia-paseto-redis-commander-dev
+    restart: unless-stopped
+    ports:
+      - '${REDIS_COMMANDER_PORT:-8081}:8081'
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=${REDIS_COMMANDER_USER:-admin}
+      - HTTP_PASSWORD=${REDIS_COMMANDER_PASSWORD:-admin}
+    networks:
+      - app-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8081']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

@@ -1,0 +1,60 @@
+# Development Dockerfile for Bun Elysia PASETO API
+# Purpose: Development environment with hot reload capabilities
+# Usage: docker-compose -f docker-compose.dev.yaml build api
+
+# Base image - Alpine Linux with Bun runtime
+FROM oven/bun:1.0.0-alpine AS base
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies
+FROM base AS dependencies
+
+# Install build dependencies for native modules
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    postgresql-client
+
+# Copy package files
+COPY package.json bun.lockb* ./
+
+# Install dependencies
+RUN bun install --frozen-lockfile
+
+# Development stage
+FROM base AS development
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    wget \
+    postgresql-client \
+    curl
+
+# Copy node modules from dependencies stage
+COPY --from=dependencies /app/node_modules ./node_modules
+
+# Copy package files
+COPY package.json bun.lockb* ./
+
+# Create non-root user for running the application
+RUN addgroup -g 1001 -S bun && \
+    adduser -S -u 1001 -G bun bun
+
+# Change ownership of app directory
+RUN chown -R bun:bun /app
+
+# Switch to non-root user
+USER bun
+
+# Expose API port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=40s \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+# Default command (will be overridden by docker-compose)
+CMD ["bun", "run", "dev"]
