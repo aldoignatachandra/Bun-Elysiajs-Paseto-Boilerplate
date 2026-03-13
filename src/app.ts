@@ -17,6 +17,7 @@ import { AppError } from './core/errors/app-error';
 import { registerPlugins } from './plugins';
 import { requestId } from './middlewares/request-id.middleware';
 import { errorResponse } from './core/http/response';
+import { validationErrorHandler } from './middlewares/validation.middleware';
 
 export function createApp() {
   const db = getConnection();
@@ -52,6 +53,12 @@ export function createApp() {
       const { error, set, request } = ctx;
       const requestId =
         typeof (ctx as { requestId?: unknown }).requestId === 'string' ? ((ctx as { requestId?: string }).requestId as string) : undefined;
+
+      // Handle validation errors first
+      const validationResponse = validationErrorHandler({ error, set, request, requestId });
+      if (validationResponse) {
+        return validationResponse;
+      }
 
       logger.error('Unhandled error', error);
 

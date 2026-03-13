@@ -57,6 +57,10 @@ const envSchema = z.object({
 
   // Security
   BCRYPT_ROUNDS: z.coerce.number().default(12),
+
+  // Graceful Shutdown
+  SHUTDOWN_TIMEOUT_MS: z.coerce.number().default(30000),
+  SHUTDOWN_GRACE_PERIOD_MS: z.coerce.number().default(5000),
 });
 
 export type Env = z.infer<typeof envSchema>;
