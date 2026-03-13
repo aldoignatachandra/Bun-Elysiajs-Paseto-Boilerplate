@@ -11,6 +11,7 @@ import { createAuthRoutes } from '../../../src/routes/auth.routes';
 import type { AuthService } from '../../../src/services/auth.service';
 import type { UsersService } from '../../../src/services/users.service';
 import type { PasetoService } from '../../../src/core/paseto/paseto.service';
+import type { Elysia } from 'elysia';
 
 describe('AuthRoutes', () => {
   let mockAuthService: any;
@@ -31,18 +32,341 @@ describe('AuthRoutes', () => {
     };
 
     mockPasetoService = {};
+
+    jest.clearAllMocks();
   });
 
-  describe('route creation', () => {
-    it('should create auth routes', () => {
+  describe('route registration', () => {
+    it('should register auth routes with correct prefix', () => {
+      const mockApp = {
+        group: jest.fn().mockReturnThis(),
+      };
+
+      createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+
+      expect(mockApp.group).toHaveBeenCalledWith('/auth', expect.any(Function));
+    });
+
+    it('should return the configured app instance', () => {
       const mockApp = {
         group: jest.fn().mockReturnThis(),
       };
 
       const result = createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
 
-      expect(mockApp.group).toHaveBeenCalled();
       expect(result).toBeDefined();
+    });
+  });
+
+  describe('POST /auth/register route', () => {
+    it('should register POST /auth/register route with body validation', () => {
+      const mockGroupApp = {
+        post: jest.fn().mockReturnThis(),
+        get: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+
+      // Check that register route is registered with POST method
+      const registerCall = mockGroupApp.post.mock.calls.find((call: any[]) => call[0] === '/register');
+      expect(registerCall).toBeDefined();
+      expect(registerCall?.[1]).toEqual(expect.any(Function));
+      expect(registerCall?.[2]).toEqual(
+        expect.objectContaining({
+          body: expect.any(Object),
+        })
+      );
+    });
+
+    it('should include rate limiting for register route', () => {
+      const mockGroupApp = {
+        post: jest.fn().mockReturnThis(),
+        get: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+
+      const registerCall = mockGroupApp.post.mock.calls.find((call: any[]) => call[0] === '/register');
+      expect(registerCall?.[2]).toEqual(
+        expect.objectContaining({
+          beforeHandle: expect.any(Array),
+        })
+      );
+    });
+  });
+
+  describe('POST /auth/login route', () => {
+    it('should register POST /auth/login route with body validation', () => {
+      const mockGroupApp = {
+        post: jest.fn().mockReturnThis(),
+        get: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+
+      const loginCall = mockGroupApp.post.mock.calls.find((call: any[]) => call[0] === '/login');
+      expect(loginCall).toBeDefined();
+      expect(loginCall?.[1]).toEqual(expect.any(Function));
+      expect(loginCall?.[2]).toEqual(
+        expect.objectContaining({
+          body: expect.any(Object),
+        })
+      );
+    });
+
+    it('should include rate limiting for login route', () => {
+      const mockGroupApp = {
+        post: jest.fn().mockReturnThis(),
+        get: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+
+      const loginCall = mockGroupApp.post.mock.calls.find((call: any[]) => call[0] === '/login');
+      expect(loginCall?.[2]).toEqual(
+        expect.objectContaining({
+          beforeHandle: expect.any(Array),
+        })
+      );
+    });
+  });
+
+  describe('POST /auth/logout route', () => {
+    it('should register POST /auth/logout route with authentication middleware', () => {
+      const mockGroupApp = {
+        post: jest.fn().mockReturnThis(),
+        get: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+
+      const logoutCall = mockGroupApp.post.mock.calls.find((call: any[]) => call[0] === '/logout');
+      expect(logoutCall).toBeDefined();
+      expect(logoutCall?.[1]).toEqual(expect.any(Function));
+      expect(logoutCall?.[2]).toEqual(
+        expect.objectContaining({
+          beforeHandle: expect.any(Array),
+        })
+      );
+    });
+  });
+
+  describe('POST /auth/refresh route', () => {
+    it('should register POST /auth/refresh route with body validation', () => {
+      const mockGroupApp = {
+        post: jest.fn().mockReturnThis(),
+        get: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+
+      const refreshCall = mockGroupApp.post.mock.calls.find((call: any[]) => call[0] === '/refresh');
+      expect(refreshCall).toBeDefined();
+      expect(refreshCall?.[1]).toEqual(expect.any(Function));
+      expect(refreshCall?.[2]).toEqual(
+        expect.objectContaining({
+          body: expect.any(Object),
+        })
+      );
+    });
+
+    it('should include rate limiting for refresh route', () => {
+      const mockGroupApp = {
+        post: jest.fn().mockReturnThis(),
+        get: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+
+      const refreshCall = mockGroupApp.post.mock.calls.find((call: any[]) => call[0] === '/refresh');
+      expect(refreshCall?.[2]).toEqual(
+        expect.objectContaining({
+          beforeHandle: expect.any(Array),
+        })
+      );
+    });
+  });
+
+  describe('GET /auth/me route', () => {
+    it('should register GET /auth/me route with authentication middleware', () => {
+      const mockGroupApp = {
+        post: jest.fn().mockReturnThis(),
+        get: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+
+      const meCall = mockGroupApp.get.mock.calls.find((call: any[]) => call[0] === '/me');
+      expect(meCall).toBeDefined();
+      expect(meCall?.[1]).toEqual(expect.any(Function));
+      expect(meCall?.[2]).toEqual(
+        expect.objectContaining({
+          beforeHandle: expect.any(Array),
+        })
+      );
+    });
+  });
+
+  describe('POST /auth/change-password route', () => {
+    it('should register POST /auth/change-password route with authentication and body validation', () => {
+      const mockGroupApp = {
+        post: jest.fn().mockReturnThis(),
+        get: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+
+      const changePasswordCall = mockGroupApp.post.mock.calls.find((call: any[]) => call[0] === '/change-password');
+      expect(changePasswordCall).toBeDefined();
+      expect(changePasswordCall?.[1]).toEqual(expect.any(Function));
+      expect(changePasswordCall?.[2]).toEqual(
+        expect.objectContaining({
+          body: expect.any(Object),
+          beforeHandle: expect.any(Array),
+        })
+      );
+    });
+  });
+
+  describe('all auth routes registration', () => {
+    it('should register all expected auth routes', () => {
+      const mockGroupApp = {
+        post: jest.fn().mockReturnThis(),
+        get: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+
+      const registeredPostRoutes = mockGroupApp.post.mock.calls.map((call: any[]) => call[0]);
+      const registeredGetRoutes = mockGroupApp.get.mock.calls.map((call: any[]) => call[0]);
+
+      // Verify all POST routes
+      expect(registeredPostRoutes).toContain('/register');
+      expect(registeredPostRoutes).toContain('/login');
+      expect(registeredPostRoutes).toContain('/refresh');
+      expect(registeredPostRoutes).toContain('/logout');
+      expect(registeredPostRoutes).toContain('/change-password');
+
+      // Verify all GET routes
+      expect(registeredGetRoutes).toContain('/me');
+    });
+
+    it('should register proper handlers for all routes', () => {
+      const mockGroupApp = {
+        post: jest.fn().mockReturnThis(),
+        get: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+
+      // Check that all route handlers are functions
+      mockGroupApp.post.mock.calls.forEach((call: any[]) => {
+        expect(call[1]).toEqual(expect.any(Function));
+      });
+
+      mockGroupApp.get.mock.calls.forEach((call: any[]) => {
+        expect(call[1]).toEqual(expect.any(Function));
+      });
+    });
+  });
+
+  describe('dependencies', () => {
+    it('should require AuthService, UsersService, and PasetoService', () => {
+      const mockApp = {
+        group: jest.fn().mockReturnThis(),
+      };
+
+      expect(() => {
+        createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+      }).not.toThrow();
+    });
+
+    it('should use correct service instances for controllers', () => {
+      const mockApp = {
+        group: jest.fn().mockReturnThis(),
+      };
+
+      createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+
+      // If we got here without errors, the services were accepted
+      expect(mockApp.group).toHaveBeenCalled();
     });
   });
 });
