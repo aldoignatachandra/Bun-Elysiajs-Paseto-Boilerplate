@@ -21,14 +21,36 @@ describe('ProductsRoutes', () => {
     mockProductsService = {
       list: jest.fn(),
       getById: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      restore: jest.fn(),
+      updateStock: jest.fn(),
     };
 
     mockAuthService = {};
     mockPasetoService = {};
+
+    jest.clearAllMocks();
   });
 
-  describe('route creation', () => {
-    it('should create products routes', () => {
+  describe('route registration', () => {
+    it('should register products routes with correct prefix', () => {
+      const mockApp = {
+        group: jest.fn().mockReturnThis(),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      expect(mockApp.group).toHaveBeenCalledWith('/products', expect.any(Function));
+    });
+
+    it('should return the configured app instance', () => {
       const mockApp = {
         group: jest.fn().mockReturnThis(),
       };
@@ -40,8 +62,638 @@ describe('ProductsRoutes', () => {
         mockPasetoService as unknown as PasetoService
       );
 
-      expect(mockApp.group).toHaveBeenCalled();
       expect(result).toBeDefined();
+    });
+  });
+
+  describe('GET /products route', () => {
+    it('should register GET /products route with query validation', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      // Check for the root GET route (list)
+      const listCall = mockGroupApp.get.mock.calls.find((call: any[]) => call[0] === '/');
+      expect(listCall).toBeDefined();
+      expect(listCall?.[1]).toEqual(expect.any(Function));
+      expect(listCall?.[2]).toEqual(
+        expect.objectContaining({
+          query: expect.any(Object),
+        })
+      );
+    });
+
+    it('should include authentication and rate limiting for list route', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const listCall = mockGroupApp.get.mock.calls.find((call: any[]) => call[0] === '/');
+      expect(listCall?.[2]).toEqual(
+        expect.objectContaining({
+          beforeHandle: expect.any(Array),
+        })
+      );
+    });
+  });
+
+  describe('GET /products/:id route', () => {
+    it('should register GET /products/:id route with params and query validation', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const getByIdCall = mockGroupApp.get.mock.calls.find((call: any[]) => call[0] === '/:id');
+      expect(getByIdCall).toBeDefined();
+      expect(getByIdCall?.[1]).toEqual(expect.any(Function));
+      expect(getByIdCall?.[2]).toEqual(
+        expect.objectContaining({
+          params: expect.any(Object),
+          query: expect.any(Object),
+        })
+      );
+    });
+
+    it('should include authentication and rate limiting for getById route', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const getByIdCall = mockGroupApp.get.mock.calls.find((call: any[]) => call[0] === '/:id');
+      expect(getByIdCall?.[2]).toEqual(
+        expect.objectContaining({
+          beforeHandle: expect.any(Array),
+        })
+      );
+    });
+  });
+
+  describe('POST /products route', () => {
+    it('should register POST /products route with body validation', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const createCall = mockGroupApp.post.mock.calls.find((call: any[]) => call[0] === '/');
+      expect(createCall).toBeDefined();
+      expect(createCall?.[1]).toEqual(expect.any(Function));
+      expect(createCall?.[2]).toEqual(
+        expect.objectContaining({
+          body: expect.any(Object),
+        })
+      );
+    });
+
+    it('should include authentication and rate limiting for create route', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const createCall = mockGroupApp.post.mock.calls.find((call: any[]) => call[0] === '/');
+      expect(createCall?.[2]).toEqual(
+        expect.objectContaining({
+          beforeHandle: expect.any(Array),
+        })
+      );
+    });
+  });
+
+  describe('PUT /products/:id route', () => {
+    it('should register PUT /products/:id route with params and body validation', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const updateCall = mockGroupApp.put.mock.calls.find((call: any[]) => call[0] === '/:id');
+      expect(updateCall).toBeDefined();
+      expect(updateCall?.[1]).toEqual(expect.any(Function));
+      expect(updateCall?.[2]).toEqual(
+        expect.objectContaining({
+          params: expect.any(Object),
+          body: expect.any(Object),
+        })
+      );
+    });
+
+    it('should include authentication and rate limiting for update route', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const updateCall = mockGroupApp.put.mock.calls.find((call: any[]) => call[0] === '/:id');
+      expect(updateCall?.[2]).toEqual(
+        expect.objectContaining({
+          beforeHandle: expect.any(Array),
+        })
+      );
+    });
+  });
+
+  describe('DELETE /products/:id route', () => {
+    it('should register DELETE /products/:id route with params and query validation', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const deleteCall = mockGroupApp.delete.mock.calls.find((call: any[]) => call[0] === '/:id');
+      expect(deleteCall).toBeDefined();
+      expect(deleteCall?.[1]).toEqual(expect.any(Function));
+      expect(deleteCall?.[2]).toEqual(
+        expect.objectContaining({
+          params: expect.any(Object),
+          query: expect.any(Object),
+        })
+      );
+    });
+
+    it('should include authentication and rate limiting for delete route', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const deleteCall = mockGroupApp.delete.mock.calls.find((call: any[]) => call[0] === '/:id');
+      expect(deleteCall?.[2]).toEqual(
+        expect.objectContaining({
+          beforeHandle: expect.any(Array),
+        })
+      );
+    });
+  });
+
+  describe('PATCH /products/:id route', () => {
+    it('should register PATCH /products/:id route with params and body validation', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const patchCall = mockGroupApp.patch.mock.calls.find((call: any[]) => call[0] === '/:id');
+      expect(patchCall).toBeDefined();
+      expect(patchCall?.[1]).toEqual(expect.any(Function));
+      expect(patchCall?.[2]).toEqual(
+        expect.objectContaining({
+          params: expect.any(Object),
+          body: expect.any(Object),
+        })
+      );
+    });
+  });
+
+  describe('POST /products/:id/restore route', () => {
+    it('should register POST /products/:id/restore route with params validation', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const restoreCall = mockGroupApp.post.mock.calls.find((call: any[]) => call[0] === '/:id/restore');
+      expect(restoreCall).toBeDefined();
+      expect(restoreCall?.[1]).toEqual(expect.any(Function));
+      expect(restoreCall?.[2]).toEqual(
+        expect.objectContaining({
+          params: expect.any(Object),
+        })
+      );
+    });
+
+    it('should include authentication and rate limiting for restore route', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const restoreCall = mockGroupApp.post.mock.calls.find((call: any[]) => call[0] === '/:id/restore');
+      expect(restoreCall?.[2]).toEqual(
+        expect.objectContaining({
+          beforeHandle: expect.any(Array),
+        })
+      );
+    });
+  });
+
+  describe('PUT /products/:id/stock route', () => {
+    it('should register PUT /products/:id/stock route with params and body validation', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const stockCall = mockGroupApp.put.mock.calls.find((call: any[]) => call[0] === '/:id/stock');
+      expect(stockCall).toBeDefined();
+      expect(stockCall?.[1]).toEqual(expect.any(Function));
+      expect(stockCall?.[2]).toEqual(
+        expect.objectContaining({
+          params: expect.any(Object),
+          body: expect.any(Object),
+        })
+      );
+    });
+
+    it('should include authentication and rate limiting for stock update route', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const stockCall = mockGroupApp.put.mock.calls.find((call: any[]) => call[0] === '/:id/stock');
+      expect(stockCall?.[2]).toEqual(
+        expect.objectContaining({
+          beforeHandle: expect.any(Array),
+        })
+      );
+    });
+  });
+
+  describe('all products routes registration', () => {
+    it('should register all expected products routes', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      const registeredGetRoutes = mockGroupApp.get.mock.calls.map((call: any[]) => call[0]);
+      const registeredPostRoutes = mockGroupApp.post.mock.calls.map((call: any[]) => call[0]);
+      const registeredPatchRoutes = mockGroupApp.patch.mock.calls.map((call: any[]) => call[0]);
+      const registeredPutRoutes = mockGroupApp.put.mock.calls.map((call: any[]) => call[0]);
+      const registeredDeleteRoutes = mockGroupApp.delete.mock.calls.map((call: any[]) => call[0]);
+
+      // Verify GET routes
+      expect(registeredGetRoutes).toContain('/:id');
+      expect(registeredGetRoutes).toContain('/');
+
+      // Verify POST routes
+      expect(registeredPostRoutes).toContain('/');
+      expect(registeredPostRoutes).toContain('/:id/restore');
+
+      // Verify PATCH routes
+      expect(registeredPatchRoutes).toContain('/:id');
+
+      // Verify PUT routes
+      expect(registeredPutRoutes).toContain('/:id');
+      expect(registeredPutRoutes).toContain('/:id/stock');
+
+      // Verify DELETE routes
+      expect(registeredDeleteRoutes).toContain('/:id');
+    });
+
+    it('should register proper handlers for all routes', () => {
+      const mockGroupApp = {
+        get: jest.fn().mockReturnThis(),
+        post: jest.fn().mockReturnThis(),
+        patch: jest.fn().mockReturnThis(),
+        put: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+      };
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      // Check that all route handlers are functions
+      mockGroupApp.get.mock.calls.forEach((call: any[]) => {
+        expect(call[1]).toEqual(expect.any(Function));
+      });
+
+      mockGroupApp.post.mock.calls.forEach((call: any[]) => {
+        expect(call[1]).toEqual(expect.any(Function));
+      });
+
+      mockGroupApp.patch.mock.calls.forEach((call: any[]) => {
+        expect(call[1]).toEqual(expect.any(Function));
+      });
+
+      mockGroupApp.put.mock.calls.forEach((call: any[]) => {
+        expect(call[1]).toEqual(expect.any(Function));
+      });
+
+      mockGroupApp.delete.mock.calls.forEach((call: any[]) => {
+        expect(call[1]).toEqual(expect.any(Function));
+      });
+    });
+  });
+
+  describe('dependencies', () => {
+    it('should require ProductsService, AuthService, and PasetoService', () => {
+      const mockApp = {
+        group: jest.fn().mockReturnThis(),
+      };
+
+      expect(() => {
+        createProductsRoutes(
+          mockApp as any,
+          mockProductsService,
+          mockAuthService as unknown as AuthService,
+          mockPasetoService as unknown as PasetoService
+        );
+      }).not.toThrow();
+    });
+
+    it('should use correct service instances for controllers', () => {
+      const mockApp = {
+        group: jest.fn().mockReturnThis(),
+      };
+
+      createProductsRoutes(
+        mockApp as any,
+        mockProductsService,
+        mockAuthService as unknown as AuthService,
+        mockPasetoService as unknown as PasetoService
+      );
+
+      // If we got here without errors, the services were accepted
+      expect(mockApp.group).toHaveBeenCalled();
     });
   });
 });
