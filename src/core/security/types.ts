@@ -110,6 +110,12 @@ export interface HstsConfig {
    * @default false
    */
   preload?: boolean;
+
+  /**
+   * Force HSTS even in non-production environments
+   * @default false
+   */
+  force?: boolean;
 }
 
 /**

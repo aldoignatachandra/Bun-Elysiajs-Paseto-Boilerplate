@@ -69,6 +69,57 @@ app.use(
 );
 ```
 
+### Integration with Main App
+
+Here's a complete example of integrating security headers with your Elysia application:
+
+```typescript
+// src/app.ts
+import { Elysia } from 'elysia';
+import { securityHeaders } from '@/core/security';
+import { logger } from '@/core/logging';
+import { requestId } from '@/middlewares/request-id.middleware';
+
+export function createApp() {
+  const app = new Elysia();
+
+  // Apply security headers first (before routes)
+  app.use(securityHeaders());
+
+  // Apply other middleware
+  app.use(requestId());
+  app.use(logger);
+
+  // Add your routes
+  app.get('/api/v1/health', () => ({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+  }));
+
+  return app;
+}
+
+// Start the server
+const app = createApp();
+app.listen(process.env.PORT || 3000);
+
+console.log(`🦊 Elysia is running at http://localhost:${app.server?.port}`);
+```
+
+### Security Headers with Existing Middleware
+
+Security headers work seamlessly with other middleware:
+
+```typescript
+const app = new Elysia()
+  .use(securityHeaders()) // Apply security headers
+  .use(requestId()) // Request tracking
+  .use(authMiddleware()) // Authentication
+  .use(rateLimitMiddleware()) // Rate limiting
+  .get('/api/v1/users', () => ({ users: [] }))
+  .post('/api/v1/users', () => ({ created: true }));
+```
+
 ## Configuration Options
 
 ### Security Level
@@ -146,6 +197,8 @@ strictTransportSecurity: {
   crossOriginEmbedderPolicy?: string | boolean; // Default: 'require-corp'
 }
 ```
+
+**Deprecation Notice:** The `X-XSS-Protection` header is largely obsolete as modern browsers have replaced it with Content Security Policy (CSP). It's included for legacy browser support but should not be relied upon as a primary XSS defense. Use CSP with strict policies instead.
 
 ### Custom Headers
 
