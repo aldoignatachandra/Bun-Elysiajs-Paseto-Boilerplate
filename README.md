@@ -7,15 +7,12 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-4169E1?logo=postgresql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7+-DC382D?logo=redis&logoColor=white)
 ![Drizzle ORM](https://img.shields.io/badge/Drizzle-ORM-1E1E1E)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Test Coverage](https://img.shields.io/badge/coverage-81.57%_functions_%2089.58%_lines-brightgreen)
+![Tests](https://img.shields.io/badge/tests-988_passing-success)
 
-**Monolith REST API boilerplate** using **Bun + Elysia + PASETO** with PostgreSQL (Drizzle ORM) and Redis (rate limiting).
+High-performance **monolith REST API boilerplate** using **Bun + Elysia + PASETO** with PostgreSQL (Drizzle ORM) and Redis (rate limiting).
 
-This boilerplate is focused on core API domains only:
-
-- 🔐 Authentication
-- 👤 User profile and user management
-- 📦 Product management
+This boilerplate implements modern authentication with **PASETO v4** tokens, provides a clean layered architecture, and includes comprehensive test coverage (988 tests passing with 81.57% functions and 89.58% lines coverage).
 
 ---
 
@@ -26,28 +23,34 @@ This boilerplate is focused on core API domains only:
 - [Project Structure](#-project-structure)
 - [Prerequisites](#-prerequisites)
 - [Getting Started](#-getting-started)
+  - [1. Clone & Install](#1-clone--install)
+  - [2. Environment Configuration](#2-environment-configuration)
+  - [3. Generate PASETO Keys](#3-generate-paseto-keys)
+  - [4. Start Infrastructure](#4-start-infrastructure-postgresql--redis)
+  - [5. Database Setup](#5-database-setup-migrations--seeds)
+  - [6. Run Application](#6-run-application)
 - [Available Scripts](#-available-scripts)
-- [API Overview](#-api-overview)
-- [Standard Response Format](#-standard-response-format)
+- [API Documentation](#-api-documentation)
 - [Testing](#-testing)
-- [Deployment (Docker Only)](#-deployment-docker-only)
-- [Documentation](#-documentation)
+- [Standard Response Format](#-standard-response-format)
+- [Deployment (Docker)](#-deployment-docker)
 - [Troubleshooting](#-troubleshooting)
 
 ---
 
 ## ✨ Features
 
-- **Monolith-first design**: single deployable API service with clean layered architecture.
+- **Monolith-first design**: Single deployable API service with clean layered architecture
 - **PASETO v4 hybrid tokens**:
-  - `v4.local` encrypted access token
-  - `v4.public` signed refresh token
-- **Drizzle ORM + PostgreSQL**: type-safe schema and query layer.
-- **Redis rate limiting**: supports IP-based and user-or-IP strategies.
-- **Go-style response envelope**: consistent response shape for success/error.
-- **Security baseline**: Argon2 password hashing, validation, auth middleware.
-- **Operational baseline**: health endpoints and structured request logging.
-- **Docker-ready**: production-like compose setup with API + PostgreSQL + Redis + Nginx.
+  - `v4.local` encrypted access token for secure API access
+  - `v4.public` signed refresh token for token renewal
+- **Drizzle ORM + PostgreSQL**: Type-safe schema and query layer with automatic migrations
+- **Redis rate limiting**: Supports IP-based and user-or-IP rate limiting strategies
+- **Go-style response envelope**: Consistent response shape for success and error cases
+- **Security baseline**: Argon2 password hashing, input validation, and authentication middleware
+- **Operational excellence**: Health endpoints and structured request logging
+- **Comprehensive testing**: 988 tests with 81.57% functions and 89.58% lines coverage
+- **Docker-ready**: Production-like compose setup with API + PostgreSQL + Redis + Nginx
 
 ---
 
@@ -105,7 +108,8 @@ bun-elysia-paseto-boilerplate/
 │   │   ├── http/
 │   │   ├── logging/
 │   │   ├── paseto/
-│   │   └── redis/
+│   │   ├── redis/
+│   │   └── validation/
 │   ├── database/
 │   │   ├── migrations/
 │   │   └── schema/
@@ -115,8 +119,26 @@ bun-elysia-paseto-boilerplate/
 │   ├── routes/
 │   └── services/
 ├── tests/
-│   ├── middlewares/
-│   └── unit/
+│   ├── unit/
+│   │   ├── config/              # Environment & config tests
+│   │   ├── controllers/         # Controller unit tests
+│   │   ├── core/                # Core utilities tests
+│   │   │   ├── crypto/          # Password hashing tests
+│   │   │   ├── errors/          # Error handling tests
+│   │   │   ├── http/            # HTTP utilities tests
+│   │   │   ├── logging/         # Logging tests
+│   │   │   ├── paseto/          # PASETO token tests
+│   │   │   ├── redis/           # Redis connection tests
+│   │   │   └── validation/      # Schema validation tests
+│   │   ├── database/            # Database & schema tests
+│   │   │   └── schema/          # Drizzle schema tests
+│   │   ├── middlewares/         # Middleware tests
+│   │   ├── plugins/             # Plugin tests
+│   │   ├── repositories/        # Repository tests
+│   │   ├── routes/              # Route & DTO tests
+│   │   └── services/            # Service layer tests
+│   ├── middlewares/             # Integration middleware tests
+│   └── app.test.ts              # Application integration tests
 ├── infra/
 │   ├── docker/
 │   ├── nginx/
@@ -130,75 +152,130 @@ bun-elysia-paseto-boilerplate/
 
 ## ✅ Prerequisites
 
-1. **Bun** `>= 1.0`
-2. **Docker + Docker Compose**
-3. **PostgreSQL** and **Redis** (can be local containers)
+Before you begin, ensure you have the following installed:
+
+1. **Bun** (v1.3 or later)
+   ```bash
+   curl -fsSL https://bun.sh/install | bash
+   ```
+2. **Docker & Docker Compose** (For running PostgreSQL and Redis)
+3. **Git**
 
 ---
 
 ## 🚀 Getting Started
+
+Follow these steps strictly to get the boilerplate running locally.
 
 ### 1. Clone & Install
 
 ```bash
 git clone <your-repo-url>
 cd bun-elysia-paseto-boilerplate
+
+# Install dependencies
 bun install
 ```
 
-### 2. Setup Environment
+### 2. Environment Configuration
+
+Copy the example environment file and configure it for your local setup:
 
 ```bash
 cp .env.example .env
 ```
 
+**Critical Variables Explained:**
+
+| Variable            | Description                                | Default (Local)                                     |
+| :------------------ | :----------------------------------------- | :-------------------------------------------------- |
+| `DATABASE_URL`      | Connection string for PostgreSQL           | `postgresql://postgres:postgres@localhost:5432/...` |
+| `REDIS_HOST`        | Redis host address                         | `localhost`                                         |
+| `REDIS_PORT`        | Redis port                                 | `6379`                                              |
+| `PASETO_LOCAL_KEY`  | Secret key for v4.local (encrypted) tokens | Generate with script (see step 3)                   |
+| `PASETO_PUBLIC_KEY` | Public key for v4.public (signed) tokens   | Generate with script (see step 3)                   |
+| `PASETO_SECRET_KEY` | Secret key for v4.public (signed) tokens   | Generate with script (see step 3)                   |
+| `NODE_ENV`          | Application environment                    | `development`                                       |
+| `PORT`              | API server port                            | `3000`                                              |
+
 ### 3. Generate PASETO Keys
+
+Generate secure PASETO keys for token authentication:
 
 ```bash
 bun run generate:paseto-keys
 ```
 
-Copy the generated values into your `.env`:
+Copy the generated values into your `.env` file:
 
 - `PASETO_LOCAL_KEY`
 - `PASETO_PUBLIC_KEY`
 - `PASETO_SECRET_KEY`
 
-### 4. Start PostgreSQL + Redis (Local)
+### 4. Start Infrastructure (PostgreSQL & Redis)
+
+We use Docker to run the required infrastructure.
+
+**Start PostgreSQL:**
 
 ```bash
 docker run --name bun-elysia-pg \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=postgres \
   -e POSTGRES_DB=bun_elysia_paseto \
-  -p 5432:5432 -d postgres:16-alpine
-
-docker run --name bun-elysia-redis \
-  -p 6379:6379 -d redis:7-alpine
+  -p 5432:5432 \
+  -d postgres:16-alpine
 ```
 
-### 5. Run Migrations
+**Start Redis:**
+
+```bash
+docker run --name bun-elysia-redis \
+  -p 6379:6379 \
+  -d redis:7-alpine
+```
+
+_Infrastructure will be ready within a few seconds._
+
+### 5. Database Setup (Migrations & Seeds)
+
+**Run Migrations:**
+
+Initialize the database schema:
 
 ```bash
 bun run db:migrate
 ```
 
-### 6. Start API
+**Seed Database (Optional):**
+
+Populate the database with sample data:
+
+```bash
+bun run db:seed
+```
+
+### 6. Run Application
+
+Start the development server:
 
 ```bash
 bun run dev
 ```
 
-API default URL: `http://localhost:3000`
+The API will be available at: `http://localhost:3000`
 
-Quick checks:
+**Quick health checks:**
 
 ```bash
 curl http://localhost:3000/health/live
 curl http://localhost:3000/health
+curl http://localhost:3000/health/ready
 ```
 
-Swagger UI:
+**Swagger UI:**
+
+Interactive API documentation is available at:
 
 - `http://localhost:3000/swagger`
 
@@ -212,7 +289,7 @@ Swagger UI:
 | `bun run start`                | Start production server                 |
 | `bun run test`                 | Run default test suite                  |
 | `bun run test:unit`            | Run unit and middleware tests           |
-| `bun run test:integration`     | Run API smoke/integration test          |
+| `bun run test:integration`     | Run API smoke/integration tests         |
 | `bun run test:coverage`        | Run unit coverage + print overall %     |
 | `bun run test:coverage:lcov`   | Run unit coverage with LCOV + overall % |
 | `bun run lint`                 | Lint source files                       |
@@ -227,70 +304,136 @@ Swagger UI:
 
 ---
 
-## 📖 API Overview
+## 📖 API Documentation
 
 Base prefix: `/api/v1`
 
-### 🔐 Auth
+### 🔐 Authentication
 
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/refresh`
-- `POST /api/v1/auth/logout`
-- `GET /api/v1/auth/me`
-- `POST /api/v1/auth/change-password`
+- `POST /api/v1/auth/register` - Register new user
+- `POST /api/v1/auth/login` - Login user
+- `POST /api/v1/auth/refresh` - Refresh access token
+- `POST /api/v1/auth/logout` - Logout user
+- `GET /api/v1/auth/me` - Get current user
+- `POST /api/v1/auth/change-password` - Change password
 
 ### 👤 Users
 
-- `GET /api/v1/users/me`
-- `PATCH /api/v1/users/me`
-- `GET /api/v1/users`
-- `GET /api/v1/users/stats`
-- `GET /api/v1/users/:id`
-- `POST /api/v1/users/:id/activate`
-- `POST /api/v1/users/:id/deactivate`
-- `DELETE /api/v1/users/:id` (`?force=true` optional)
-- `POST /api/v1/users/:id/restore`
-- `GET /api/v1/activity-logs`
+- `GET /api/v1/users/me` - Get current user profile
+- `PATCH /api/v1/users/me` - Update current user profile
+- `GET /api/v1/users` - List all users (paginated)
+- `GET /api/v1/users/stats` - Get user statistics
+- `GET /api/v1/users/:id` - Get user by ID
+- `POST /api/v1/users/:id/activate` - Activate user account
+- `POST /api/v1/users/:id/deactivate` - Deactivate user account
+- `DELETE /api/v1/users/:id` - Soft delete user (`?force=true` for hard delete)
+- `POST /api/v1/users/:id/restore` - Restore deleted user
+- `GET /api/v1/activity-logs` - Get activity logs
 
 ### 📦 Products
 
-- `POST /api/v1/products`
-- `GET /api/v1/products`
-- `GET /api/v1/products/:id`
-- `PUT /api/v1/products/:id`
-- `DELETE /api/v1/products/:id` (`?force=true` optional)
-- `POST /api/v1/products/:id/restore`
-- `PUT /api/v1/products/:id/stock`
+- `POST /api/v1/products` - Create new product
+- `GET /api/v1/products` - List all products (paginated)
+- `GET /api/v1/products/:id` - Get product by ID
+- `PUT /api/v1/products/:id` - Update product
+- `DELETE /api/v1/products/:id` - Soft delete product (`?force=true` for hard delete)
+- `POST /api/v1/products/:id/restore` - Restore deleted product
+- `PUT /api/v1/products/:id/stock` - Update product stock
 
-### 🩺 System
+### 🩺 System Health
 
-- `GET /health`
-- `GET /health/live`
-- `GET /health/ready`
-- `GET /swagger`
+- `GET /health` - Full health check
+- `GET /health/live` - Liveness probe
+- `GET /health/ready` - Readiness probe
+- `GET /swagger` - Interactive API documentation
+
+---
+
+## 🧪 Testing
+
+This boilerplate includes comprehensive test coverage with **988 tests** achieving **81.57% functions** and **89.58% lines** coverage.
+
+### Test Structure
+
+The test suite mirrors the source code structure:
+
+```
+tests/
+├── unit/                    # 46 unit test files
+│   ├── config/             # Environment configuration tests
+│   ├── controllers/        # Controller logic tests
+│   ├── core/               # Core utilities (crypto, paseto, redis, etc.)
+│   ├── database/           # Database connection and schema tests
+│   ├── middlewares/        # Authentication & rate limiting tests
+│   ├── plugins/            # Health plugin tests
+│   ├── repositories/       # Repository pattern tests
+│   ├── routes/             # Route validation & DTO tests
+│   └── services/           # Business logic tests
+├── middlewares/            # Middleware integration tests
+└── app.test.ts            # Application-level integration tests
+```
+
+### Running Tests
+
+**Run all tests:**
+
+```bash
+bun run test
+```
+
+**Run unit tests only:**
+
+```bash
+bun run test:unit
+```
+
+**Run integration tests:**
+
+```bash
+bun run test:integration
+```
+
+**Generate coverage report:**
+
+```bash
+bun run test:coverage
+```
+
+Output:
+
+```
+Coverage Summary
+- Overall Functions Coverage: 81.57%
+- Overall Lines Coverage: 89.58%
+```
+
+**Generate LCOV coverage:**
+
+```bash
+bun run test:coverage:lcov
+```
 
 ---
 
 ## 📦 Standard Response Format
 
-Success example:
+### Success Response
 
 ```json
 {
   "success": true,
   "message": "Request successful",
   "data": {
-    "id": "..."
+    "id": "550e8400-e29b-41d4-a716-446655440000"
   },
   "meta": {
-    "timestamp": "2026-03-12T11:00:00.000Z",
-    "request_id": "..."
+    "timestamp": "2026-03-13T11:00:00.000Z",
+    "request_id": "req_123456789"
   }
 }
 ```
 
-Error example:
+### Error Response
 
 ```json
 {
@@ -300,42 +443,26 @@ Error example:
     "message": "Authentication required"
   },
   "meta": {
-    "timestamp": "2026-03-12T11:00:00.000Z",
-    "request_id": "..."
+    "timestamp": "2026-03-13T11:00:00.000Z",
+    "request_id": "req_123456789"
   }
 }
 ```
 
 ---
 
-## 🧪 Testing
+## 🐳 Deployment (Docker)
 
-Default test run:
+This boilerplate is **Docker-focused** for production deployments.
 
-```bash
-bun run test
-```
-
-Coverage with overall percentage summary:
-
-```bash
-bun run test:coverage
-```
-
----
-
-## 🐳 Deployment (Docker Only)
-
-This boilerplate is currently **Docker-focused**.
-
-Run production-like stack from infra:
+**Run production-like stack from infra:**
 
 ```bash
 cd infra
 docker compose -f docker-compose.prod.yaml up -d --build
 ```
 
-Or use deployment helper script:
+**Or use deployment helper script:**
 
 ```bash
 ./infra/deployment.sh <image-name> <tag> <registry>
@@ -347,26 +474,36 @@ Example:
 ./infra/deployment.sh bun-elysia-paseto-api v1.0.0 docker.io/my-org
 ```
 
----
+**Recommended Production Setup:**
 
-## 📘 Documentation
-
-- [`docs/standardization/README.md`](docs/standardization/README.md)
-- [`docs/standardization/PASETO_GUIDE.md`](docs/standardization/PASETO_GUIDE.md)
-- [`docs/deployment/production.md`](docs/deployment/production.md)
-- [`docs/operations/runbook.md`](docs/operations/runbook.md)
-- [`docs/operations/monitoring.md`](docs/operations/monitoring.md)
+- **Reverse Proxy**: Nginx (included in docker-compose) for SSL and routing
+- **Managed Database**: AWS RDS, Google Cloud SQL, or similar for PostgreSQL
+- **Managed Redis**: Redis Cloud, AWS ElastiCache, or similar
+- **Monitoring**: Implement health check monitoring and logging aggregation
+- **Secrets Management**: Use environment-specific secrets management (not `.env` files)
 
 ---
 
 ## 🔧 Troubleshooting
 
-| Issue                        | Cause                                         | Fix                                                         |
-| :--------------------------- | :-------------------------------------------- | :---------------------------------------------------------- |
-| `Database connection failed` | PostgreSQL not running / wrong `DATABASE_URL` | Start Postgres container and re-check `.env`                |
-| `Redis connection failed`    | Redis not running / wrong host or port        | Start Redis container and verify `REDIS_HOST`, `REDIS_PORT` |
-| `Invalid PASETO key`         | Missing or malformed PASETO keys              | Re-run `bun run generate:paseto-keys` and update `.env`     |
-| `429 Too Many Requests`      | Rate limiter threshold exceeded               | Wait for rate limit window reset                            |
+| Issue                          | Possible Cause                                | Solution                                                     |
+| :----------------------------- | :-------------------------------------------- | :----------------------------------------------------------- |
+| **Database connection failed** | PostgreSQL not running / wrong `DATABASE_URL` | Start Postgres container and re-check `.env`                 |
+| **Redis connection failed**    | Redis not running / wrong host or port        | Start Redis container and verify `REDIS_HOST`, `REDIS_PORT`  |
+| **Invalid PASETO key**         | Missing or malformed PASETO keys              | Re-run `bun run generate:paseto-keys` and update `.env`      |
+| **429 Too Many Requests**      | Rate limiter threshold exceeded               | Wait for rate limit window reset or adjust rate limit config |
+| **Tests failing**              | Environment not set up correctly              | Ensure PostgreSQL and Redis are running before running tests |
+| **Migration failed**           | Database schema mismatch or connection issue  | Check `DATABASE_URL` and ensure database is accessible       |
+
+---
+
+## 📘 Documentation
+
+- [`docs/standardization/README.md`](docs/standardization/README.md) - Project standards and conventions
+- [`docs/standardization/PASETO_GUIDE.md`](docs/standardization/PASETO_GUIDE.md) - PASETO implementation guide
+- [`docs/deployment/production.md`](docs/deployment/production.md) - Production deployment guide
+- [`docs/operations/runbook.md`](docs/operations/runbook.md) - Operational runbook
+- [`docs/operations/monitoring.md`](docs/operations/monitoring.md) - Monitoring and observability
 
 ---
 
