@@ -1,12 +1,20 @@
-import { vi } from 'bun/test';
+import { vi } from 'bun:test';
+
+interface RedisDataItem {
+  value: string;
+  expiry?: number;
+  score?: number;
+}
 
 interface RedisData {
-  [key: string]: { value: string; expiry?: number };
+  [key: string]: RedisDataItem | { value: string; expiry?: number };
 }
 
 export class MockRedis {
   private data: RedisData = {};
   private callbacks: Map<string, () => void> = new Map();
+  // Sorted sets for rate limiting (key -> array of {score, member})
+  private sortedSets: Map<string, Array<{ score: number; member: string }>> = new Map();
 
   get = vi.fn(async (key: string) => {
     const item = this.data[key];
@@ -84,11 +92,133 @@ export class MockRedis {
   // Helper for testing
   _clear() {
     this.data = {};
+    this.sortedSets.clear();
+    // Clear all mock call histories
+    this.get.mockClear();
+    this.set.mockClear();
+    this.setex.mockClear();
+    this.del.mockClear();
+    this.incr.mockClear();
+    this.incrby.mockClear();
+    this.expire.mockClear();
+    this.ttl.mockClear();
+    this.flushall.mockClear();
+    this.keys.mockClear();
+    this.on.mockClear();
+    this.disconnect.mockClear();
+    this.connect.mockClear();
+    this.zadd.mockClear();
+    this.zcard.mockClear();
+    this.zremrangebyscore.mockClear();
+    this.multi.mockClear();
+    this.ping.mockClear();
+  }
+
+  // Debug helper to check sorted set size
+  _sortedSetSize(key: string): number {
+    const set = this.sortedSets.get(key);
+    return set ? set.length : 0;
   }
 
   _size() {
     return Object.keys(this.data).length;
   }
+
+  // Sorted set methods for rate limiting
+  zadd = vi.fn(async (key: string, score: number, member: string) => {
+    if (!this.sortedSets.has(key)) {
+      this.sortedSets.set(key, []);
+    }
+    const set = this.sortedSets.get(key)!;
+    // Remove existing member if present
+    const index = set.findIndex(item => item.member === member);
+    if (index >= 0) {
+      set.splice(index, 1);
+    }
+    set.push({ score, member });
+    // Sort by score
+    set.sort((a, b) => a.score - b.score);
+    return 1;
+  });
+
+  zcard = vi.fn(async (key: string) => {
+    const set = this.sortedSets.get(key);
+    return set ? set.length : 0;
+  });
+
+  zremrangebyscore = vi.fn(async (key: string, min: number, max: number) => {
+    const set = this.sortedSets.get(key);
+    if (!set) return 0;
+    const initialLength = set.length;
+    // Remove elements with scores in range [min, max]
+    const filtered = set.filter(item => item.score < min || item.score > max);
+    this.sortedSets.set(key, filtered);
+    return initialLength - filtered.length;
+  });
+
+  multi = vi.fn(function (this: MockRedis) {
+    const commands: Array<{ name: string; args: unknown[] }> = [];
+
+    const multiChain = {
+      zremrangebyscore: (key: string, min: number, max: number) => {
+        commands.push({ name: 'zremrangebyscore', args: [key, min, max] });
+        return multiChain;
+      },
+      zadd: (key: string, score: number, member: string) => {
+        commands.push({ name: 'zadd', args: [key, score, member] });
+        return multiChain;
+      },
+      zcard: (key: string) => {
+        commands.push({ name: 'zcard', args: [key] });
+        return multiChain;
+      },
+      expire: (key: string, seconds: number) => {
+        commands.push({ name: 'expire', args: [key, seconds] });
+        return multiChain;
+      },
+      ttl: (key: string) => {
+        commands.push({ name: 'ttl', args: [key] });
+        return multiChain;
+      },
+      exec: async () => {
+        const results: Array<[Error | null, unknown]> = [];
+
+        for (const cmd of commands) {
+          try {
+            let result: unknown;
+            switch (cmd.name) {
+              case 'zremrangebyscore':
+                result = await this.zremrangebyscore(cmd.args[0] as string, cmd.args[1] as number, cmd.args[2] as number);
+                break;
+              case 'zadd':
+                result = await this.zadd(cmd.args[0] as string, cmd.args[1] as number, cmd.args[2] as string);
+                break;
+              case 'zcard':
+                result = await this.zcard(cmd.args[0] as string);
+                break;
+              case 'expire':
+                result = await this.expire(cmd.args[0] as string, cmd.args[1] as number);
+                break;
+              case 'ttl':
+                result = await this.ttl(cmd.args[0] as string);
+                break;
+              default:
+                result = null;
+            }
+            results.push([null, result]);
+          } catch (error) {
+            results.push([error as Error, null]);
+          }
+        }
+
+        return results;
+      },
+    };
+
+    return multiChain;
+  });
+
+  ping = vi.fn(async () => 'PONG');
 }
 
 export function createMockRedis(): MockRedis {

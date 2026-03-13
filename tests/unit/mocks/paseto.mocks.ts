@@ -1,4 +1,4 @@
-import { vi } from 'bun/test';
+import { vi } from 'bun:test';
 
 export interface MockTokenPayload {
   userId: string;
