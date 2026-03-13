@@ -220,7 +220,7 @@ describe('UnitOfWork', () => {
       };
       mockDb.transaction = fn => Promise.resolve(fn(mockTransaction as any));
       let callbackExecuted = false;
-      let resultValue = 'success';
+      const resultValue = 'success';
 
       // Act
       const result = await unitOfWork.withTransaction(async uow => {

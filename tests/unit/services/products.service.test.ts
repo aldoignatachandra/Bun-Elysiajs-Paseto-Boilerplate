@@ -1,10 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/await-thenable */
-import { describe, it, expect, beforeEach, jest } from 'bun:test';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import { ProductsService } from '../../../src/services/products.service';
 import { BadRequestError, ForbiddenError } from '../../../src/core/errors/app-error';
 
@@ -41,18 +36,18 @@ describe('ProductsService', () => {
   beforeEach(() => {
     mockUnitOfWork = {
       products: {
-        findWithFilters: jest.fn(),
-        findById: jest.fn(),
-        findByIdWithVariants: jest.fn(),
-        createWithVariants: jest.fn(),
-        updateWithVariants: jest.fn(),
-        softDelete: jest.fn(),
-        restore: jest.fn(),
-        delete: jest.fn(),
-        updateStock: jest.fn(),
+        findWithFilters: () => ({ data: [], total: 0 }),
+        findById: () => null,
+        findByIdWithVariants: () => null,
+        createWithVariants: () => null,
+        updateWithVariants: () => null,
+        softDelete: () => true,
+        restore: () => true,
+        delete: () => true,
+        updateStock: () => null,
       },
       activityLogs: {
-        create: jest.fn().mockResolvedValue({}),
+        create: async () => ({}),
       },
     };
     service = new ProductsService(mockUnitOfWork);
@@ -60,7 +55,7 @@ describe('ProductsService', () => {
 
   describe('list', () => {
     it('should return paginated products', async () => {
-      mockUnitOfWork.products.findWithFilters.mockResolvedValue({
+      mockUnitOfWork.products.findWithFilters = async () => ({
         data: [mockProduct],
         total: 1,
       });
@@ -73,7 +68,7 @@ describe('ProductsService', () => {
 
   describe('getById', () => {
     it('should return a product by id', async () => {
-      mockUnitOfWork.products.findByIdWithVariants.mockResolvedValue(mockProduct);
+      mockUnitOfWork.products.findByIdWithVariants = async () => mockProduct;
 
       const result = await service.getById({
         id: mockProduct.id,
@@ -84,7 +79,7 @@ describe('ProductsService', () => {
     });
 
     it('should throw ForbiddenError when user does not have permission', async () => {
-      mockUnitOfWork.products.findByIdWithVariants.mockResolvedValue(mockProduct);
+      mockUnitOfWork.products.findByIdWithVariants = async () => mockProduct;
 
       await expect(
         service.getById({
@@ -97,7 +92,7 @@ describe('ProductsService', () => {
 
   describe('create', () => {
     it('should create a new product', async () => {
-      mockUnitOfWork.products.createWithVariants.mockResolvedValue(mockProduct);
+      mockUnitOfWork.products.createWithVariants = async () => mockProduct;
 
       const result = await service.create({
         ownerId: mockProduct.ownerId,
@@ -132,8 +127,8 @@ describe('ProductsService', () => {
 
   describe('update', () => {
     it('should update a product', async () => {
-      mockUnitOfWork.products.findById.mockResolvedValue(mockDbProduct);
-      mockUnitOfWork.products.updateWithVariants.mockResolvedValue({ ...mockProduct, name: 'Updated Product' });
+      mockUnitOfWork.products.findById = async () => mockDbProduct;
+      mockUnitOfWork.products.updateWithVariants = async () => ({ ...mockProduct, name: 'Updated Product' });
 
       const result = await service.update({
         id: mockProduct.id,
@@ -145,7 +140,7 @@ describe('ProductsService', () => {
     });
 
     it('should throw ForbiddenError when user does not have permission', async () => {
-      mockUnitOfWork.products.findById.mockResolvedValue(mockDbProduct);
+      mockUnitOfWork.products.findById = async () => mockDbProduct;
 
       await expect(
         service.update({
@@ -157,8 +152,8 @@ describe('ProductsService', () => {
     });
 
     it('should allow admin to update any product', async () => {
-      mockUnitOfWork.products.findById.mockResolvedValue(mockDbProduct);
-      mockUnitOfWork.products.updateWithVariants.mockResolvedValue({ ...mockProduct, name: 'Updated Product' });
+      mockUnitOfWork.products.findById = async () => mockDbProduct;
+      mockUnitOfWork.products.updateWithVariants = async () => ({ ...mockProduct, name: 'Updated Product' });
 
       const result = await service.update({
         id: mockProduct.id,
@@ -173,9 +168,9 @@ describe('ProductsService', () => {
 
   describe('delete', () => {
     it('should soft delete a product', async () => {
-      mockUnitOfWork.products.findById.mockResolvedValue(mockDbProduct);
-      mockUnitOfWork.products.softDelete.mockResolvedValue(true);
-      mockUnitOfWork.products.findByIdWithVariants.mockResolvedValue(mockProduct);
+      mockUnitOfWork.products.findById = async () => mockDbProduct;
+      mockUnitOfWork.products.softDelete = async () => true;
+      mockUnitOfWork.products.findByIdWithVariants = async () => mockProduct;
 
       const result = await service.delete(mockProduct.id, false, {
         performedBy: mockProduct.ownerId,
@@ -185,7 +180,7 @@ describe('ProductsService', () => {
     });
 
     it('should throw ForbiddenError when user does not have permission', async () => {
-      mockUnitOfWork.products.findById.mockResolvedValue(mockDbProduct);
+      mockUnitOfWork.products.findById = async () => mockDbProduct;
 
       await expect(
         service.delete(mockProduct.id, false, {
@@ -195,9 +190,9 @@ describe('ProductsService', () => {
     });
 
     it('should allow admin to delete any product', async () => {
-      mockUnitOfWork.products.findById.mockResolvedValue(mockDbProduct);
-      mockUnitOfWork.products.softDelete.mockResolvedValue(true);
-      mockUnitOfWork.products.findByIdWithVariants.mockResolvedValue(mockProduct);
+      mockUnitOfWork.products.findById = async () => mockDbProduct;
+      mockUnitOfWork.products.softDelete = async () => true;
+      mockUnitOfWork.products.findByIdWithVariants = async () => mockProduct;
 
       const result = await service.delete(mockProduct.id, false, {
         performedBy: 'different-user-id',
@@ -210,9 +205,9 @@ describe('ProductsService', () => {
 
   describe('restore', () => {
     it('should restore a soft deleted product', async () => {
-      mockUnitOfWork.products.findById.mockResolvedValue(mockDbProduct);
-      mockUnitOfWork.products.restore.mockResolvedValue(true);
-      mockUnitOfWork.products.findByIdWithVariants.mockResolvedValue(mockProduct);
+      mockUnitOfWork.products.findById = async () => mockDbProduct;
+      mockUnitOfWork.products.restore = async () => true;
+      mockUnitOfWork.products.findByIdWithVariants = async () => mockProduct;
 
       const result = await service.restore(mockProduct.id, {
         performedBy: mockProduct.ownerId,
@@ -222,7 +217,7 @@ describe('ProductsService', () => {
     });
 
     it('should throw ForbiddenError when user does not have permission', async () => {
-      mockUnitOfWork.products.findById.mockResolvedValue(mockDbProduct);
+      mockUnitOfWork.products.findById = async () => mockDbProduct;
 
       await expect(
         service.restore(mockProduct.id, {
@@ -234,8 +229,8 @@ describe('ProductsService', () => {
 
   describe('updateStock', () => {
     it('should update product stock', async () => {
-      mockUnitOfWork.products.findById.mockResolvedValue(mockDbProduct);
-      mockUnitOfWork.products.updateStock.mockResolvedValue({ ...mockDbProduct, stock: 20 });
+      mockUnitOfWork.products.findById = async () => mockDbProduct;
+      mockUnitOfWork.products.updateStock = async () => ({ ...mockDbProduct, stock: 20 });
 
       const result = await service.updateStock({
         id: mockProduct.id,
@@ -247,7 +242,7 @@ describe('ProductsService', () => {
     });
 
     it('should throw ForbiddenError when user does not have permission', async () => {
-      mockUnitOfWork.products.findById.mockResolvedValue(mockDbProduct);
+      mockUnitOfWork.products.findById = async () => mockDbProduct;
 
       await expect(
         service.updateStock({

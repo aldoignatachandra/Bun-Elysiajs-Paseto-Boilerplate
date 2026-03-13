@@ -6,8 +6,22 @@ import { createMockRedis } from '../mocks/redis.mocks';
 // Mock Redis connection
 const mockRedis = createMockRedis();
 
+// Mock only getRedisConnection, preserve other exports
+const originalGetRedisConnection = () => mockRedis;
+const mockIsRedisHealthy = async () => true;
+const mockCloseRedisConnection = async () => {};
+const mockGetRedisConnectionInfo = () => ({
+  connected: true,
+  host: 'localhost',
+  port: 6379,
+  db: 0,
+});
+
 vi.mock('@/core/redis/connection', () => ({
-  getRedisConnection: () => mockRedis,
+  getRedisConnection: originalGetRedisConnection,
+  isRedisHealthy: mockIsRedisHealthy,
+  closeRedisConnection: mockCloseRedisConnection,
+  getRedisConnectionInfo: mockGetRedisConnectionInfo,
 }));
 
 // Mock logger
@@ -25,11 +39,13 @@ vi.mock('@/core/logging/logger', () => ({
 describe('Rate Limit Middleware', () => {
   beforeEach(() => {
     mockRedis._clear();
+    mockRedis._resetImplementations();
     vi.clearAllMocks();
   });
 
   afterEach(() => {
     mockRedis._clear();
+    mockRedis._resetImplementations();
   });
 
   describe('Exports', () => {
@@ -122,7 +138,7 @@ describe('Rate Limit Middleware', () => {
   describe('enforceRateLimit', () => {
     it('should return rate limit status with correct properties', async () => {
       mockRedis._clear();
-
+      mockRedis._resetImplementations();
       const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
 
       const beforeHandle = enforceRateLimit({ maxRequests: 10, window: 60 });
@@ -145,7 +161,7 @@ describe('Rate Limit Middleware', () => {
 
     it('should use default options when none provided', async () => {
       mockRedis._clear();
-
+      mockRedis._resetImplementations();
       const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
 
       const beforeHandle = enforceRateLimit();
@@ -162,7 +178,7 @@ describe('Rate Limit Middleware', () => {
 
     it('should include user context when available', async () => {
       mockRedis._clear();
-
+      mockRedis._resetImplementations();
       const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
 
       const beforeHandle = enforceRateLimit({ maxRequests: 10, window: 60, strategy: 'user_or_ip' });
@@ -179,7 +195,7 @@ describe('Rate Limit Middleware', () => {
 
     it('should call Redis multi transaction', async () => {
       mockRedis._clear();
-
+      mockRedis._resetImplementations();
       const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
 
       const beforeHandle = enforceRateLimit({ maxRequests: 10, window: 60 });
@@ -198,6 +214,7 @@ describe('Rate Limit Middleware', () => {
   describe('resetRateLimit', () => {
     it('should reset rate limit for a key', async () => {
       mockRedis._clear();
+      mockRedis._resetImplementations();
 
       const { resetRateLimit } = await import('@/middlewares/rate-limit.middleware');
 
@@ -211,6 +228,7 @@ describe('Rate Limit Middleware', () => {
 
     it('should use custom prefix', async () => {
       mockRedis._clear();
+      mockRedis._resetImplementations();
 
       const { resetRateLimit } = await import('@/middlewares/rate-limit.middleware');
 
@@ -220,6 +238,7 @@ describe('Rate Limit Middleware', () => {
 
     it('should log success message', async () => {
       mockRedis._clear();
+      mockRedis._resetImplementations();
 
       const { resetRateLimit } = await import('@/middlewares/rate-limit.middleware');
 
@@ -229,6 +248,7 @@ describe('Rate Limit Middleware', () => {
 
     it('should throw error when Redis fails', async () => {
       mockRedis._clear();
+      mockRedis._resetImplementations();
 
       const { resetRateLimit } = await import('@/middlewares/rate-limit.middleware');
 
@@ -244,6 +264,7 @@ describe('Rate Limit Middleware', () => {
   describe('getRateLimitStatus', () => {
     it('should return rate limit status with correct structure', async () => {
       mockRedis._clear();
+      mockRedis._resetImplementations();
 
       const { getRateLimitStatus } = await import('@/middlewares/rate-limit.middleware');
 
@@ -260,6 +281,7 @@ describe('Rate Limit Middleware', () => {
 
     it('should use custom prefix', async () => {
       mockRedis._clear();
+      mockRedis._resetImplementations();
 
       const { getRateLimitStatus } = await import('@/middlewares/rate-limit.middleware');
 
@@ -269,6 +291,7 @@ describe('Rate Limit Middleware', () => {
 
     it('should calculate remaining requests correctly', async () => {
       mockRedis._clear();
+      mockRedis._resetImplementations();
 
       const { getRateLimitStatus } = await import('@/middlewares/rate-limit.middleware');
 
@@ -280,6 +303,7 @@ describe('Rate Limit Middleware', () => {
 
     it('should throw error when Redis transaction fails', async () => {
       mockRedis._clear();
+      mockRedis._resetImplementations();
 
       const { getRateLimitStatus } = await import('@/middlewares/rate-limit.middleware');
 
@@ -293,6 +317,7 @@ describe('Rate Limit Middleware', () => {
 
     it('should throw error when multi.exec returns null', async () => {
       mockRedis._clear();
+      mockRedis._resetImplementations();
 
       const { getRateLimitStatus } = await import('@/middlewares/rate-limit.middleware');
 
@@ -310,7 +335,7 @@ describe('Rate Limit Middleware', () => {
   describe('Redis error handling', () => {
     it('should handle Redis errors gracefully when skipFailedRequests is true', async () => {
       mockRedis._clear();
-
+      mockRedis._resetImplementations();
       const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
 
       // Make Redis operations fail
@@ -332,7 +357,7 @@ describe('Rate Limit Middleware', () => {
 
     it('should return error when Redis fails and skipFailedRequests is false', async () => {
       mockRedis._clear();
-
+      mockRedis._resetImplementations();
       const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
 
       // Make Redis operations fail
@@ -353,7 +378,7 @@ describe('Rate Limit Middleware', () => {
 
     it('should log error when Redis operation fails', async () => {
       mockRedis._clear();
-
+      mockRedis._resetImplementations();
       const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
 
       // Make Redis operations fail
@@ -381,7 +406,7 @@ describe('Rate Limit Middleware', () => {
   describe('RateLimitOptions interface', () => {
     it('should accept all valid option combinations', async () => {
       mockRedis._clear();
-
+      mockRedis._resetImplementations();
       const { rateLimit } = await import('@/middlewares/rate-limit.middleware');
 
       // All options

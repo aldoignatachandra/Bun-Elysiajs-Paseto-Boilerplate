@@ -26,8 +26,19 @@ export class MockRedis {
     return item.value;
   });
 
-  set = vi.fn(async (key: string, value: string, options?: { EX?: number; PX?: number }) => {
-    const expiry = options?.EX ? Date.now() + options.EX * 1000 : options?.PX ? Date.now() + options.PX : undefined;
+  set = vi.fn(async (key: string, value: string, modeOrOptions?: string | { EX?: number; PX?: number }, ttl?: number) => {
+    let expiry: number | undefined;
+    if (typeof modeOrOptions === 'string' && ttl !== undefined) {
+      // Handle set(key, value, 'EX', seconds) or set(key, value, 'PX', milliseconds)
+      if (modeOrOptions === 'EX') {
+        expiry = Date.now() + ttl * 1000;
+      } else if (modeOrOptions === 'PX') {
+        expiry = Date.now() + ttl;
+      }
+    } else if (modeOrOptions && typeof modeOrOptions === 'object') {
+      // Handle set(key, value, { EX: seconds }) or set(key, value, { PX: milliseconds })
+      expiry = modeOrOptions.EX ? Date.now() + modeOrOptions.EX * 1000 : modeOrOptions.PX ? Date.now() + modeOrOptions.PX : undefined;
+    }
     this.data[key] = { value, expiry };
     return 'OK';
   });
@@ -112,6 +123,168 @@ export class MockRedis {
     this.zremrangebyscore.mockClear();
     this.multi.mockClear();
     this.ping.mockClear();
+  }
+
+  // Helper to reset mock implementations
+  _resetImplementations() {
+    this.get.mockReset();
+    this.set.mockReset();
+    this.setex.mockReset();
+    this.del.mockReset();
+    this.incr.mockReset();
+    this.incrby.mockReset();
+    this.expire.mockReset();
+    this.ttl.mockReset();
+    this.flushall.mockReset();
+    this.keys.mockReset();
+    this.on.mockReset();
+    this.disconnect.mockReset();
+    this.connect.mockReset();
+    this.zadd.mockReset();
+    this.zcard.mockReset();
+    this.zremrangebyscore.mockReset();
+    this.multi.mockReset();
+    this.ping.mockReset();
+
+    // Re-setup default implementations
+    this.get.mockImplementation(async (key: string) => {
+      const item = this.data[key];
+      if (!item) return null;
+      if (item.expiry && item.expiry < Date.now()) {
+        delete this.data[key];
+        return null;
+      }
+      return item.value;
+    });
+
+    this.set.mockImplementation(async (key: string, value: string, modeOrOptions?: string | { EX?: number; PX?: number }, ttl?: number) => {
+      let expiry: number | undefined;
+      if (typeof modeOrOptions === 'string' && ttl !== undefined) {
+        // Handle set(key, value, 'EX', seconds) or set(key, value, 'PX', milliseconds)
+        if (modeOrOptions === 'EX') {
+          expiry = Date.now() + ttl * 1000;
+        } else if (modeOrOptions === 'PX') {
+          expiry = Date.now() + ttl;
+        }
+      } else if (modeOrOptions && typeof modeOrOptions === 'object') {
+        // Handle set(key, value, { EX: seconds }) or set(key, value, { PX: milliseconds })
+        expiry = modeOrOptions.EX ? Date.now() + modeOrOptions.EX * 1000 : modeOrOptions.PX ? Date.now() + modeOrOptions.PX : undefined;
+      }
+      this.data[key] = { value, expiry };
+      return 'OK';
+    });
+
+    this.del.mockImplementation(async (key: string) => {
+      const existed = key in this.data;
+      delete this.data[key];
+      return existed ? 1 : 0;
+    });
+
+    this.incr.mockImplementation(async (key: string) => {
+      const current = parseInt((await this.get(key)) || '0', 10);
+      const newValue = current + 1;
+      await this.set(key, newValue.toString());
+      return newValue;
+    });
+
+    this.incrby.mockImplementation(async (key: string, increment: number) => {
+      const current = parseInt((await this.get(key)) || '0', 10);
+      const newValue = current + increment;
+      await this.set(key, newValue.toString());
+      return newValue;
+    });
+
+    this.setex.mockImplementation(async (key: string, seconds: number, value: string) => this.set(key, value, { EX: seconds }));
+
+    this.expire.mockImplementation(async (key: string, seconds: number) => {
+      const item = this.data[key];
+      if (!item) return 0;
+      item.expiry = Date.now() + seconds * 1000;
+      return 1;
+    });
+
+    this.ttl.mockImplementation(async (key: string) => {
+      const item = this.data[key];
+      if (!item) return -2;
+      if (!item.expiry) return -1;
+      const remaining = Math.floor((item.expiry - Date.now()) / 1000);
+      return remaining > 0 ? remaining : -2;
+    });
+
+    this.flushall.mockImplementation(async () => {
+      this.data = {};
+      return 'OK';
+    });
+
+    this.keys.mockImplementation(async (pattern: string) => {
+      const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+      return Object.keys(this.data).filter(key => regex.test(key));
+    });
+
+    this.ping.mockImplementation(async () => 'PONG');
+
+    // Re-setup multi implementation
+    this.multi.mockImplementation(function (this: MockRedis) {
+      const commands: Array<{ name: string; args: unknown[] }> = [];
+
+      const multiChain = {
+        zremrangebyscore: (key: string, min: number, max: number) => {
+          commands.push({ name: 'zremrangebyscore', args: [key, min, max] });
+          return multiChain;
+        },
+        zadd: (key: string, score: number, member: string) => {
+          commands.push({ name: 'zadd', args: [key, score, member] });
+          return multiChain;
+        },
+        zcard: (key: string) => {
+          commands.push({ name: 'zcard', args: [key] });
+          return multiChain;
+        },
+        expire: (key: string, seconds: number) => {
+          commands.push({ name: 'expire', args: [key, seconds] });
+          return multiChain;
+        },
+        ttl: (key: string) => {
+          commands.push({ name: 'ttl', args: [key] });
+          return multiChain;
+        },
+        exec: async () => {
+          const results: Array<[Error | null, unknown]> = [];
+
+          for (const cmd of commands) {
+            try {
+              let result: unknown;
+              switch (cmd.name) {
+                case 'zremrangebyscore':
+                  result = await this.zremrangebyscore(cmd.args[0] as string, cmd.args[1] as number, cmd.args[2] as number);
+                  break;
+                case 'zadd':
+                  result = await this.zadd(cmd.args[0] as string, cmd.args[1] as number, cmd.args[2] as string);
+                  break;
+                case 'zcard':
+                  result = await this.zcard(cmd.args[0] as string);
+                  break;
+                case 'expire':
+                  result = await this.expire(cmd.args[0] as string, cmd.args[1] as number);
+                  break;
+                case 'ttl':
+                  result = await this.ttl(cmd.args[0] as string);
+                  break;
+                default:
+                  result = null;
+              }
+              results.push([null, result]);
+            } catch (error) {
+              results.push([error as Error, null]);
+            }
+          }
+
+          return results;
+        },
+      };
+
+      return multiChain;
+    });
   }
 
   // Debug helper to check sorted set size

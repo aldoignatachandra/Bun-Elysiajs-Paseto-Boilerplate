@@ -10,9 +10,7 @@ type RequestIdResponse = {
 describe('Request ID Middleware', () => {
   describe('Request ID Generation', () => {
     it('should generate a unique request ID when not present in headers', async () => {
-      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => {
-        return { requestId };
-      });
+      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => ({ requestId }));
 
       const response = await app.handle(new Request('http://localhost/test'));
       const data = (await response.json()) as { requestId: string };
@@ -26,9 +24,7 @@ describe('Request ID Middleware', () => {
     it('should preserve existing X-Request-ID header', async () => {
       const existingRequestId = 'existing-request-id-123';
 
-      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => {
-        return { requestId };
-      });
+      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => ({ requestId }));
 
       const request = new Request('http://localhost/test', {
         headers: {
@@ -56,9 +52,7 @@ describe('Request ID Middleware', () => {
     });
 
     it('should return the same request ID in response header as in context', async () => {
-      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => {
-        return { requestId };
-      });
+      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => ({ requestId }));
 
       const response = await app.handle(new Request('http://localhost/test'));
       const data = (await response.json()) as RequestIdResponse;
@@ -69,9 +63,7 @@ describe('Request ID Middleware', () => {
     });
 
     it('should handle custom header name option', async () => {
-      const app = new Elysia().use(requestId({ headerName: 'X-Correlation-ID' })).get('/test', ({ requestId }) => {
-        return { requestId };
-      });
+      const app = new Elysia().use(requestId({ headerName: 'X-Correlation-ID' })).get('/test', ({ requestId }) => ({ requestId }));
 
       const response = await app.handle(new Request('http://localhost/test'));
 
@@ -83,9 +75,7 @@ describe('Request ID Middleware', () => {
     });
 
     it('should generate different IDs for different requests', async () => {
-      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => {
-        return { requestId };
-      });
+      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => ({ requestId }));
 
       const response1 = await app.handle(new Request('http://localhost/test'));
       const response2 = await app.handle(new Request('http://localhost/test'));
@@ -97,9 +87,7 @@ describe('Request ID Middleware', () => {
     });
 
     it('should work with POST requests', async () => {
-      const app = new Elysia().use(requestId()).post('/test', ({ requestId }) => {
-        return { requestId };
-      });
+      const app = new Elysia().use(requestId()).post('/test', ({ requestId }) => ({ requestId }));
 
       const request = new Request('http://localhost/test', {
         method: 'POST',
@@ -147,9 +135,7 @@ describe('Request ID Middleware', () => {
     });
 
     it('should generate UUID v4 format IDs', async () => {
-      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => {
-        return { requestId };
-      });
+      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => ({ requestId }));
 
       const response = await app.handle(new Request('http://localhost/test'));
       const data = (await response.json()) as RequestIdResponse;
@@ -163,9 +149,7 @@ describe('Request ID Middleware', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty string X-Request-ID header', async () => {
-      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => {
-        return { requestId };
-      });
+      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => ({ requestId }));
 
       const request = new Request('http://localhost/test', {
         headers: {
@@ -182,9 +166,7 @@ describe('Request ID Middleware', () => {
     });
 
     it('should handle whitespace-only X-Request-ID header', async () => {
-      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => {
-        return { requestId };
-      });
+      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => ({ requestId }));
 
       const request = new Request('http://localhost/test', {
         headers: {
@@ -203,9 +185,7 @@ describe('Request ID Middleware', () => {
     it('should preserve request ID case sensitivity', async () => {
       const mixedCaseId = 'ReQuEsT-I d-123';
 
-      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => {
-        return { requestId };
-      });
+      const app = new Elysia().use(requestId()).get('/test', ({ requestId }) => ({ requestId }));
 
       const request = new Request('http://localhost/test', {
         headers: {
@@ -227,9 +207,7 @@ describe('Request ID Middleware', () => {
         .derive(() => ({
           customData: 'test',
         }))
-        .get('/test', ({ requestId, customData }) => {
-          return { requestId, customData };
-        });
+        .get('/test', ({ requestId, customData }) => ({ requestId, customData }));
 
       const response = await app.handle(new Request('http://localhost/test'));
       const data = (await response.json()) as RequestIdResponse;
