@@ -1,8 +1,15 @@
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeAll } from 'bun:test';
 import { PasswordService } from '@/core/crypto/password.service';
 
 describe('PasswordService', () => {
   const passwordService = new PasswordService();
+
+  // Generate a valid hash for reuse in tests
+  let validHash: string;
+
+  beforeAll(async () => {
+    validHash = await passwordService.hash('TestPassword123!');
+  });
 
   it('should hash a password', async () => {
     const password = 'TestPassword123!';
@@ -66,6 +73,13 @@ describe('PasswordService', () => {
     const password = 'TestPassword123!';
     const invalidHash = 'invalid-hash-format';
     const isValid = await passwordService.verify(invalidHash, password);
+
+    expect(isValid).toBe(false);
+  });
+
+  it('should reject incorrect password with valid hash', async () => {
+    const wrongPassword = 'WrongPassword456!';
+    const isValid = await passwordService.verify(validHash, wrongPassword);
 
     expect(isValid).toBe(false);
   });
