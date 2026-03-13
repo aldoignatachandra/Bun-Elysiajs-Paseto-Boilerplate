@@ -100,6 +100,7 @@ describe('Security Headers Middleware', () => {
 
   describe('Content Security Policy', () => {
     it('should include CSP header by default', async () => {
+      process.env.NODE_ENV = 'production'; // Ensure production mode for this test
       const app = new Elysia().use(securityHeaders()).get('/test', () => ({ message: 'test' }));
 
       const response = await app.handle(new Request('http://localhost/test'));
@@ -109,6 +110,7 @@ describe('Security Headers Middleware', () => {
     });
 
     it('should include default-src directive', async () => {
+      process.env.NODE_ENV = 'production'; // Ensure production mode for this test
       const app = new Elysia().use(securityHeaders()).get('/test', () => ({ message: 'test' }));
 
       const response = await app.handle(new Request('http://localhost/test'));
@@ -133,6 +135,7 @@ describe('Security Headers Middleware', () => {
     });
 
     it('should allow custom CSP directives', async () => {
+      process.env.NODE_ENV = 'production'; // Ensure production mode for this test
       const app = new Elysia()
         .use(
           securityHeaders({
@@ -175,6 +178,7 @@ describe('Security Headers Middleware', () => {
     });
 
     it('should support nonce generation', async () => {
+      process.env.NODE_ENV = 'production'; // Ensure production mode for this test
       const app = new Elysia()
         .use(
           securityHeaders({
