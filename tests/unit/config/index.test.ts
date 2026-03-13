@@ -1,12 +1,7 @@
 import { describe, it, expect, beforeEach } from 'bun:test';
 
 describe('Config Module', () => {
-  let originalEnv: NodeJS.ProcessEnv;
-
   beforeEach(() => {
-    // Store original environment
-    originalEnv = { ...process.env };
-
     // Set minimal required environment variables for testing
     process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
     process.env.PASETO_LOCAL_KEY = 'k4.local.abcdefghijklmnopqrstuvwxyz123456789012';
@@ -146,7 +141,6 @@ describe('Config Module', () => {
     it('should export Env type', async () => {
       const module = await import('@/config/index');
       const { getConfig } = module;
-      type Env = typeof module.Env;
 
       const config = getConfig();
       expect(config).toBeDefined();
