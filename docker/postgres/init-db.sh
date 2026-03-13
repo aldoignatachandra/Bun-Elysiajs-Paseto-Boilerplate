@@ -59,22 +59,6 @@ EOSQL
 
 echo "Database initialization completed successfully!"
 echo ""
-
-# Create additional schemas if needed
-echo "Creating additional schemas..."
-
-psql -v ON_ERROR_STOP=1 --username "$DB_USER" --dbname "$DB_NAME" <<-EOSQL
-  -- Create schemas for multi-tenancy support (optional)
-  CREATE SCHEMA IF NOT EXISTS tenant_1;
-  CREATE SCHEMA IF NOT EXISTS tenant_2;
-
-  -- Grant permissions on tenant schemas
-  GRANT ALL PRIVILEGES ON SCHEMA tenant_1 TO "$DB_USER";
-  GRANT ALL PRIVILEGES ON SCHEMA tenant_2 TO "$DB_USER";
-EOSQL
-
-echo "Schema creation completed!"
-echo ""
 echo "========================================"
 echo "PostgreSQL initialization complete!"
 echo "========================================"

@@ -9,6 +9,10 @@ networks:
   app-network:
     name: bun-elysia-paseto-dev
     driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
 
 # Volume configuration
 volumes:

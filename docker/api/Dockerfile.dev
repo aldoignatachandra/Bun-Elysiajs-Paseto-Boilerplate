@@ -30,8 +30,7 @@ FROM base AS development
 # Install runtime dependencies
 RUN apk add --no-cache \
     wget \
-    postgresql-client \
-    curl
+    postgresql-client
 
 # Copy node modules from dependencies stage
 COPY --from=dependencies /app/node_modules ./node_modules
