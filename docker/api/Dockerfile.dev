@@ -1,3 +1,6 @@
+# DEVELOPMENT ONLY - This Dockerfile enables hot reload with --watch
+# DO NOT use in production - use Dockerfile.prod instead
+#
 # Development Dockerfile for Bun Elysia PASETO API
 # Purpose: Development environment with hot reload capabilities
 # Usage: docker-compose -f docker-compose.dev.yaml build api

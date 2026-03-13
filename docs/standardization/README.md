@@ -12,14 +12,15 @@ This directory contains comprehensive documentation covering all aspects of deve
 
 ## 📖 Available Documentation
 
-| Document                                                     | Description                                    | Audience           |
-| ------------------------------------------------------------ | ---------------------------------------------- | ------------------ |
-| [**PASETO_GUIDE.md**](./PASETO_GUIDE.md)                     | Deep dive into PASETO v4 authentication in Bun | All developers     |
-| [**CODE_STYLE.md**](./CODE_STYLE.md)                         | Code formatting and style conventions          | All developers     |
-| [**ARCHITECTURE_STANDARDS.md**](./ARCHITECTURE_STANDARDS.md) | Architectural patterns and design principles   | Senior developers  |
-| [**API_DESIGN_STANDARDS.md**](./API_DESIGN_STANDARDS.md)     | RESTful API design conventions                 | Backend developers |
-| [**PARANOID_FUNCTIONALITY.md**](./PARANOID_FUNCTIONALITY.md) | Soft delete implementation guide               | Backend developers |
-| [**TESTING_STANDARDS.md**](./TESTING_STANDARDS.md)           | Testing practices and conventions              | All developers     |
+| Document                                                     | Description                                       | Audience           |
+| ------------------------------------------------------------ | ------------------------------------------------- | ------------------ |
+| [**PASETO_GUIDE.md**](./PASETO_GUIDE.md)                     | Deep dive into PASETO v4 authentication in Bun    | All developers     |
+| [**CODE_STYLE.md**](./CODE_STYLE.md)                         | Code formatting and style conventions             | All developers     |
+| [**ARCHITECTURE_STANDARDS.md**](./ARCHITECTURE_STANDARDS.md) | Architectural patterns and design principles      | Senior developers  |
+| [**API_DESIGN_STANDARDS.md**](./API_DESIGN_STANDARDS.md)     | RESTful API design conventions                    | Backend developers |
+| [**PARANOID_FUNCTIONALITY.md**](./PARANOID_FUNCTIONALITY.md) | Soft delete implementation guide                  | Backend developers |
+| [**TESTING_STANDARDS.md**](./TESTING_STANDARDS.md)           | Testing practices and conventions                 | All developers     |
+| [**HOT_RELOAD.md**](./HOT_RELOAD.md)                         | Development workflow and hot reload configuration | All developers     |
 
 ---
 
@@ -32,6 +33,7 @@ This directory contains comprehensive documentation covering all aspects of deve
 3. **Learn Architecture:** Review [ARCHITECTURE_STANDARDS.md](./ARCHITECTURE_STANDARDS.md) for system design
 4. **API Development:** Use [API_DESIGN_STANDARDS.md](./API_DESIGN_STANDARDS.md) when building endpoints
 5. **Testing:** Follow [TESTING_STANDARDS.md](./TESTING_STANDARDS.md) for writing tests
+6. **Development:** Use [HOT_RELOAD.md](./HOT_RELOAD.md) for hot reload workflow
 
 ### For Experienced Developers
 
@@ -114,6 +116,7 @@ All documents follow this structure:
 | **Status Codes**        | API_DESIGN_STANDARDS.md   | Error Handling       |
 | **Soft Delete**         | PARANOID_FUNCTIONALITY.md | Overview             |
 | **Testing**             | TESTING_STANDARDS.md      | Test Structure       |
+| **Hot Reload**          | HOT_RELOAD.md             | Quick Start          |
 | **Unit Testing**        | TESTING_STANDARDS.md      | Unit Testing         |
 | **Integration Testing** | TESTING_STANDARDS.md      | Integration Testing  |
 
@@ -121,7 +124,7 @@ All documents follow this structure:
 
 | Role                  | Priority Documents                                 |
 | --------------------- | -------------------------------------------------- |
-| **Junior Developer**  | CODE_STYLE.md, TESTING_STANDARDS.md                |
+| **Junior Developer**  | CODE_STYLE.md, TESTING_STANDARDS.md, HOT_RELOAD.md |
 | **Backend Developer** | API_DESIGN_STANDARDS.md, PARANOID_FUNCTIONALITY.md |
 | **Senior Developer**  | ARCHITECTURE_STANDARDS.md, PASETO_GUIDE.md         |
 | **Tech Lead**         | All documents                                      |
@@ -211,6 +214,7 @@ Before submitting a pull request, ensure:
 - [ ] API endpoints comply with API_DESIGN_STANDARDS.md
 - [ ] Architecture follows ARCHITECTURE_STANDARDS.md
 - [ ] Tests follow TESTING_STANDARDS.md
+- [ ] Development uses HOT_RELOAD.md for hot reload workflow
 - [ ] Authentication uses PASETO per PASETO_GUIDE.md
 - [ ] Soft delete follows PARANOID_FUNCTIONALITY.md (if applicable)
 
