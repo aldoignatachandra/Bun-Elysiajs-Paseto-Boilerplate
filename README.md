@@ -7,12 +7,11 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-4169E1?logo=postgresql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7+-DC382D?logo=redis&logoColor=white)
 ![Drizzle ORM](https://img.shields.io/badge/Drizzle-ORM-1E1E1E)
-![Test Coverage](https://img.shields.io/badge/coverage-81.57%_functions_%2089.58%_lines-brightgreen)
-![Tests](https://img.shields.io/badge/tests-988_passing-success)
+![Test Coverage](https://img.shields.io/badge/coverage-1226_tests_passing-brightgreen)
 
 High-performance **monolith REST API boilerplate** using **Bun + Elysia + PASETO** with PostgreSQL (Drizzle ORM) and Redis (rate limiting).
 
-This boilerplate implements modern authentication with **PASETO v4** tokens, provides a clean layered architecture, and includes comprehensive test coverage (988 tests passing with 81.57% functions and 89.58% lines coverage).
+This boilerplate implements modern authentication with **PASETO v4** tokens, provides a clean layered architecture, and includes comprehensive test coverage (1226+ tests passing).
 
 ---
 
@@ -48,8 +47,15 @@ This boilerplate implements modern authentication with **PASETO v4** tokens, pro
 - **Redis rate limiting**: Supports IP-based and user-or-IP rate limiting strategies
 - **Go-style response envelope**: Consistent response shape for success and error cases
 - **Security baseline**: Argon2 password hashing, input validation, and authentication middleware
+- **Graceful Shutdown**: Configurable SIGTERM/SIGINT handling with graceful connection closure
+- **Request Validation**: Automatic Zod validation with detailed error responses
+- **Metrics Collection**: Prometheus-compatible metrics with `/metrics` endpoint
+- **Request Context**: Enhanced request metadata tracking with performance monitoring
+- **Security Headers**: OWASP-recommended security headers with CSP support
+- **Hot Reload**: Bun's native `--watch` mode for rapid development iteration
+- **Docker Development**: Complete containerized development with hot reload
 - **Operational excellence**: Health endpoints and structured request logging
-- **Comprehensive testing**: 988 tests with 81.57% functions and 89.58% lines coverage
+- **Comprehensive testing**: 1226+ tests covering all core functionality
 - **Docker-ready**: Production-like compose setup with API + PostgreSQL + Redis + Nginx
 
 ---
@@ -187,16 +193,19 @@ cp .env.example .env
 
 **Critical Variables Explained:**
 
-| Variable            | Description                                | Default (Local)                                     |
-| :------------------ | :----------------------------------------- | :-------------------------------------------------- |
-| `DATABASE_URL`      | Connection string for PostgreSQL           | `postgresql://postgres:postgres@localhost:5432/...` |
-| `REDIS_HOST`        | Redis host address                         | `localhost`                                         |
-| `REDIS_PORT`        | Redis port                                 | `6379`                                              |
-| `PASETO_LOCAL_KEY`  | Secret key for v4.local (encrypted) tokens | Generate with script (see step 3)                   |
-| `PASETO_PUBLIC_KEY` | Public key for v4.public (signed) tokens   | Generate with script (see step 3)                   |
-| `PASETO_SECRET_KEY` | Secret key for v4.public (signed) tokens   | Generate with script (see step 3)                   |
-| `NODE_ENV`          | Application environment                    | `development`                                       |
-| `PORT`              | API server port                            | `3000`                                              |
+| Variable                   | Description                                | Default (Local)                                     |
+| :------------------------- | :----------------------------------------- | :-------------------------------------------------- |
+| `DATABASE_URL`             | Connection string for PostgreSQL           | `postgresql://postgres:postgres@localhost:5432/...` |
+| `REDIS_HOST`               | Redis host address                         | `localhost`                                         |
+| `REDIS_PORT`               | Redis port                                 | `6379`                                              |
+| `PASETO_LOCAL_KEY`         | Secret key for v4.local (encrypted) tokens | Generate with script (see step 3)                   |
+| `PASETO_PUBLIC_KEY`        | Public key for v4.public (signed) tokens   | Generate with script (see step 3)                   |
+| `PASETO_SECRET_KEY`        | Secret key for v4.public (signed) tokens   | Generate with script (see step 3)                   |
+| `NODE_ENV`                 | Application environment                    | `development`                                       |
+| `PORT`                     | API server port                            | `3000`                                              |
+| `METRICS_ENABLED`          | Enable Prometheus metrics endpoint         | `true` in development/test, `false` in production   |
+| `SHUTDOWN_TIMEOUT_MS`      | Graceful shutdown timeout (ms)             | `30000`                                             |
+| `SHUTDOWN_GRACE_PERIOD_MS` | Grace period before force close (ms)       | `5000`                                              |
 
 ### 3. Generate PASETO Keys
 
@@ -346,12 +355,13 @@ Base prefix: `/api/v1`
 - `GET /health/live` - Liveness probe
 - `GET /health/ready` - Readiness probe
 - `GET /swagger` - Interactive API documentation
+- `GET /metrics` - Prometheus metrics (when `METRICS_ENABLED=true`)
 
 ---
 
 ## 🧪 Testing
 
-This boilerplate includes comprehensive test coverage with **988 tests** achieving **81.57% functions** and **89.58% lines** coverage.
+This boilerplate includes comprehensive test coverage with **1226+ tests** covering all core functionality.
 
 ### Test Structure
 
@@ -359,12 +369,16 @@ The test suite mirrors the source code structure:
 
 ```
 tests/
-├── unit/                    # 46 unit test files
+├── unit/                    # Unit test files mirroring src/ structure
 │   ├── config/             # Environment configuration tests
 │   ├── controllers/        # Controller logic tests
 │   ├── core/               # Core utilities (crypto, paseto, redis, etc.)
+│   │   ├── context/        # Request context enhancer tests
+│   │   ├── metrics/        # Prometheus metrics tests
+│   │   ├── security/       # Security headers tests
+│   │   └── shutdown/       # Graceful shutdown tests
 │   ├── database/           # Database connection and schema tests
-│   ├── middlewares/        # Authentication & rate limiting tests
+│   ├── middlewares/        # Authentication, rate limiting, validation tests
 │   ├── plugins/            # Health plugin tests
 │   ├── repositories/       # Repository pattern tests
 │   ├── routes/             # Route validation & DTO tests
@@ -501,6 +515,12 @@ Example:
 
 - [`docs/standardization/README.md`](docs/standardization/README.md) - Project standards and conventions
 - [`docs/standardization/PASETO_GUIDE.md`](docs/standardization/PASETO_GUIDE.md) - PASETO implementation guide
+- [`docs/standardization/VALIDATION.md`](docs/standardization/VALIDATION.md) - Request validation middleware
+- [`docs/standardization/GRACEFUL_SHUTDOWN.md`](docs/standardization/GRACEFUL_SHUTDOWN.md) - Graceful shutdown
+- [`docs/standardization/HOT_RELOAD.md`](docs/standardization/HOT_RELOAD.md) - Hot reload configuration
+- [`docs/standardization/METRICS.md`](docs/standardization/METRICS.md) - Metrics collection guide
+- [`docs/standardization/REQUEST_CONTEXT.md`](docs/standardization/REQUEST_CONTEXT.md) - Request context enhancer
+- [`docs/standardization/SECURITY_HEADERS.md`](docs/standardization/SECURITY_HEADERS.md) - Security headers and CSP
 - [`docs/deployment/production.md`](docs/deployment/production.md) - Production deployment guide
 - [`docs/operations/runbook.md`](docs/operations/runbook.md) - Operational runbook
 - [`docs/operations/monitoring.md`](docs/operations/monitoring.md) - Monitoring and observability
