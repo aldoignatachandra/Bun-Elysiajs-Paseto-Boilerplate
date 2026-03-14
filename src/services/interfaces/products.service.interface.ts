@@ -17,6 +17,7 @@ export interface ProductVariantInput {
   stock?: number;
   isActive?: boolean;
   attributeValues: Record<string, string>;
+  images?: string;
 }
 
 export interface ProductAttributeDTO {
@@ -35,6 +36,7 @@ export interface ProductVariantDTO {
   availableStock: number;
   isActive: boolean;
   attributeValues: Record<string, string>;
+  images: string | null;
 }
 
 export interface ProductDTO {
@@ -44,6 +46,7 @@ export interface ProductDTO {
   price: ProductPriceRange;
   stock: number;
   hasVariant: boolean;
+  images: string | null;
   attributes?: ProductAttributeDTO[];
   variants?: ProductVariantDTO[];
   deletedAt: Date | null;
@@ -81,6 +84,7 @@ export interface CreateProductInput {
   name: string;
   price: number;
   stock?: number;
+  images?: string;
   attributes?: ProductAttributeInput[];
   variants?: ProductVariantInput[];
 }
@@ -92,6 +96,7 @@ export interface UpdateProductInput {
   name?: string;
   price?: number;
   stock?: number;
+  images?: string;
   attributes?: ProductAttributeInput[];
   variants?: ProductVariantInput[];
 }

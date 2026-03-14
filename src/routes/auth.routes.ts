@@ -66,15 +66,14 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
           const routeCtx = ctx as RouteContext<RegisterRequestDTO>;
           const body = registerRequestSchema.parse(routeCtx.body);
 
-          const firstName = body.firstName || body.name?.split(' ')[0] || 'User';
-          const lastName = body.lastName || body.name?.split(' ').slice(1).join(' ') || '';
+          // Use name directly from body or construct from firstName/lastName if provided
+          const name = body.name || [body.firstName, body.lastName].filter(Boolean).join(' ') || null;
 
           const result = await authController.register({
             email: body.email,
             username: body.username,
             password: body.password,
-            firstName,
-            lastName,
+            name,
           });
 
           const data = {

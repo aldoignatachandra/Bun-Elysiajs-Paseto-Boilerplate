@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { z } from 'zod';
 import { emailSchema, nameSchema, paginationSchema, passwordSchema, uuidSchema, usernameSchema } from '../../core/validation/common.schema';
 
 export const updateProfileSchema = z.object({
-  firstName: nameSchema.optional(),
-  lastName: nameSchema.optional(),
+  name: nameSchema.optional(),
   username: usernameSchema.optional(),
 });
 
@@ -50,10 +52,8 @@ export const createUserSchema = z.object({
   email: emailSchema,
   username: usernameSchema,
   password: passwordSchema,
-  firstName: nameSchema,
-  lastName: nameSchema,
-  isActive: z.boolean().optional(),
-  emailVerified: z.boolean().optional(),
+  name: nameSchema.optional(),
+  role: z.string().optional(),
 });
 
 export type CreateUserDTO = z.infer<typeof createUserSchema>;
@@ -61,10 +61,8 @@ export type CreateUserDTO = z.infer<typeof createUserSchema>;
 export const updateUserSchema = z.object({
   email: emailSchema.optional(),
   username: usernameSchema.optional(),
-  firstName: nameSchema.optional(),
-  lastName: nameSchema.optional(),
-  isActive: z.boolean().optional(),
-  emailVerified: z.boolean().optional(),
+  name: nameSchema.optional(),
+  role: z.string().optional(),
 });
 
 export type UpdateUserDTO = z.infer<typeof updateUserSchema>;

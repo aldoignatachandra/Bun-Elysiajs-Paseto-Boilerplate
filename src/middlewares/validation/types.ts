@@ -11,7 +11,8 @@ import type { z } from 'zod';
  */
 export interface ValidationHandlerContext {
   error: unknown;
-  set: { status: number };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  set: any; // Elysia's set type is complex with status, headers, redirect, cookie
   request: Request;
   requestId?: string;
 }

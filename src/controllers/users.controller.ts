@@ -25,7 +25,7 @@ export class UsersController {
     }
   }
 
-  async updateMe(dto: { firstName?: string; lastName?: string }, authContext: AuthContext) {
+  async updateMe(dto: { name?: string; username?: string }, authContext: AuthContext) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
@@ -152,10 +152,9 @@ export class UsersController {
     id: string,
     dto: {
       email?: string;
-      firstName?: string;
-      lastName?: string;
-      isActive?: boolean;
-      emailVerified?: boolean;
+      username?: string;
+      name?: string;
+      role?: string;
     },
     authContext: AuthContext
   ) {

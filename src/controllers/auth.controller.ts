@@ -56,8 +56,7 @@ export class AuthController {
         email: dto.email,
         username: dto.username,
         password: dto.password,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
+        name: dto.name,
       });
 
       logger.info('Registration successful', { userId: result.user.id });

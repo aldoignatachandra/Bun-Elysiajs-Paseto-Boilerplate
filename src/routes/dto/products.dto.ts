@@ -18,6 +18,7 @@ export const createVariantSchema = z.object({
   stock: z.number().int().min(0).optional(),
   isActive: z.boolean().optional(),
   attributeValues: z.record(z.string(), z.string()),
+  images: z.string().optional(),
 });
 
 export const createProductSchema = z
@@ -25,6 +26,7 @@ export const createProductSchema = z
     name: z.string().min(1).max(255),
     price: z.coerce.number().positive(),
     stock: z.number().int().min(0).optional(),
+    images: z.string().optional(),
     attributes: z.array(createAttributeSchema).optional(),
     variants: z.array(createVariantSchema).optional(),
   })
@@ -47,6 +49,7 @@ export const updateProductSchema = z
     name: z.string().min(1).max(255).optional(),
     price: z.coerce.number().positive().optional(),
     stock: z.number().int().min(0).optional(),
+    images: z.string().optional(),
     attributes: z.array(createAttributeSchema).optional(),
     variants: z.array(createVariantSchema).optional(),
   })

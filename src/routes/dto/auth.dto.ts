@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { z } from 'zod';
 import { emailSchema, nameSchema, passwordSchema, usernameSchema } from '../../core/validation/common.schema';
 
 export const registerRequestSchema = z
   .object({
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     email: emailSchema,
     username: usernameSchema,
     password: passwordSchema,
@@ -54,8 +56,7 @@ export const registerSchema = z.object({
   email: emailSchema,
   username: usernameSchema,
   password: passwordSchema,
-  firstName: nameSchema,
-  lastName: nameSchema,
+  name: nameSchema.nullable(),
 });
 
 export type RegisterDTO = z.infer<typeof registerSchema>;

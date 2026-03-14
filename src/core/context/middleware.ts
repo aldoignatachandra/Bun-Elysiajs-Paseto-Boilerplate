@@ -18,7 +18,7 @@
  */
 
 import type { Elysia } from 'elysia';
-import type { ContextEnhancerOptions, RequestContext, AugmentedContext } from './types';
+import type { ContextEnhancerOptions, RequestContext } from './types';
 import { createContext, calculateDuration, finalizeMetrics, addPerformanceMarker, getTimeSince } from './request-context';
 import { logger } from '../logging/logger';
 
@@ -109,21 +109,12 @@ export function requestContextPlugin(options: Partial<ContextEnhancerOptions> = 
           set.headers[opts.requestIdHeader] = metadata.requestId;
         }
       })
-      .derive(({ requestContext }) => {
+      .derive(({ requestContext }) => ({
         // Derive user context from auth middleware
-        const context = requestContext;
-
-        // Check if auth middleware has already set user
-        // This will be populated when auth middleware runs before this plugin
-        return {
-          get user() {
-            return (context as AugmentedContext).user;
-          },
-          get tokenId() {
-            return (context as AugmentedContext).tokenId;
-          },
-        };
-      });
+        // The user and tokenId are set by auth middleware and stored in requestContext
+        user: requestContext.user,
+        tokenId: requestContext.tokenId,
+      }));
 }
 
 /**

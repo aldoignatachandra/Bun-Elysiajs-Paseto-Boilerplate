@@ -11,8 +11,7 @@ export interface RegisterInput {
   email: string;
   username: string;
   password: string;
-  firstName: string;
-  lastName: string;
+  name?: string | null;
 }
 
 export interface RegisterOutput {

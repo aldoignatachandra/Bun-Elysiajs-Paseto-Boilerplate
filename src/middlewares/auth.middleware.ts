@@ -35,10 +35,7 @@ export interface AuthContext {
     email?: string;
     role?: string;
     permissions?: string[];
-    firstName?: string;
-    lastName?: string;
-    isActive?: boolean;
-    emailVerified?: boolean;
+    name?: string | null;
     createdAt?: Date;
     lastLoginAt?: Date | null;
     updatedAt?: Date;

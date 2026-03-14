@@ -22,6 +22,7 @@ import { VALIDATION_ERROR_CODES, DEFAULT_ERROR_MESSAGES } from './validation/con
  * @returns Standardized error response or undefined
  */
 export function validationErrorHandler(ctx: ValidationHandlerContext): ReturnType<typeof errorResponse> | undefined {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const { error, set, request } = ctx;
 
   // Check if this is a Zod validation error
@@ -30,6 +31,7 @@ export function validationErrorHandler(ctx: ValidationHandlerContext): ReturnTyp
   }
 
   // Set appropriate status code for validation errors
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
   set.status = 422;
 
   // Transform Zod issues to field errors

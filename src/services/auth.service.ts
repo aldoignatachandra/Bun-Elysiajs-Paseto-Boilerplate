@@ -118,10 +118,7 @@ export class AuthService implements IAuthService {
         email: input.email,
         username: input.username,
         passwordHash,
-        firstName: input.firstName,
-        lastName: input.lastName,
-        isActive: true,
-        emailVerified: false,
+        name: input.name,
       };
 
       const user = await uow.users.create(newUser);
@@ -129,7 +126,7 @@ export class AuthService implements IAuthService {
       const tokens = this.pasetoService.createTokenPair({
         sub: user.id,
         email: user.email,
-        role: 'user',
+        role: 'USER',
       });
 
       const refreshTokenPayload = this.pasetoService.validateRefreshToken(tokens.refreshToken);

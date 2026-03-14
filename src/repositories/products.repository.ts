@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+// The above rules are disabled because Drizzle ORM's jsonb type returns `unknown`,
+// requiring explicit type assertions for jsonb columns (values, attributeValues)
 import { and, desc, eq, gte, ilike, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm';
 import { productAttributes, products, productVariants } from '../database/schema';
 import type { NewProduct, Product } from '../database/schema';

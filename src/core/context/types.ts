@@ -21,17 +21,8 @@ export interface RequestUser {
   /** User permissions */
   permissions?: string[];
 
-  /** User first name */
-  firstName?: string;
-
-  /** User last name */
-  lastName?: string;
-
-  /** Account active status */
-  isActive?: boolean;
-
-  /** Email verification status */
-  emailVerified?: boolean;
+  /** User display name */
+  name?: string | null;
 
   /** Account creation timestamp */
   createdAt?: Date;
