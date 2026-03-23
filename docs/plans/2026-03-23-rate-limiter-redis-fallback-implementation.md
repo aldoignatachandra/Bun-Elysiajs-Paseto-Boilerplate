@@ -930,16 +930,36 @@ git commit -m "fix(middleware): add Redis health check with in-memory fallback f
 
 - Modify: `tests/unit/middlewares/rate-limit.middleware.test.ts`
 
-**Step 1: Add new describe block for Redis Fallback at end of file**
+**Step 1: Update the mock for `isRedisHealthy` to be controllable**
+
+Find the mock setup at the top of the file (around line 11) and change it to be a vi.fn mock:
+
+Current code (line 11):
+
+```typescript
+const mockIsRedisHealthy = async () => true;
+```
+
+Replace with:
+
+```typescript
+const mockIsRedisHealthy = vi.fn(async () => true);
+```
+
+**Step 2: Add new describe block for Redis Fallback at end of file**
 
 Add before the last closing bracket:
 
 ```typescript
 describe('Redis Fallback', () => {
-  it('should use Redis when healthy', async () => {
+  beforeEach(() => {
     mockRedis._clear();
     mockRedis._resetImplementations();
+    // Reset the health check mock to return true by default
+    mockIsRedisHealthy.mockImplementation(async () => true);
+  });
 
+  it('should use Redis when healthy', async () => {
     const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
 
     const beforeHandle = enforceRateLimit({ maxRequests: 10, window: 60 });
@@ -949,23 +969,21 @@ describe('Redis Fallback', () => {
       user: null,
     };
 
-    await beforeHandle(ctx);
+    const result = await beforeHandle(ctx);
 
     // Redis operations should have been called
     expect(mockRedis.multi).toHaveBeenCalled();
-    expect(mockRedis.ping).toHaveBeenCalled();
+    expect(result.rateLimit).toBeDefined();
   });
 
   it('should fallback to in-memory when Redis is unhealthy', async () => {
-    mockRedis._clear();
-    mockRedis._resetImplementations();
-
-    // Make Redis unhealthy
-    mockRedis.ping = vi.fn(async () => {
-      throw new Error('Redis connection refused');
-    });
+    // Make Redis health check fail
+    mockIsRedisHealthy.mockImplementation(async () => false);
 
     const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
+    const { resetInMemoryStore } = await import('@/helpers/in-memory-rate-limiter');
+
+    resetInMemoryStore();
 
     const beforeHandle = enforceRateLimit({ maxRequests: 5, window: 60 });
 
@@ -988,8 +1006,8 @@ describe('Redis Fallback', () => {
   });
 
   it('should fallback to in-memory when Redis multi fails', async () => {
-    mockRedis._clear();
-    mockRedis._resetImplementations();
+    // Redis is healthy but multi operation fails
+    mockIsRedisHealthy.mockImplementation(async () => true);
 
     // Make Redis multi fail
     mockRedis.multi = vi.fn(() => {
@@ -997,6 +1015,9 @@ describe('Redis Fallback', () => {
     });
 
     const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
+    const { resetInMemoryStore } = await import('@/helpers/in-memory-rate-limiter');
+
+    resetInMemoryStore();
 
     const beforeHandle = enforceRateLimit({ maxRequests: 5, window: 60 });
 
@@ -1012,13 +1033,8 @@ describe('Redis Fallback', () => {
   });
 
   it('should respect rate limit in fallback mode', async () => {
-    mockRedis._clear();
-    mockRedis._resetImplementations();
-
     // Make Redis unhealthy
-    mockRedis.ping = vi.fn(async () => {
-      throw new Error('Redis connection refused');
-    });
+    mockIsRedisHealthy.mockImplementation(async () => false);
 
     const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
     const { resetInMemoryStore } = await import('@/helpers/in-memory-rate-limiter');
@@ -1041,13 +1057,8 @@ describe('Redis Fallback', () => {
   });
 
   it('should use user ID for key in fallback mode', async () => {
-    mockRedis._clear();
-    mockRedis._resetImplementations();
-
     // Make Redis unhealthy
-    mockRedis.ping = vi.fn(async () => {
-      throw new Error('Redis connection refused');
-    });
+    mockIsRedisHealthy.mockImplementation(async () => false);
 
     const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
     const { resetInMemoryStore } = await import('@/helpers/in-memory-rate-limiter');
@@ -1068,7 +1079,7 @@ describe('Redis Fallback', () => {
 });
 ```
 
-**Step 2: Run all middleware tests**
+**Step 3: Run all middleware tests**
 
 Run:
 
@@ -1078,7 +1089,7 @@ bun test tests/unit/middlewares/rate-limit.middleware.test.ts
 
 Expected: All tests pass including new Redis Fallback tests
 
-**Step 3: Commit fallback tests**
+**Step 4: Commit fallback tests**
 
 Run:
 
