@@ -5,6 +5,29 @@ import { getRedisConnection } from '@core/redis/connection';
 import { logger } from '@core/logging/logger';
 
 /**
+ * Format date to readable local timezone string
+ *
+ * @example "2026-03-24 08:05:54 (GMT+7)"
+ */
+function formatLocalTimestamp(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+
+  // Get timezone offset
+  const offsetMinutes = -date.getTimezoneOffset();
+  const offsetHours = Math.floor(Math.abs(offsetMinutes) / 60);
+  const offsetMins = Math.abs(offsetMinutes) % 60;
+  const offsetSign = offsetMinutes >= 0 ? '+' : '-';
+  const timezone = `GMT${offsetSign}${offsetHours}${offsetMins ? `:${String(offsetMins).padStart(2, '0')}` : ''}`;
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds} (${timezone})`;
+}
+
+/**
  * Health check result for a single service
  */
 interface HealthCheckResult {
@@ -132,7 +155,7 @@ export function healthPlugin() {
 
         const response: HealthResponse = {
           status: overallStatus,
-          timestamp: new Date().toISOString(),
+          timestamp: formatLocalTimestamp(),
           checks: {
             database,
             redis,
@@ -165,7 +188,7 @@ export function healthPlugin() {
       () => {
         const response: ProbeResponse = {
           status: 'ready',
-          timestamp: new Date().toISOString(),
+          timestamp: formatLocalTimestamp(),
         };
 
         return new Response(JSON.stringify(response), {
@@ -188,7 +211,7 @@ export function healthPlugin() {
       () => {
         const response: ProbeResponse = {
           status: 'alive',
-          timestamp: new Date().toISOString(),
+          timestamp: formatLocalTimestamp(),
         };
 
         return new Response(JSON.stringify(response), {
