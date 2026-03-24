@@ -1,9 +1,9 @@
 {
   "name": "bun-elysia-paseto-boilerplate",
   "version": "1.0.0",
-  "description": "Production-ready monolith REST API boilerplate with PASETO authentication",
+  "description": "Monolith REST API boilerplate with Elysiajs and PASETO authentication",
   "type": "module",
-  "author": "Your Name <email@example.com>",
+  "author": "aldoignatachandra@gmail.com",
   "license": "MIT",
   "engines": {
     "bun": ">=1.0.0"

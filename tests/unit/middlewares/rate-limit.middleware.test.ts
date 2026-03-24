@@ -2,16 +2,20 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'bun:test';
 import { TooManyRequestsError } from '@/core/errors/app-error';
 import { createMockRedis } from '../mocks/redis.mocks';
+import { resetInMemoryStore } from '@/helpers/in-memory-rate-limiter';
 
 // Mock Redis connection
 const mockRedis = createMockRedis();
 
+// Mutable flag to control Redis health in tests
+let redisHealthy = true;
+
 // Mock only getRedisConnection, preserve other exports
 const originalGetRedisConnection = () => mockRedis;
-const mockIsRedisHealthy = async () => true;
+const mockIsRedisHealthy = async () => redisHealthy;
 const mockCloseRedisConnection = async () => {};
 const mockGetRedisConnectionInfo = () => ({
-  connected: true,
+  connected: redisHealthy,
   host: 'localhost',
   port: 6379,
   db: 0,
@@ -41,11 +45,15 @@ describe('Rate Limit Middleware', () => {
     mockRedis._clear();
     mockRedis._resetImplementations();
     vi.clearAllMocks();
+    redisHealthy = true; // Reset Redis health to healthy by default
+    resetInMemoryStore(); // Reset in-memory rate limiter state
   });
 
   afterEach(() => {
     mockRedis._clear();
     mockRedis._resetImplementations();
+    redisHealthy = true; // Ensure Redis health is reset after each test
+    resetInMemoryStore(); // Clean up in-memory state
   });
 
   describe('Exports', () => {
@@ -333,7 +341,7 @@ describe('Rate Limit Middleware', () => {
   });
 
   describe('Redis error handling', () => {
-    it('should handle Redis errors gracefully when skipFailedRequests is true', async () => {
+    it('should fall back to in-memory rate limiter when Redis operations fail', async () => {
       mockRedis._clear();
       mockRedis._resetImplementations();
       const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
@@ -343,19 +351,21 @@ describe('Rate Limit Middleware', () => {
         throw new Error('Redis connection error');
       });
 
-      const beforeHandle = enforceRateLimit({ maxRequests: 5, window: 60, skipFailedRequests: true });
+      const beforeHandle = enforceRateLimit({ maxRequests: 5, window: 60 });
 
       const ctx = {
         request: new Request('http://localhost/test'),
         user: null,
       };
 
-      // Request should still succeed despite Redis error
+      // Request should succeed using in-memory fallback
+      // First request consumes 1 token, so remaining = 4
       const result = await beforeHandle(ctx);
-      expect(result.rateLimit.remaining).toBe(5);
+      expect(result.rateLimit.remaining).toBe(4);
+      expect(result.rateLimit.limit).toBe(5);
     });
 
-    it('should return error when Redis fails and skipFailedRequests is false', async () => {
+    it('should continue using in-memory fallback across multiple requests', async () => {
       mockRedis._clear();
       mockRedis._resetImplementations();
       const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
@@ -365,18 +375,30 @@ describe('Rate Limit Middleware', () => {
         throw new Error('Redis connection error');
       });
 
-      const beforeHandle = enforceRateLimit({ maxRequests: 5, window: 60, skipFailedRequests: false });
+      const beforeHandle = enforceRateLimit({ maxRequests: 3, window: 60 });
 
       const ctx = {
         request: new Request('http://localhost/test'),
         user: null,
       };
 
-      // Request should throw
+      // First request - should succeed with in-memory fallback
+      const result1 = await beforeHandle(ctx);
+      expect(result1.rateLimit.remaining).toBe(2);
+
+      // Second request
+      const result2 = await beforeHandle(ctx);
+      expect(result2.rateLimit.remaining).toBe(1);
+
+      // Third request
+      const result3 = await beforeHandle(ctx);
+      expect(result3.rateLimit.remaining).toBe(0);
+
+      // Fourth request should be rate limited
       await expect(beforeHandle(ctx)).rejects.toThrow(TooManyRequestsError);
     });
 
-    it('should log error when Redis operation fails', async () => {
+    it('should log error when Redis operation fails and fallback is used', async () => {
       mockRedis._clear();
       mockRedis._resetImplementations();
       const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
@@ -386,20 +408,71 @@ describe('Rate Limit Middleware', () => {
         throw new Error('Redis connection error');
       });
 
-      const beforeHandle = enforceRateLimit({ maxRequests: 5, window: 60, skipFailedRequests: false });
+      const beforeHandle = enforceRateLimit({ maxRequests: 5, window: 60 });
 
       const ctx = {
         request: new Request('http://localhost/test'),
         user: null,
       };
 
-      try {
-        await beforeHandle(ctx);
-      } catch (error) {
-        // Expected to throw
-      }
+      // This should succeed with fallback and log the error
+      await beforeHandle(ctx);
 
       expect(mockLogger.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('Redis unavailable (health check) fallback', () => {
+    it('should use in-memory fallback when isRedisHealthy returns false', async () => {
+      // Set Redis as unhealthy
+      redisHealthy = false;
+
+      mockRedis._clear();
+      mockRedis._resetImplementations();
+
+      const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
+
+      const beforeHandle = enforceRateLimit({ maxRequests: 5, window: 60 });
+
+      const ctx = {
+        request: new Request('http://localhost/test'),
+        user: null,
+      };
+
+      // Request should succeed using in-memory fallback
+      const result = await beforeHandle(ctx);
+      expect(result.rateLimit.remaining).toBe(4);
+      expect(result.rateLimit.limit).toBe(5);
+
+      // Should log warning about fallback
+      expect(mockLogger.warn).toHaveBeenCalled();
+    });
+
+    it('should log warning when falling back due to health check', async () => {
+      // Set Redis as unhealthy
+      redisHealthy = false;
+
+      mockRedis._clear();
+      mockRedis._resetImplementations();
+
+      const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
+
+      const beforeHandle = enforceRateLimit({ maxRequests: 5, window: 60 });
+
+      const ctx = {
+        request: new Request('http://localhost/test'),
+        user: null,
+      };
+
+      await beforeHandle(ctx);
+
+      // Check that warning was logged about Redis unavailable
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Redis unavailable, using in-memory rate limiter fallback',
+        expect.objectContaining({
+          fallback: 'in-memory',
+        })
+      );
     });
   });
 

@@ -1,7 +1,8 @@
 import type { Elysia } from 'elysia';
 import { TooManyRequestsError } from '../core/errors/app-error';
 import { logger } from '../core/logging/logger';
-import { getRedisConnection } from '../core/redis/connection';
+import { getRedisConnection, isRedisHealthy } from '../core/redis/connection';
+import { checkAndConsume } from '../helpers/in-memory-rate-limiter';
 
 export interface RateLimitOptions {
   maxRequests?: number;
@@ -47,6 +48,110 @@ function buildDefaultKey(ctx: { request: Request; user?: { id?: string } | null 
   return `ip:${getClientIp(ctx.request)}:${method}:${path}`;
 }
 
+/**
+ * Enforce rate limit using Redis (sorted sets)
+ *
+ * Uses sliding window algorithm with Redis ZSET.
+ * This is the preferred method when Redis is available.
+ */
+async function enforceWithRedis(
+  key: string,
+  options: Required<Omit<RateLimitOptions, 'keyGenerator'>>
+): Promise<{ limit: number; remaining: number; reset: number }> {
+  const redisKey = `${options.prefix}:${key}`;
+
+  const redis = getRedisConnection();
+  const now = Math.floor(Date.now() / 1000);
+  const windowStart = now - options.window;
+
+  const multi = redis.multi();
+  multi.zremrangebyscore(redisKey, 0, windowStart);
+  multi.zadd(redisKey, now, `${now}-${Math.random()}`);
+  multi.zcard(redisKey);
+  multi.expire(redisKey, options.window);
+
+  const results = await multi.exec();
+
+  if (!results) {
+    throw new Error('Redis transaction failed');
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  const count = (results[2]?.[1] as number) || 0;
+  const remaining = Math.max(0, options.maxRequests - count);
+  const resetTime = now + options.window;
+
+  if (count > options.maxRequests) {
+    logger.warn('Rate limit exceeded', {
+      key,
+      count,
+      limit: options.maxRequests,
+      window: options.window,
+    });
+
+    throw new TooManyRequestsError(options.errorMessage, {
+      limit: options.maxRequests,
+      remaining: 0,
+      reset: resetTime,
+    });
+  }
+
+  return {
+    limit: options.maxRequests,
+    remaining,
+    reset: resetTime,
+  };
+}
+
+/**
+ * Enforce rate limit using in-memory fallback
+ *
+ * Uses token bucket algorithm with Map storage.
+ * Used when Redis is unavailable to ensure graceful degradation.
+ */
+function enforceWithInMemory(
+  key: string,
+  options: Required<Omit<RateLimitOptions, 'keyGenerator'>>
+): { limit: number; remaining: number; reset: number } {
+  const windowMs = options.window * 1000;
+  const result = checkAndConsume(key, options.maxRequests, windowMs);
+
+  const resetTime = Math.floor(Date.now() / 1000) + options.window;
+
+  if (!result.allowed) {
+    logger.warn('Rate limit exceeded (in-memory fallback)', {
+      key,
+      count: result.current,
+      limit: options.maxRequests,
+      window: options.window,
+    });
+
+    throw new TooManyRequestsError(options.errorMessage, {
+      limit: options.maxRequests,
+      remaining: 0,
+      reset: resetTime,
+    });
+  }
+
+  return {
+    limit: result.limit,
+    remaining: result.remaining,
+    reset: resetTime,
+  };
+}
+
+/**
+ * Main enforcement function with Redis health check and fallback
+ *
+ * Flow:
+ * 1. Check Redis health using isRedisHealthy()
+ * 2. If healthy -> use Redis enforcement (enforceWithRedis)
+ * 3. If unhealthy -> use in-memory fallback (enforceWithInMemory) with warning log
+ * 4. On Redis errors -> gracefully fall back to in-memory
+ *
+ * This ensures graceful degradation when Redis is temporarily unavailable,
+ * maintaining rate limiting protection without blocking legitimate requests.
+ */
 async function enforce(
   ctx: { request: Request; user?: { id?: string } | null },
   options: Required<Omit<RateLimitOptions, 'keyGenerator'>> & {
@@ -54,66 +159,36 @@ async function enforce(
   }
 ): Promise<{ limit: number; remaining: number; reset: number }> {
   const key = options.keyGenerator?.(ctx) || buildDefaultKey(ctx, options.strategy);
-  const redisKey = `${options.prefix}:${key}`;
 
   try {
-    const redis = getRedisConnection();
-    const now = Math.floor(Date.now() / 1000);
-    const windowStart = now - options.window;
+    // Check Redis health before attempting Redis operations
+    const redisHealthy = await isRedisHealthy();
 
-    const multi = redis.multi();
-    multi.zremrangebyscore(redisKey, 0, windowStart);
-    multi.zadd(redisKey, now, `${now}-${Math.random()}`);
-    multi.zcard(redisKey);
-    multi.expire(redisKey, options.window);
-
-    const results = await multi.exec();
-
-    if (!results) {
-      throw new Error('Redis transaction failed');
+    if (redisHealthy) {
+      // Redis is available - use distributed rate limiting
+      return await enforceWithRedis(key, options);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const count = (results[2]?.[1] as number) || 0;
-    const remaining = Math.max(0, options.maxRequests - count);
-    const resetTime = now + options.window;
+    // Redis is unavailable - use in-memory fallback
+    logger.warn('Redis unavailable, using in-memory rate limiter fallback', {
+      key,
+      fallback: 'in-memory',
+    });
 
-    if (count > options.maxRequests) {
-      logger.warn('Rate limit exceeded', {
-        key,
-        count,
-        limit: options.maxRequests,
-        window: options.window,
-      });
-
-      throw new TooManyRequestsError(options.errorMessage, {
-        limit: options.maxRequests,
-        remaining: 0,
-        reset: resetTime,
-      });
-    }
-
-    return {
-      limit: options.maxRequests,
-      remaining,
-      reset: resetTime,
-    };
+    return enforceWithInMemory(key, options);
   } catch (error) {
+    // Re-throw rate limit errors as-is (client should see 429)
     if (error instanceof TooManyRequestsError) {
       throw error;
     }
 
-    logger.error('Rate limiting error', { error, key: redisKey });
+    // Unexpected error - log and fall back to in-memory
+    logger.error('Rate limiting error, falling back to in-memory', {
+      error: error instanceof Error ? error.message : String(error),
+      key,
+    });
 
-    if (options.skipFailedRequests) {
-      return {
-        limit: options.maxRequests,
-        remaining: options.maxRequests,
-        reset: Math.floor(Date.now() / 1000) + options.window,
-      };
-    }
-
-    throw new TooManyRequestsError('Rate limiting service unavailable');
+    return enforceWithInMemory(key, options);
   }
 }
 
