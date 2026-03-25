@@ -130,6 +130,19 @@ export const meResponseSchema = userResponseSchema;
 
 export type MeResponse = z.infer<typeof meResponseSchema>;
 
+/**
+ * API response type for /auth/me endpoint with formatted timestamp strings
+ */
+export interface MeApiResponse {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  createdAt: string;
+  lastLoginAt: string | null;
+  updatedAt: string;
+}
+
 export const errorResponseSchema = z.object({
   name: z.string(),
   code: z.string(),

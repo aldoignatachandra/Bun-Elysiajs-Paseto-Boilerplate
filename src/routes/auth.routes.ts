@@ -7,6 +7,9 @@ import { UsersController } from '../controllers/users.controller';
 import { successResponse } from '../core/http/response';
 import { requireAuth, type AuthContext } from '../middlewares/auth.middleware';
 import { enforceRateLimit, type RateLimitOptions } from '../middlewares/rate-limit.middleware';
+import { authDetails } from './details/auth.details';
+import { getClientIp } from '../helpers/ip.helper';
+import { getDeviceType } from '../helpers/device.helper';
 import {
   changePasswordRequestSchema,
   loginRequestSchema,
@@ -14,7 +17,7 @@ import {
   registerRequestSchema,
   type ChangePasswordRequestDTO,
   type LoginRequestDTO,
-  type RefreshRequestDTO,
+  type RefreshTokenDTO,
   type RegisterRequestDTO,
 } from './dto/auth.dto';
 
@@ -26,6 +29,7 @@ type RouteContext<TBody = unknown> = {
   body: TBody;
   user?: AuthContext['user'];
   tokenId?: string | null;
+  accessToken?: string | null;
 };
 
 const AUTH_ROUTE_LIMITS: Record<string, RouteLimitConfig> = {
@@ -37,17 +41,33 @@ const AUTH_ROUTE_LIMITS: Record<string, RouteLimitConfig> = {
   '/api/v1/auth/change-password': { maxRequests: 10, window: 60, strategy: 'user_or_ip' },
 };
 
-function toAuthContext(ctx: { user?: AuthContext['user']; tokenId?: string | null }): AuthContext {
+/**
+ * Extract activity context from request
+ */
+function getActivityContext(request: Request) {
+  const userAgent = request.headers.get('user-agent') || undefined;
+  const ipAddress = getClientIp(request);
+  const deviceType = getDeviceType(userAgent);
+
+  return {
+    ipAddress,
+    userAgent,
+    deviceType,
+  };
+}
+
+function toAuthContext(ctx: { user?: AuthContext['user']; tokenId?: string | null; accessToken?: string | null }): AuthContext {
   return {
     user: ctx.user ?? null,
     tokenId: ctx.tokenId ?? null,
+    accessToken: ctx.accessToken ?? null,
   };
 }
 
 export function createAuthRoutes(app: Elysia, authService: AuthService, usersService: UsersService, pasetoService: PasetoService) {
-  const authController = new AuthController(authService, pasetoService);
+  const authController = new AuthController(authService, usersService);
   const usersController = new UsersController(usersService);
-  const auth = requireAuth(pasetoService, authService);
+  const authPlugin = requireAuth(pasetoService, authService);
 
   const limiters = {
     register: enforceRateLimit(AUTH_ROUTE_LIMITS['/api/v1/auth/register']),
@@ -60,29 +80,33 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
 
   return app.group('/auth', authApp =>
     authApp
+      // ========================================
+      // Public routes (no authentication required)
+      // ========================================
       .post(
         '/register',
         async ctx => {
           const routeCtx = ctx as RouteContext<RegisterRequestDTO>;
           const body = registerRequestSchema.parse(routeCtx.body);
+          const activityContext = getActivityContext(routeCtx.request);
 
           // Use name directly from body or construct from firstName/lastName if provided
           const name = body.name || [body.firstName, body.lastName].filter(Boolean).join(' ') || null;
 
-          const result = await authController.register({
-            email: body.email,
-            username: body.username,
-            password: body.password,
-            name,
-          });
+          const result = await authController.register(
+            {
+              email: body.email,
+              username: body.username,
+              password: body.password,
+              name,
+            },
+            activityContext
+          );
 
           const data = {
             user: result.user,
-            token: result.tokens.accessToken,
             accessToken: result.tokens.accessToken,
-            refresh_token: result.tokens.refreshToken,
             refreshToken: result.tokens.refreshToken,
-            expires_in: result.tokens.expiresIn,
             expiresIn: result.tokens.expiresIn,
           };
 
@@ -92,6 +116,7 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
         {
           beforeHandle: [limiters.register],
           body: registerRequestSchema,
+          detail: authDetails.register,
         }
       )
       .post(
@@ -99,15 +124,14 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
         async ctx => {
           const routeCtx = ctx as RouteContext<LoginRequestDTO>;
           const body = loginRequestSchema.parse(routeCtx.body);
-          const result = await authController.login(body);
+          const activityContext = getActivityContext(routeCtx.request);
+
+          const result = await authController.login(body, activityContext);
 
           const data = {
             user: result.user,
-            token: result.tokens.accessToken,
             accessToken: result.tokens.accessToken,
-            refresh_token: result.tokens.refreshToken,
             refreshToken: result.tokens.refreshToken,
-            expires_in: result.tokens.expiresIn,
             expiresIn: result.tokens.expiresIn,
           };
 
@@ -116,23 +140,35 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
         {
           beforeHandle: [limiters.login],
           body: loginRequestSchema,
+          detail: authDetails.login,
         }
       )
       .post(
         '/refresh',
         async ctx => {
-          const routeCtx = ctx as RouteContext<RefreshRequestDTO>;
+          const routeCtx = ctx as RouteContext<RefreshTokenDTO>;
           const body = refreshRequestSchema.parse(routeCtx.body);
-          const result = await authController.refreshToken({
-            refreshToken: body.token || body.refreshToken || '',
-          });
+          const activityContext = getActivityContext(routeCtx.request);
+
+          // Support both 'token' and 'refreshToken' field names for backward compatibility
+          const refreshToken = body.refreshToken || body.token;
+          if (!refreshToken) {
+            routeCtx.set.status = 400;
+            return successResponse(routeCtx.request, {
+              error: 'Refresh token is required',
+            });
+          }
+
+          const result = await authController.refreshToken(
+            {
+              refreshToken,
+            },
+            activityContext
+          );
 
           const data = {
-            token: result.tokens.accessToken,
             accessToken: result.tokens.accessToken,
-            refresh_token: result.tokens.refreshToken,
             refreshToken: result.tokens.refreshToken,
-            expires_in: result.tokens.expiresIn,
             expiresIn: result.tokens.expiresIn,
           };
 
@@ -141,17 +177,25 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
         {
           beforeHandle: [limiters.refresh],
           body: refreshRequestSchema,
+          detail: authDetails.refresh,
         }
       )
+      // ========================================
+      // Protected routes (authentication required)
+      // Uses .use(authPlugin) with derive pattern to avoid short-circuiting
+      // ========================================
+      .use(authPlugin)
       .post(
         '/logout',
         async ctx => {
           const routeCtx = ctx as RouteContext;
-          const data = await authController.logout(toAuthContext(routeCtx));
+          const activityContext = getActivityContext(routeCtx.request);
+          const data = await authController.logout(toAuthContext(routeCtx), activityContext);
           return successResponse(routeCtx.request, data);
         },
         {
-          beforeHandle: [auth, limiters.logout],
+          beforeHandle: [limiters.logout],
+          detail: authDetails.logout,
         }
       )
       .get(
@@ -162,7 +206,8 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
           return successResponse(routeCtx.request, data);
         },
         {
-          beforeHandle: [auth, limiters.me],
+          beforeHandle: [limiters.me],
+          detail: authDetails.me,
         }
       )
       .post(
@@ -184,8 +229,9 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
           return successResponse(routeCtx.request, data);
         },
         {
-          beforeHandle: [auth, limiters.changePassword],
+          beforeHandle: [limiters.changePassword],
           body: changePasswordRequestSchema,
+          detail: authDetails.changePassword,
         }
       )
   );

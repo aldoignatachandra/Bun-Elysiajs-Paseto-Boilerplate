@@ -14,8 +14,8 @@
  * @module AuthController
  */
 
-import type { AuthService } from '../services/auth.service';
-import type { PasetoService } from '../core/paseto/paseto.service';
+import type { AuthService, AuthActivityContext } from '../services/auth.service';
+import type { UsersService } from '../services/users.service';
 import type { AuthContext } from '../middlewares/auth.middleware';
 import type {
   RegisterDTO,
@@ -24,10 +24,11 @@ import type {
   RegisterResponse,
   LoginResponse,
   RefreshTokenResponse,
-  MeResponse,
+  MeApiResponse,
 } from '../routes/dto/auth.dto';
 import { logger } from '../core/logging/logger';
 import { ConflictError, AuthenticationError, UnauthorizedError, InternalServerError } from '../core/errors/app-error';
+import { formatLocalTimestamp } from '../helpers/date.helper';
 
 /**
  * Authentication Controller
@@ -38,26 +39,30 @@ import { ConflictError, AuthenticationError, UnauthorizedError, InternalServerEr
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly pasetoService: PasetoService
+    private readonly usersService: UsersService
   ) {}
 
   /**
    * Register a new user
    *
    * @param dto - Registration data
+   * @param activityContext - Optional activity context (IP, user agent, device type)
    * @returns User data and authentication tokens
    * @throws ConflictError if email already exists
    */
-  async register(dto: RegisterDTO): Promise<RegisterResponse> {
+  async register(dto: RegisterDTO, activityContext?: AuthActivityContext): Promise<RegisterResponse> {
     try {
       logger.info('Registration attempt', { email: dto.email });
 
-      const result = await this.authService.register({
-        email: dto.email,
-        username: dto.username,
-        password: dto.password,
-        name: dto.name,
-      });
+      const result = await this.authService.register(
+        {
+          email: dto.email,
+          username: dto.username,
+          password: dto.password,
+          name: dto.name,
+        },
+        activityContext
+      );
 
       logger.info('Registration successful', { userId: result.user.id });
 
@@ -77,17 +82,21 @@ export class AuthController {
    * Authenticate user with email and password
    *
    * @param dto - Login credentials
+   * @param activityContext - Optional activity context (IP, user agent, device type)
    * @returns User data and authentication tokens
    * @throws AuthenticationError if credentials are invalid
    */
-  async login(dto: LoginDTO): Promise<LoginResponse> {
+  async login(dto: LoginDTO, activityContext?: AuthActivityContext): Promise<LoginResponse> {
     try {
       logger.info('Login attempt', { email: dto.email });
 
-      const result = await this.authService.login({
-        email: dto.email,
-        password: dto.password,
-      });
+      const result = await this.authService.login(
+        {
+          email: dto.email,
+          password: dto.password,
+        },
+        activityContext
+      );
 
       logger.info('Login successful', { userId: result.user.id });
 
@@ -107,16 +116,20 @@ export class AuthController {
    * Refresh access token using refresh token
    *
    * @param dto - Refresh token
+   * @param activityContext - Optional activity context (IP, user agent, device type)
    * @returns New authentication tokens
    * @throws UnauthorizedError if refresh token is invalid
    */
-  async refreshToken(dto: RefreshTokenDTO): Promise<RefreshTokenResponse> {
+  async refreshToken(dto: RefreshTokenDTO, activityContext?: AuthActivityContext): Promise<RefreshTokenResponse> {
     try {
       logger.debug('Token refresh attempt');
 
-      const result = await this.authService.refreshToken({
-        refreshToken: dto.refreshToken,
-      });
+      const result = await this.authService.refreshToken(
+        {
+          refreshToken: dto.refreshToken,
+        },
+        activityContext
+      );
 
       logger.info('Token refresh successful');
 
@@ -131,66 +144,56 @@ export class AuthController {
    * Logout user and revoke session
    *
    * @param authContext - Authentication context from middleware
+   * @param activityContext - Optional activity context (IP, user agent, device type)
    * @throws UnauthorizedError if not authenticated
+   * @throws NotFoundError if no session found
+   * @throws InvalidTokenError if token already used
    */
-  async logout(authContext: AuthContext): Promise<{ message: string }> {
-    try {
-      if (!authContext.user || !authContext.tokenId) {
-        throw new UnauthorizedError('Authentication required');
-      }
-
-      await this.authService.logout({
-        userId: authContext.user.id,
-        tokenId: authContext.tokenId,
-      });
-
-      logger.info('Logout successful', { userId: authContext.user.id });
-
-      return { message: 'Logged out successfully' };
-    } catch (error) {
-      if (error instanceof UnauthorizedError) {
-        throw error;
-      }
-
-      // Log logout error but don't fail the request
-      // The client can still discard their tokens
-      logger.error('Logout error', { error, userId: authContext.user?.id });
-      return { message: 'Logged out successfully' };
+  async logout(authContext: AuthContext, activityContext?: AuthActivityContext): Promise<{ message: string }> {
+    if (!authContext.user || !authContext.accessToken) {
+      throw new UnauthorizedError('Authentication required');
     }
+
+    const userId = authContext.user.id;
+    const accessToken = authContext.accessToken;
+
+    await this.authService.logout(
+      {
+        userId,
+        accessToken,
+      },
+      activityContext
+    );
+
+    logger.info('Logout successful', { userId });
+
+    return { message: 'Logged out successfully' };
   }
 
   /**
    * Get current authenticated user
    *
    * @param authContext - Authentication context from middleware
-   * @returns Current user data
+   * @returns Current user data with formatted timestamps
    * @throws UnauthorizedError if not authenticated
    */
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async me(authContext: AuthContext): Promise<MeResponse> {
+  async me(authContext: AuthContext): Promise<MeApiResponse> {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
 
     try {
-      // The user is already authenticated by the middleware
-      // Return user data from context
-      // In a real implementation, you might fetch fresh data from the database
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const user = authContext.user;
+      // Fetch fresh user data from the database to ensure all fields are up-to-date
+      const userProfile = await this.usersService.getProfile({ userId: authContext.user.id });
+
       return {
-        id: user?.id ?? '',
-        email: user?.email ?? '',
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        name: user?.name ?? null,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        role: user?.role ?? 'user',
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        createdAt: user?.createdAt ?? new Date(),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        lastLoginAt: user?.lastLoginAt ?? null,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        updatedAt: user?.updatedAt ?? new Date(),
+        id: userProfile.id,
+        email: userProfile.email,
+        name: userProfile.name,
+        role: userProfile.role,
+        createdAt: formatLocalTimestamp({ date: userProfile.createdAt }),
+        lastLoginAt: userProfile.lastLoginAt ? formatLocalTimestamp({ date: userProfile.lastLoginAt }) : null,
+        updatedAt: formatLocalTimestamp({ date: userProfile.updatedAt }),
       };
     } catch (error) {
       if (error instanceof UnauthorizedError) {

@@ -9,13 +9,13 @@
 import { describe, it, expect, beforeEach, jest } from 'bun:test';
 import { AuthController } from '../../../src/controllers/auth.controller';
 import type { AuthService } from '../../../src/services/auth.service';
-import type { PasetoService } from '../../../src/core/paseto/paseto.service';
+import type { UsersService } from '../../../src/services/users.service';
 import { ConflictError, AuthenticationError, UnauthorizedError, InternalServerError } from '../../../src/core/errors/app-error';
 
 describe('AuthController', () => {
   let controller: AuthController;
   let mockAuthService: any;
-  let mockPasetoService: any;
+  let mockUsersService: any;
 
   const mockUser = {
     id: '123e4567-e89b-12d3-a456-426614174000',
@@ -43,9 +43,11 @@ describe('AuthController', () => {
       validateAccessToken: jest.fn(),
     };
 
-    mockPasetoService = {};
+    mockUsersService = {
+      getProfile: jest.fn(),
+    };
 
-    controller = new AuthController(mockAuthService as unknown as AuthService, mockPasetoService as unknown as PasetoService);
+    controller = new AuthController(mockAuthService as unknown as AuthService, mockUsersService as unknown as UsersService);
   });
 
   describe('register', () => {
@@ -56,8 +58,7 @@ describe('AuthController', () => {
         email: 'new@example.com',
         username: 'newuser',
         password: 'password123!',
-        firstName: 'John',
-        lastName: 'Doe',
+        name: 'John Doe',
       });
 
       expect(result.user).toEqual(mockUser);
@@ -72,8 +73,7 @@ describe('AuthController', () => {
           email: 'existing@example.com',
           username: 'newuser',
           password: 'password123!',
-          firstName: 'John',
-          lastName: 'Doe',
+          name: 'John Doe',
         })
       ).rejects.toThrow(ConflictError);
     });
@@ -86,8 +86,7 @@ describe('AuthController', () => {
           email: 'new@example.com',
           username: 'newuser',
           password: 'password123!',
-          firstName: 'John',
-          lastName: 'Doe',
+          name: 'John Doe',
         })
       ).rejects.toThrow(InternalServerError);
     });
@@ -153,11 +152,12 @@ describe('AuthController', () => {
 
   describe('logout', () => {
     it('should logout user successfully', async () => {
-      mockAuthService.logout.mockResolvedValue({ message: 'Logged out successfully' });
+      mockAuthService.logout.mockResolvedValue(undefined);
 
       const result = await controller.logout({
         user: mockUser,
         tokenId: 'token-123',
+        accessToken: 'v4.local.test_access_token',
       });
 
       expect(result.message).toBe('Logged out successfully');
@@ -168,31 +168,59 @@ describe('AuthController', () => {
         controller.logout({
           user: null,
           tokenId: null,
+          accessToken: null,
         })
       ).rejects.toThrow(UnauthorizedError);
     });
 
-    it('should return success even on error', async () => {
-      mockAuthService.logout.mockRejectedValue(new Error('Some error'));
+    it('should throw UnauthorizedError when accessToken is null', async () => {
+      await expect(
+        controller.logout({
+          user: mockUser,
+          tokenId: 'token-123',
+          accessToken: null,
+        })
+      ).rejects.toThrow(UnauthorizedError);
+    });
 
-      const result = await controller.logout({
-        user: mockUser,
-        tokenId: 'token-123',
-      });
+    it('should propagate error from service', async () => {
+      const error = new Error('Session not found');
+      mockAuthService.logout.mockRejectedValue(error);
 
-      expect(result.message).toBe('Logged out successfully');
+      await expect(
+        controller.logout({
+          user: mockUser,
+          tokenId: 'token-123',
+          accessToken: 'v4.local.test_access_token',
+        })
+      ).rejects.toThrow(error);
     });
   });
 
   describe('me', () => {
     it('should return current user', async () => {
+      mockUsersService.getProfile.mockResolvedValue({
+        id: mockUser.id,
+        email: mockUser.email,
+        username: mockUser.username,
+        name: mockUser.name,
+        role: mockUser.role,
+        createdAt: mockUser.createdAt,
+        lastLoginAt: mockUser.lastLoginAt,
+        updatedAt: mockUser.updatedAt,
+        deletedAt: null,
+      });
+
       const result = await controller.me({
         user: mockUser,
         tokenId: 'token-123',
+        accessToken: 'v4.local.test_access_token',
       });
 
       expect(result.id).toBe(mockUser.id);
       expect(result.email).toBe(mockUser.email);
+      expect(result.name).toBe(mockUser.name);
+      expect(mockUsersService.getProfile).toHaveBeenCalledWith({ userId: mockUser.id });
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
@@ -200,6 +228,7 @@ describe('AuthController', () => {
         controller.me({
           user: null,
           tokenId: null,
+          accessToken: null,
         })
       ).rejects.toThrow(UnauthorizedError);
     });

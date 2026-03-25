@@ -84,6 +84,8 @@ describe('UsersRoutes', () => {
         post: jest.fn().mockReturnThis(),
         patch: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -111,6 +113,8 @@ describe('UsersRoutes', () => {
         post: jest.fn().mockReturnThis(),
         patch: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -138,6 +142,8 @@ describe('UsersRoutes', () => {
         post: jest.fn().mockReturnThis(),
         patch: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -168,6 +174,8 @@ describe('UsersRoutes', () => {
         post: jest.fn().mockReturnThis(),
         patch: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -198,6 +206,8 @@ describe('UsersRoutes', () => {
         post: jest.fn().mockReturnThis(),
         patch: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -227,6 +237,8 @@ describe('UsersRoutes', () => {
         post: jest.fn().mockReturnThis(),
         patch: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -257,6 +269,8 @@ describe('UsersRoutes', () => {
         post: jest.fn().mockReturnThis(),
         patch: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -287,6 +301,8 @@ describe('UsersRoutes', () => {
         post: jest.fn().mockReturnThis(),
         patch: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -317,6 +333,8 @@ describe('UsersRoutes', () => {
         post: jest.fn().mockReturnThis(),
         patch: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -348,6 +366,8 @@ describe('UsersRoutes', () => {
         post: jest.fn().mockReturnThis(),
         patch: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -375,6 +395,8 @@ describe('UsersRoutes', () => {
     it('should register GET /activity-logs route with query validation and authentication', () => {
       const mockLogsGroupApp = {
         get: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       let logsCallback: any;
@@ -390,6 +412,8 @@ describe('UsersRoutes', () => {
             post: jest.fn().mockReturnThis(),
             patch: jest.fn().mockReturnThis(),
             delete: jest.fn().mockReturnThis(),
+            use: jest.fn().mockReturnThis(),
+            derive: jest.fn().mockReturnThis(),
           };
           callback(mockGroupApp);
           return mockApp;
@@ -422,6 +446,8 @@ describe('UsersRoutes', () => {
         post: jest.fn().mockReturnThis(),
         patch: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -465,6 +491,8 @@ describe('UsersRoutes', () => {
         post: jest.fn().mockReturnThis(),
         patch: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {

@@ -74,6 +74,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -108,6 +110,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -141,6 +145,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -175,6 +181,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -208,6 +216,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -241,6 +251,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -274,6 +286,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -308,6 +322,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -341,6 +357,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -375,6 +393,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -408,6 +428,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -444,6 +466,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -477,6 +501,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -510,6 +536,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -544,6 +572,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -577,6 +607,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {
@@ -625,6 +657,8 @@ describe('ProductsRoutes', () => {
         patch: jest.fn().mockReturnThis(),
         put: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
+        use: jest.fn().mockReturnThis(),
+        derive: jest.fn().mockReturnThis(),
       };
 
       const mockApp = {

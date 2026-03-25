@@ -3,29 +3,7 @@ import { sql } from 'drizzle-orm';
 import { getConnection } from '@database/connection';
 import { getRedisConnection } from '@core/redis/connection';
 import { logger } from '@core/logging/logger';
-
-/**
- * Format date to readable local timezone string
- *
- * @example "2026-03-24 08:05:54 (GMT+7)"
- */
-function formatLocalTimestamp(date: Date = new Date()): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
-
-  // Get timezone offset
-  const offsetMinutes = -date.getTimezoneOffset();
-  const offsetHours = Math.floor(Math.abs(offsetMinutes) / 60);
-  const offsetMins = Math.abs(offsetMinutes) % 60;
-  const offsetSign = offsetMinutes >= 0 ? '+' : '-';
-  const timezone = `GMT${offsetSign}${offsetHours}${offsetMins ? `:${String(offsetMins).padStart(2, '0')}` : ''}`;
-
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds} (${timezone})`;
-}
+import { formatLocalTimestamp } from '@helpers/date.helper';
 
 /**
  * Health check result for a single service
@@ -178,8 +156,13 @@ export function healthPlugin() {
       {
         detail: {
           summary: 'Health check endpoint',
-          description: 'Returns the health status of the application and its dependencies',
+          description:
+            'Returns the health status of the application including database and Redis connectivity checks. Returns 503 if any service is unhealthy.',
           tags: ['Health'],
+          responses: {
+            200: { description: 'All services healthy' },
+            503: { description: 'One or more services unhealthy' },
+          },
         },
       }
     )
@@ -201,7 +184,7 @@ export function healthPlugin() {
       {
         detail: {
           summary: 'Readiness probe',
-          description: 'Kubernetes readiness probe endpoint',
+          description: 'Kubernetes readiness probe endpoint. Returns 200 if the application is ready to receive traffic.',
           tags: ['Health'],
         },
       }
@@ -224,7 +207,7 @@ export function healthPlugin() {
       {
         detail: {
           summary: 'Liveness probe',
-          description: 'Kubernetes liveness probe endpoint',
+          description: 'Kubernetes liveness probe endpoint. Returns 200 if the application is running.',
           tags: ['Health'],
         },
       }

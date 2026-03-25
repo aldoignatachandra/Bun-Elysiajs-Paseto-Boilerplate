@@ -21,6 +21,7 @@
       "@config/*": ["src/config/*"],
       "@core/*": ["src/core/*"],
       "@database/*": ["src/database/*"],
+      "@helpers/*": ["src/helpers/*"],
       "@plugins/*": ["src/plugins/*"],
       "@repositories/*": ["src/repositories/*"],
       "@services/*": ["src/services/*"],

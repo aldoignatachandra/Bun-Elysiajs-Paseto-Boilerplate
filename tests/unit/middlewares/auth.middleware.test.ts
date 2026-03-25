@@ -28,34 +28,73 @@ describe('Auth Middleware', () => {
     };
   });
 
+  /**
+   * Helper to create a mock Elysia app with derive support
+   * The requireAuth function now returns an Elysia plugin (app => app.derive(...))
+   * so we need to mock the Elysia app interface to test the derive callback
+   */
+  function createMockElysiaApp() {
+    return {
+      derive: jest.fn(callback => {
+        // Store the callback so we can test it
+        (createMockElysiaApp as any).deriveCallback = callback;
+        return createMockElysiaApp();
+      }),
+    };
+  }
+
   describe('requireAuth', () => {
-    it('should return user context with valid token', async () => {
+    it('should return an Elysia plugin function', () => {
+      const plugin = requireAuth({} as any, mockAuthService);
+      expect(typeof plugin).toBe('function');
+    });
+
+    it('should call app.derive with an async function', () => {
+      const plugin = requireAuth({} as any, mockAuthService);
+      const mockApp = createMockElysiaApp();
+
+      plugin(mockApp as any);
+
+      expect(mockApp.derive).toHaveBeenCalledTimes(1);
+      expect(mockApp.derive).toHaveBeenCalledWith(expect.any(Function));
+    });
+
+    it('should return user context with valid token when derive callback is invoked', async () => {
       mockAuthService.validateAccessToken.mockResolvedValue({
         valid: true,
         userId: 'user-123',
         payload: { email: 'test@example.com', role: 'USER' },
       });
 
-      const middleware = requireAuth({} as any, mockAuthService);
+      const plugin = requireAuth({} as any, mockAuthService);
+      const mockApp = createMockElysiaApp();
+      plugin(mockApp as any);
+
+      // Get the derive callback that was passed to app.derive
+      const deriveCallback = (createMockElysiaApp as any).deriveCallback;
       const mockContext = {
         request: new Request('http://localhost', {
           headers: { Authorization: 'Bearer valid_token' },
         }),
       };
 
-      const result = await middleware(mockContext as any);
+      const result = await deriveCallback(mockContext);
 
       expect(result.user).toBeDefined();
       expect(result.user.id).toBe('user-123');
     });
 
     it('should throw UnauthorizedError when no token provided', async () => {
-      const middleware = requireAuth({} as any, mockAuthService);
+      const plugin = requireAuth({} as any, mockAuthService);
+      const mockApp = createMockElysiaApp();
+      plugin(mockApp as any);
+
+      const deriveCallback = (createMockElysiaApp as any).deriveCallback;
       const mockContext = {
         request: new Request('http://localhost'),
       };
 
-      await expect(middleware(mockContext as any)).rejects.toThrow(UnauthorizedError);
+      await expect(deriveCallback(mockContext)).rejects.toThrow(UnauthorizedError);
     });
 
     it('should throw InvalidTokenError when token is invalid', async () => {
@@ -64,45 +103,62 @@ describe('Auth Middleware', () => {
         error: 'Invalid token',
       });
 
-      const middleware = requireAuth({} as any, mockAuthService);
+      const plugin = requireAuth({} as any, mockAuthService);
+      const mockApp = createMockElysiaApp();
+      plugin(mockApp as any);
+
+      const deriveCallback = (createMockElysiaApp as any).deriveCallback;
       const mockContext = {
         request: new Request('http://localhost', {
           headers: { Authorization: 'Bearer invalid_token' },
         }),
       };
 
-      await expect(middleware(mockContext as any)).rejects.toThrow(InvalidTokenError);
+      await expect(deriveCallback(mockContext)).rejects.toThrow(InvalidTokenError);
     });
   });
 
   describe('optionalAuth', () => {
-    it('should return user context with valid token', async () => {
+    it('should return an Elysia plugin function', () => {
+      const plugin = optionalAuth({} as any, mockAuthService);
+      expect(typeof plugin).toBe('function');
+    });
+
+    it('should return user context with valid token when derive callback is invoked', async () => {
       mockAuthService.validateAccessToken.mockResolvedValue({
         valid: true,
         userId: 'user-123',
         payload: { email: 'test@example.com', role: 'USER' },
       });
 
-      const middleware = optionalAuth({} as any, mockAuthService);
+      const plugin = optionalAuth({} as any, mockAuthService);
+      const mockApp = createMockElysiaApp();
+      plugin(mockApp as any);
+
+      const deriveCallback = (createMockElysiaApp as any).deriveCallback;
       const mockContext = {
         request: new Request('http://localhost', {
           headers: { Authorization: 'Bearer valid_token' },
         }),
       };
 
-      const result = await middleware(mockContext as any);
+      const result = await deriveCallback(mockContext);
 
       expect(result.user).not.toBeNull();
       expect(result.user!.id).toBe('user-123');
     });
 
     it('should return null user when no token provided', async () => {
-      const middleware = optionalAuth({} as any, mockAuthService);
+      const plugin = optionalAuth({} as any, mockAuthService);
+      const mockApp = createMockElysiaApp();
+      plugin(mockApp as any);
+
+      const deriveCallback = (createMockElysiaApp as any).deriveCallback;
       const mockContext = {
         request: new Request('http://localhost'),
       };
 
-      const result = await middleware(mockContext as any);
+      const result = await deriveCallback(mockContext);
 
       expect(result.user).toBeNull();
       expect(result.tokenId).toBeNull();
@@ -114,14 +170,18 @@ describe('Auth Middleware', () => {
         error: 'Invalid token',
       });
 
-      const middleware = optionalAuth({} as any, mockAuthService);
+      const plugin = optionalAuth({} as any, mockAuthService);
+      const mockApp = createMockElysiaApp();
+      plugin(mockApp as any);
+
+      const deriveCallback = (createMockElysiaApp as any).deriveCallback;
       const mockContext = {
         request: new Request('http://localhost', {
           headers: { Authorization: 'Bearer invalid_token' },
         }),
       };
 
-      const result = await middleware(mockContext as any);
+      const result = await deriveCallback(mockContext);
 
       expect(result.user).toBeNull();
       expect(result.tokenId).toBeNull();

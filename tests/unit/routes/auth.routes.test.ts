@@ -13,6 +13,19 @@ import type { UsersService } from '../../../src/services/users.service';
 import type { PasetoService } from '../../../src/core/paseto/paseto.service';
 import type { Elysia } from 'elysia';
 
+/**
+ * Creates a mock Elysia group app with all necessary methods
+ * including .use() for the new auth plugin pattern
+ */
+function createMockGroupApp() {
+  return {
+    post: jest.fn().mockReturnThis(),
+    get: jest.fn().mockReturnThis(),
+    use: jest.fn().mockReturnThis(),
+    derive: jest.fn().mockReturnThis(),
+  };
+}
+
 describe('AuthRoutes', () => {
   let mockAuthService: any;
   let mockUsersService: any;
@@ -60,10 +73,7 @@ describe('AuthRoutes', () => {
 
   describe('POST /auth/register route', () => {
     it('should register POST /auth/register route with body validation', () => {
-      const mockGroupApp = {
-        post: jest.fn().mockReturnThis(),
-        get: jest.fn().mockReturnThis(),
-      };
+      const mockGroupApp = createMockGroupApp();
 
       const mockApp = {
         group: jest.fn((path: string, callback: any) => {
@@ -86,10 +96,7 @@ describe('AuthRoutes', () => {
     });
 
     it('should include rate limiting for register route', () => {
-      const mockGroupApp = {
-        post: jest.fn().mockReturnThis(),
-        get: jest.fn().mockReturnThis(),
-      };
+      const mockGroupApp = createMockGroupApp();
 
       const mockApp = {
         group: jest.fn((path: string, callback: any) => {
@@ -111,10 +118,7 @@ describe('AuthRoutes', () => {
 
   describe('POST /auth/login route', () => {
     it('should register POST /auth/login route with body validation', () => {
-      const mockGroupApp = {
-        post: jest.fn().mockReturnThis(),
-        get: jest.fn().mockReturnThis(),
-      };
+      const mockGroupApp = createMockGroupApp();
 
       const mockApp = {
         group: jest.fn((path: string, callback: any) => {
@@ -136,10 +140,7 @@ describe('AuthRoutes', () => {
     });
 
     it('should include rate limiting for login route', () => {
-      const mockGroupApp = {
-        post: jest.fn().mockReturnThis(),
-        get: jest.fn().mockReturnThis(),
-      };
+      const mockGroupApp = createMockGroupApp();
 
       const mockApp = {
         group: jest.fn((path: string, callback: any) => {
@@ -160,11 +161,8 @@ describe('AuthRoutes', () => {
   });
 
   describe('POST /auth/logout route', () => {
-    it('should register POST /auth/logout route with authentication middleware', () => {
-      const mockGroupApp = {
-        post: jest.fn().mockReturnThis(),
-        get: jest.fn().mockReturnThis(),
-      };
+    it('should register POST /auth/logout route with authentication', () => {
+      const mockGroupApp = createMockGroupApp();
 
       const mockApp = {
         group: jest.fn((path: string, callback: any) => {
@@ -178,20 +176,34 @@ describe('AuthRoutes', () => {
       const logoutCall = mockGroupApp.post.mock.calls.find((call: any[]) => call[0] === '/logout');
       expect(logoutCall).toBeDefined();
       expect(logoutCall?.[1]).toEqual(expect.any(Function));
+      // Auth is now applied via .use(), so beforeHandle should only have rate limiter
       expect(logoutCall?.[2]).toEqual(
         expect.objectContaining({
           beforeHandle: expect.any(Array),
         })
       );
     });
+
+    it('should use auth plugin via .use() for protected routes', () => {
+      const mockGroupApp = createMockGroupApp();
+
+      const mockApp = {
+        group: jest.fn((path: string, callback: any) => {
+          callback(mockGroupApp);
+          return mockApp;
+        }),
+      };
+
+      createAuthRoutes(mockApp as any, mockAuthService, mockUsersService, mockPasetoService);
+
+      // Verify that .use() was called for the auth plugin
+      expect(mockGroupApp.use).toHaveBeenCalled();
+    });
   });
 
   describe('POST /auth/refresh route', () => {
     it('should register POST /auth/refresh route with body validation', () => {
-      const mockGroupApp = {
-        post: jest.fn().mockReturnThis(),
-        get: jest.fn().mockReturnThis(),
-      };
+      const mockGroupApp = createMockGroupApp();
 
       const mockApp = {
         group: jest.fn((path: string, callback: any) => {
@@ -213,10 +225,7 @@ describe('AuthRoutes', () => {
     });
 
     it('should include rate limiting for refresh route', () => {
-      const mockGroupApp = {
-        post: jest.fn().mockReturnThis(),
-        get: jest.fn().mockReturnThis(),
-      };
+      const mockGroupApp = createMockGroupApp();
 
       const mockApp = {
         group: jest.fn((path: string, callback: any) => {
@@ -237,11 +246,8 @@ describe('AuthRoutes', () => {
   });
 
   describe('GET /auth/me route', () => {
-    it('should register GET /auth/me route with authentication middleware', () => {
-      const mockGroupApp = {
-        post: jest.fn().mockReturnThis(),
-        get: jest.fn().mockReturnThis(),
-      };
+    it('should register GET /auth/me route with authentication', () => {
+      const mockGroupApp = createMockGroupApp();
 
       const mockApp = {
         group: jest.fn((path: string, callback: any) => {
@@ -265,10 +271,7 @@ describe('AuthRoutes', () => {
 
   describe('POST /auth/change-password route', () => {
     it('should register POST /auth/change-password route with authentication and body validation', () => {
-      const mockGroupApp = {
-        post: jest.fn().mockReturnThis(),
-        get: jest.fn().mockReturnThis(),
-      };
+      const mockGroupApp = createMockGroupApp();
 
       const mockApp = {
         group: jest.fn((path: string, callback: any) => {
@@ -293,10 +296,7 @@ describe('AuthRoutes', () => {
 
   describe('all auth routes registration', () => {
     it('should register all expected auth routes', () => {
-      const mockGroupApp = {
-        post: jest.fn().mockReturnThis(),
-        get: jest.fn().mockReturnThis(),
-      };
+      const mockGroupApp = createMockGroupApp();
 
       const mockApp = {
         group: jest.fn((path: string, callback: any) => {
@@ -322,10 +322,7 @@ describe('AuthRoutes', () => {
     });
 
     it('should register proper handlers for all routes', () => {
-      const mockGroupApp = {
-        post: jest.fn().mockReturnThis(),
-        get: jest.fn().mockReturnThis(),
-      };
+      const mockGroupApp = createMockGroupApp();
 
       const mockApp = {
         group: jest.fn((path: string, callback: any) => {
