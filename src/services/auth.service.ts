@@ -113,14 +113,14 @@ export class AuthService implements IAuthService {
 
       const passwordHash = await this.passwordService.hash(input.password);
 
-      // Always create new users with 'user' role via register API
+      // Always create new users with 'USER' role via register API
       // ADMIN users can only be created via database seeder
       const newUser = {
         email: input.email,
         username: input.username,
         passwordHash,
         name: input.name,
-        role: 'user',
+        role: 'USER',
       };
 
       const user = await uow.users.create(newUser);
@@ -217,6 +217,7 @@ export class AuthService implements IAuthService {
       });
 
       const refreshTokenPayload = this.pasetoService.validateRefreshToken(tokens.refreshToken);
+      let sessionId: string | undefined;
       if (refreshTokenPayload.valid && refreshTokenPayload.payload) {
         const session = {
           userId: user.id,
@@ -226,13 +227,15 @@ export class AuthService implements IAuthService {
           userAgent,
           deviceType,
         };
-        await uow.sessions.create(session);
+        const createdSession = await uow.sessions.create(session);
+        sessionId = createdSession.id;
       }
 
       await uow.activityLogs.create({
         userId: user.id,
         action: 'user.logged_in',
         entity: 'sessions',
+        entityId: sessionId,
         ipAddress,
         userAgent,
         details: { email: user.email },

@@ -28,7 +28,6 @@ import type {
 } from '../routes/dto/auth.dto';
 import { logger } from '../core/logging/logger';
 import { ConflictError, AuthenticationError, UnauthorizedError, InternalServerError } from '../core/errors/app-error';
-import { formatLocalTimestamp } from '../helpers/date.helper';
 
 /**
  * Authentication Controller
@@ -191,9 +190,9 @@ export class AuthController {
         email: userProfile.email,
         name: userProfile.name,
         role: userProfile.role,
-        createdAt: formatLocalTimestamp({ date: userProfile.createdAt }),
-        lastLoginAt: userProfile.lastLoginAt ? formatLocalTimestamp({ date: userProfile.lastLoginAt }) : null,
-        updatedAt: formatLocalTimestamp({ date: userProfile.updatedAt }),
+        createdAt: userProfile.createdAt,
+        lastLoginAt: userProfile.lastLoginAt,
+        updatedAt: userProfile.updatedAt,
       };
     } catch (error) {
       if (error instanceof UnauthorizedError) {

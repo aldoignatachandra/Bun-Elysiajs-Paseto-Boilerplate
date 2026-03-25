@@ -36,6 +36,9 @@ describe('ProductsController', () => {
   const mockAuthContext = {
     user: mockUser,
     tokenId: 'token-123',
+    accessToken: 'mock-access-token',
+    ipAddress: '127.0.0.1',
+    userAgent: 'test-agent',
   };
 
   beforeEach(() => {
@@ -62,7 +65,7 @@ describe('ProductsController', () => {
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
-      await expect(controller.list({ page: 1, limit: 10 }, { user: null, tokenId: null })).rejects.toThrow(UnauthorizedError);
+      await expect(controller.list({ page: 1, limit: 10 }, { user: null, tokenId: null, accessToken: null })).rejects.toThrow(UnauthorizedError);
     });
   });
 
@@ -76,9 +79,9 @@ describe('ProductsController', () => {
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
-      await expect(controller.getById('id', { includeDeleted: false, includeVariants: true }, { user: null, tokenId: null })).rejects.toThrow(
-        UnauthorizedError
-      );
+      await expect(
+        controller.getById('id', { includeDeleted: false, includeVariants: true }, { user: null, tokenId: null, accessToken: null })
+      ).rejects.toThrow(UnauthorizedError);
     });
   });
 
@@ -92,7 +95,9 @@ describe('ProductsController', () => {
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
-      await expect(controller.create({ name: 'New', price: 10 }, { user: null, tokenId: null })).rejects.toThrow(UnauthorizedError);
+      await expect(controller.create({ name: 'New', price: 10 }, { user: null, tokenId: null, accessToken: null })).rejects.toThrow(
+        UnauthorizedError
+      );
     });
   });
 
@@ -107,7 +112,7 @@ describe('ProductsController', () => {
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
-      await expect(controller.update('id', {}, { user: null, tokenId: null })).rejects.toThrow(UnauthorizedError);
+      await expect(controller.update('id', {}, { user: null, tokenId: null, accessToken: null })).rejects.toThrow(UnauthorizedError);
     });
   });
 
@@ -121,7 +126,7 @@ describe('ProductsController', () => {
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
-      await expect(controller.delete('id', false, { user: null, tokenId: null })).rejects.toThrow(UnauthorizedError);
+      await expect(controller.delete('id', false, { user: null, tokenId: null, accessToken: null })).rejects.toThrow(UnauthorizedError);
     });
   });
 
@@ -135,7 +140,7 @@ describe('ProductsController', () => {
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
-      await expect(controller.restore('id', { user: null, tokenId: null })).rejects.toThrow(UnauthorizedError);
+      await expect(controller.restore('id', { user: null, tokenId: null, accessToken: null })).rejects.toThrow(UnauthorizedError);
     });
   });
 
@@ -150,7 +155,7 @@ describe('ProductsController', () => {
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
-      await expect(controller.updateStock('id', 10, { user: null, tokenId: null })).rejects.toThrow(UnauthorizedError);
+      await expect(controller.updateStock('id', 10, { user: null, tokenId: null, accessToken: null })).rejects.toThrow(UnauthorizedError);
     });
   });
 });

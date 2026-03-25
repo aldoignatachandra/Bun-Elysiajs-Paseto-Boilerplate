@@ -228,7 +228,7 @@ export class UsersService implements IUsersService {
       username: input.username,
       passwordHash,
       name: input.name ?? null,
-      role: input.role ?? 'user',
+      role: input.role ?? 'USER',
     });
 
     logger.info('User created by admin', { userId: user.id, email: user.email });

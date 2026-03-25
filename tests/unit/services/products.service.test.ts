@@ -205,9 +205,17 @@ describe('ProductsService', () => {
 
   describe('restore', () => {
     it('should restore a soft deleted product', async () => {
-      mockUnitOfWork.products.findById = async () => mockDbProduct;
+      // Create a soft-deleted product for restore
+      const softDeletedProduct = {
+        ...mockDbProduct,
+        deletedAt: new Date('2025-03-25'),
+      };
+      mockUnitOfWork.products.findById = async () => softDeletedProduct;
       mockUnitOfWork.products.restore = async () => true;
-      mockUnitOfWork.products.findByIdWithVariants = async () => mockProduct;
+      mockUnitOfWork.products.findByIdWithVariants = async () => ({
+        ...mockProduct,
+        deletedAt: new Date('2025-03-25'),
+      });
 
       const result = await service.restore(mockProduct.id, {
         performedBy: mockProduct.ownerId,
@@ -216,8 +224,24 @@ describe('ProductsService', () => {
       expect(result).toBeDefined();
     });
 
+    it('should throw BadRequestError when product is already active', async () => {
+      // Active product (should throw BadRequestError)
+      mockUnitOfWork.products.findById = async () => mockDbProduct; // deletedAt is null
+
+      await expect(
+        service.restore(mockProduct.id, {
+          performedBy: mockProduct.ownerId,
+        })
+      ).rejects.toThrow(BadRequestError);
+    });
+
     it('should throw ForbiddenError when user does not have permission', async () => {
-      mockUnitOfWork.products.findById = async () => mockDbProduct;
+      // Create a soft-deleted product for permission check
+      const softDeletedProduct = {
+        ...mockDbProduct,
+        deletedAt: new Date('2025-03-25'),
+      };
+      mockUnitOfWork.products.findById = async () => softDeletedProduct;
 
       await expect(
         service.restore(mockProduct.id, {

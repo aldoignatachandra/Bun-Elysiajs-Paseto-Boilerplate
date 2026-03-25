@@ -75,6 +75,9 @@ export class ProductsController {
     try {
       return await this.productsService.create({
         ownerId: authContext.user.id,
+        performedBy: authContext.user.id,
+        ipAddress: authContext.ipAddress,
+        userAgent: authContext.userAgent,
         ...payload,
       });
     } catch (error) {
@@ -102,6 +105,9 @@ export class ProductsController {
         variants: payload.variants,
         currentUserId: authContext.user.id,
         isAdmin: authContext.user.role === 'ADMIN',
+        performedBy: authContext.user.id,
+        ipAddress: authContext.ipAddress,
+        userAgent: authContext.userAgent,
       });
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof ForbiddenError) {
@@ -122,6 +128,8 @@ export class ProductsController {
       return await this.productsService.delete(id, force, {
         performedBy: authContext.user.id,
         isAdmin: authContext.user.role === 'ADMIN',
+        ipAddress: authContext.ipAddress,
+        userAgent: authContext.userAgent,
       });
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof ForbiddenError) {
@@ -142,9 +150,11 @@ export class ProductsController {
       return await this.productsService.restore(id, {
         performedBy: authContext.user.id,
         isAdmin: authContext.user.role === 'ADMIN',
+        ipAddress: authContext.ipAddress,
+        userAgent: authContext.userAgent,
       });
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof ForbiddenError) {
+      if (error instanceof NotFoundError || error instanceof ForbiddenError || error instanceof BadRequestError) {
         throw error;
       }
 
@@ -164,6 +174,9 @@ export class ProductsController {
         stock,
         currentUserId: authContext.user.id,
         isAdmin: authContext.user.role === 'ADMIN',
+        performedBy: authContext.user.id,
+        ipAddress: authContext.ipAddress,
+        userAgent: authContext.userAgent,
       });
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof ForbiddenError) {

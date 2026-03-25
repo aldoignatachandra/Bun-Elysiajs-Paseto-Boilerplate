@@ -269,6 +269,11 @@ export class ProductsService implements IProductsService {
       throw new NotFoundError('Product not found');
     }
 
+    // Check if product is already active
+    if (existing.deletedAt === null) {
+      throw new BadRequestError('Product is already active');
+    }
+
     const currentUserId = activityContext?.performedBy || '';
     this.checkOwnership(existing.ownerId, currentUserId, activityContext?.isAdmin);
 

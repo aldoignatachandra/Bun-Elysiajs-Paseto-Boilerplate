@@ -53,6 +53,8 @@ export interface AuthContext {
   user: AuthUser | null;
   tokenId: string | null;
   accessToken: string | null;
+  ipAddress?: string;
+  userAgent?: string;
   // Required for Elysia derive() compatibility - allows merging into request context
   [key: string]: unknown;
 }
