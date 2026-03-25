@@ -5,7 +5,7 @@ import { logger } from '../core/logging/logger';
 import { ProductRepository } from './products.repository';
 import { SessionRepository } from './sessions.repository';
 import { UserRepository } from './users.repository';
-import { eq, count } from 'drizzle-orm';
+import { eq, count, desc } from 'drizzle-orm';
 import { userActivityLogs } from '../database/schema';
 
 /**
@@ -145,7 +145,7 @@ export class UnitOfWork {
             .select()
             .from(userActivityLogs)
             .where(eq(userActivityLogs.userId, userId))
-            .orderBy(userActivityLogs.createdAt)
+            .orderBy(desc(userActivityLogs.createdAt))
             .limit(options.limit ?? 50)
             .offset(options.offset ?? 0),
         countByUserId: async (userId: string) => {
@@ -207,7 +207,7 @@ export class UnitOfWork {
               .select()
               .from(userActivityLogs)
               .where(eq(userActivityLogs.userId, userId))
-              .orderBy(userActivityLogs.createdAt)
+              .orderBy(desc(userActivityLogs.createdAt))
               .limit(options.limit ?? 50)
               .offset(options.offset ?? 0),
           countByUserId: async (userId: string) => {
