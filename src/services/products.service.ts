@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+
 import { BadRequestError, NotFoundError, ForbiddenError } from '../core/errors/app-error';
 import type { UnitOfWork } from '../repositories/unit-of-work';
 import type {
@@ -11,6 +16,7 @@ import type {
   UpdateStockInput,
 } from './interfaces/products.service.interface';
 import { ActivityService, type LogActivityInput } from './activity.service';
+import { formatDateFromISO } from '../helpers/date.helper';
 
 export interface ProductActivityContext {
   performedBy?: string;
@@ -41,10 +47,28 @@ export class ProductsService implements IProductsService {
     }
   }
 
+  /**
+   * Format product dates to readable strings
+   */
+  private formatProductDates(product: { deletedAt: Date | null; createdAt: Date; updatedAt: Date }): {
+    deletedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } {
+    return {
+      deletedAt: formatDateFromISO(product.deletedAt) ?? product.deletedAt?.toISOString() ?? null,
+      createdAt: formatDateFromISO(product.createdAt) ?? product.createdAt.toISOString(),
+      updatedAt: formatDateFromISO(product.updatedAt) ?? product.updatedAt.toISOString(),
+    };
+  }
+
   async list(input: ListProductsInput): Promise<ListProductsOutput> {
     const page = Math.max(1, input.page || 1);
     const limit = Math.max(1, Math.min(100, input.limit || 10));
     const offset = (page - 1) * limit;
+
+    // If not admin, only show user's own products
+    const ownerId = input.isAdmin ? undefined : input.currentUserId;
 
     const { data, total } = await this.unitOfWork.products.findWithFilters({
       search: input.search,
@@ -57,12 +81,19 @@ export class ProductsService implements IProductsService {
       includeVariants: input.includeVariants,
       limit,
       offset,
+      ownerId,
     });
 
     const totalPages = Math.ceil(total / limit);
 
+    // Format dates for each product and remove attributes/variants (only in detail)
+    const formattedProducts = data.map(({ attributes: _attributes, variants: _variants, ...product }) => ({
+      ...product,
+      ...this.formatProductDates(product),
+    }));
+
     return {
-      products: data,
+      products: formattedProducts,
       pagination: {
         page,
         limit,
@@ -90,6 +121,7 @@ export class ProductsService implements IProductsService {
     const productDTO: ProductDTO = {
       ...product,
       images: null,
+      ...this.formatProductDates(product),
     };
 
     if (!input.includeVariants) {
@@ -137,7 +169,10 @@ export class ProductsService implements IProductsService {
       details: { performedBy: input.performedBy, name: product.name },
     });
 
-    return product;
+    return {
+      ...product,
+      ...this.formatProductDates(product),
+    };
   }
 
   async update(input: UpdateProductInput & ProductActivityContext): Promise<ProductDTO> {
@@ -178,7 +213,10 @@ export class ProductsService implements IProductsService {
       details: { performedBy: input.performedBy },
     });
 
-    return updated;
+    return {
+      ...updated,
+      ...this.formatProductDates(updated),
+    };
   }
 
   async delete(
@@ -256,7 +294,10 @@ export class ProductsService implements IProductsService {
       details: { performedBy: activityContext?.performedBy },
     });
 
-    return product;
+    return {
+      ...product,
+      ...this.formatProductDates(product),
+    };
   }
 
   async updateStock(input: UpdateStockInput & ProductActivityContext): Promise<{ id: string; stock: number }> {

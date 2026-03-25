@@ -69,6 +69,7 @@ export interface IProductRepository {
     minPrice?: number;
     maxPrice?: number;
     includeVariants?: boolean;
+    ownerId?: string;
   }): Promise<{ data: ProductView[]; total: number }>;
   findById(id: string, includeDeleted?: boolean): Promise<Product | null>;
   findByIdWithVariants(id: string, includeDeleted?: boolean): Promise<ProductView | null>;

@@ -13,7 +13,11 @@ export class ProductsController {
     }
 
     try {
-      return await this.productsService.list(query);
+      return await this.productsService.list({
+        ...query,
+        currentUserId: authContext.user.id,
+        isAdmin: authContext.user.role === 'ADMIN',
+      });
     } catch (error) {
       logger.error('List products error', { error });
       throw new InternalServerError('Failed to list products');
@@ -30,9 +34,11 @@ export class ProductsController {
         id,
         includeDeleted: options.includeDeleted,
         includeVariants: options.includeVariants,
+        currentUserId: authContext.user.id,
+        isAdmin: authContext.user.role === 'ADMIN',
       });
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof NotFoundError || error instanceof ForbiddenError) {
         throw error;
       }
 
@@ -95,7 +101,7 @@ export class ProductsController {
         attributes: payload.attributes,
         variants: payload.variants,
         currentUserId: authContext.user.id,
-        isAdmin: authContext.user.role === 'admin',
+        isAdmin: authContext.user.role === 'ADMIN',
       });
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof ForbiddenError) {
@@ -115,7 +121,7 @@ export class ProductsController {
     try {
       return await this.productsService.delete(id, force, {
         performedBy: authContext.user.id,
-        isAdmin: authContext.user.role === 'admin',
+        isAdmin: authContext.user.role === 'ADMIN',
       });
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof ForbiddenError) {
@@ -135,7 +141,7 @@ export class ProductsController {
     try {
       return await this.productsService.restore(id, {
         performedBy: authContext.user.id,
-        isAdmin: authContext.user.role === 'admin',
+        isAdmin: authContext.user.role === 'ADMIN',
       });
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof ForbiddenError) {
@@ -157,7 +163,7 @@ export class ProductsController {
         id,
         stock,
         currentUserId: authContext.user.id,
-        isAdmin: authContext.user.role === 'admin',
+        isAdmin: authContext.user.role === 'ADMIN',
       });
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof BadRequestError || error instanceof ForbiddenError) {

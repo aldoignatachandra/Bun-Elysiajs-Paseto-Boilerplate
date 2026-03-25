@@ -49,9 +49,9 @@ export interface ProductDTO {
   images: string | null;
   attributes?: ProductAttributeDTO[];
   variants?: ProductVariantDTO[];
-  deletedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
+  deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ListProductsInput {
@@ -65,6 +65,8 @@ export interface ListProductsInput {
   minPrice?: number;
   maxPrice?: number;
   includeVariants?: boolean;
+  currentUserId?: string;
+  isAdmin?: boolean;
 }
 
 export interface ListProductsOutput {

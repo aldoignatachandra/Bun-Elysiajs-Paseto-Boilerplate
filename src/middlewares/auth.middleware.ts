@@ -24,7 +24,7 @@
 import type { Elysia } from 'elysia';
 import type { PasetoService } from '../core/paseto/paseto.service';
 import type { AuthService } from '../services/auth.service';
-import { UnauthorizedError, InvalidTokenError } from '../core/errors/app-error';
+import { UnauthorizedError, InvalidTokenError, ForbiddenError } from '../core/errors/app-error';
 import { logger } from '../core/logging/logger';
 
 /**
@@ -275,4 +275,55 @@ export function hasAnyPermission(user: AuthContext['user'], permissions: string[
   }
 
   return permissions.some(p => user.permissions?.includes(p));
+}
+
+/**
+ * Require ADMIN role - throws ForbiddenError if user is not ADMIN
+ *
+ * @param user - User from context
+ * @throws ForbiddenError if user is not ADMIN
+ */
+export function requireAdminRole(user: AuthContext['user']): void {
+  if (!hasRole(user, 'ADMIN')) {
+    throw new ForbiddenError('Admin access required');
+  }
+}
+
+/**
+ * Require that user is not acting on themselves - throws ForbiddenError if self-action
+ * Used to prevent ADMIN from deleting/deactivating themselves
+ *
+ * @param user - User from context (the actor)
+ * @param targetUserId - The ID of the user being acted upon
+ * @param action - Description of the action for error message
+ * @throws ForbiddenError if user is trying to act on themselves
+ */
+export function requireNotSelf(user: AuthContext['user'], targetUserId: string, action = 'perform this action'): void {
+  if (user?.id === targetUserId) {
+    throw new ForbiddenError(`You cannot ${action} on yourself`);
+  }
+}
+
+/**
+ * Check if user is acting on their own resource
+ *
+ * @param user - User from context
+ * @param resourceUserId - The userId of the resource owner
+ * @returns True if user owns the resource
+ */
+export function isOwnResource(user: AuthContext['user'], resourceUserId: string): boolean {
+  return user?.id === resourceUserId;
+}
+
+/**
+ * Require ownership or ADMIN role - throws ForbiddenError if user doesn't own resource and is not ADMIN
+ *
+ * @param user - User from context
+ * @param resourceUserId - The userId of the resource owner
+ * @throws ForbiddenError if user doesn't own resource and is not ADMIN
+ */
+export function requireOwnerOrAdmin(user: AuthContext['user'], resourceUserId: string): void {
+  if (!isOwnResource(user, resourceUserId) && !hasRole(user, 'ADMIN')) {
+    throw new ForbiddenError('You do not have permission to access this resource');
+  }
 }

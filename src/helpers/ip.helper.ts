@@ -133,3 +133,49 @@ export function getClientIpWithFallback(request: Request, fallback: string = DEF
   const ip = getClientIp(request);
   return ip === DEFAULT_IP ? fallback : ip;
 }
+
+/**
+ * Default User-Agent when no User-Agent header is present
+ */
+const DEFAULT_USER_AGENT = 'unknown';
+
+/**
+ * Extract User-Agent from request headers
+ *
+ * @param request - The HTTP request object
+ * @returns The User-Agent string or 'unknown' if not present
+ *
+ * @example
+ * ```typescript
+ * // From browser
+ * getUserAgent(request) // "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+ *
+ * // From API client
+ * getUserAgent(request) // "axios/1.6.0"
+ *
+ * // No User-Agent header
+ * getUserAgent(request) // "unknown"
+ * ```
+ */
+export function getUserAgent(request: Request): string {
+  return request.headers.get('user-agent') ?? DEFAULT_USER_AGENT;
+}
+
+/**
+ * Extract activity context from request (IP and User-Agent)
+ *
+ * @param request - The HTTP request object
+ * @returns Object containing ipAddress and userAgent
+ *
+ * @example
+ * ```typescript
+ * const activityContext = getActivityContext(request);
+ * // { ipAddress: "192.168.1.1", userAgent: "Mozilla/5.0..." }
+ * ```
+ */
+export function getActivityContext(request: Request): { ipAddress: string; userAgent: string } {
+  return {
+    ipAddress: getClientIp(request),
+    userAgent: getUserAgent(request),
+  };
+}

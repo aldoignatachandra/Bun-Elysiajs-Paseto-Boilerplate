@@ -9,9 +9,11 @@ import type { AuthService } from '../services/auth.service';
 import type { UsersService } from '../services/users.service';
 import { UsersController } from '../controllers/users.controller';
 import { successResponse } from '../core/http/response';
-import { requireAuth, type AuthContext } from '../middlewares/auth.middleware';
+import { requireAuth, type AuthContext, requireAdminRole, requireNotSelf, requireOwnerOrAdmin, hasRole } from '../middlewares/auth.middleware';
+import { ForbiddenError } from '../core/errors/app-error';
 import { enforceRateLimit, type RateLimitOptions } from '../middlewares/rate-limit.middleware';
 import { usersDetails } from './details/users.details';
+import { getClientIp, getUserAgent } from '../helpers/ip.helper';
 import {
   activityQuerySchema,
   deleteUserQuerySchema,
@@ -47,12 +49,27 @@ const USER_ROUTE_LIMITS: Record<string, RouteLimitConfig> = {
   '/api/v1/activity-logs': { maxRequests: 120, window: 60, strategy: 'user_or_ip' },
 };
 
-function toAuthContext(ctx: { user?: AuthContext['user']; tokenId?: string | null; accessToken?: string | null }): AuthContext {
+function toAuthContext(ctx: { user?: AuthContext['user']; tokenId?: string | null; accessToken?: string | null; request?: Request }): AuthContext {
   return {
     user: ctx.user ?? null,
     tokenId: ctx.tokenId ?? null,
     accessToken: ctx.accessToken ?? null,
+    ipAddress: ctx.request ? getClientIp(ctx.request) : 'unknown',
+    userAgent: ctx.request ? getUserAgent(ctx.request) : 'unknown',
   };
+}
+
+/**
+ * Require USER role - throws ForbiddenError if user is not USER role
+ * Used to restrict /users/me update operations to USER role only (ADMIN has read-only access)
+ *
+ * @param user - User from context
+ * @throws ForbiddenError if user is not USER role
+ */
+function requireUserRole(user: AuthContext['user'] | undefined): void {
+  if (!hasRole(user ?? null, 'USER')) {
+    throw new ForbiddenError('User access required. Admin has read-only access.');
+  }
 }
 
 export function createUsersRoutes(app: Elysia, usersService: UsersService, authService: AuthService, pasetoService: PasetoService) {
@@ -91,6 +108,8 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
           '/me',
           async ctx => {
             const routeCtx = ctx as RouteContext<UpdateProfileDTO>;
+            // Only USER role can update own profile (ADMIN has read-only access)
+            requireUserRole(routeCtx.user);
             const body = updateProfileSchema.parse(routeCtx.body);
             const data = await controller.updateMe(body, toAuthContext(routeCtx));
             return successResponse(routeCtx.request, data);
@@ -105,6 +124,8 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
           '/',
           async ctx => {
             const routeCtx = ctx as RouteContext<unknown, GetUsersQueryDTO>;
+            // ADMIN-only guard
+            requireAdminRole(routeCtx.user ?? null);
             const query = getUsersQuerySchema.parse(routeCtx.query);
             const data = await controller.getUsers(query, toAuthContext(routeCtx));
             return successResponse(routeCtx.request, data);
@@ -119,6 +140,8 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
           '/stats',
           async ctx => {
             const routeCtx = ctx as RouteContext;
+            // ADMIN-only guard
+            requireAdminRole(routeCtx.user ?? null);
             const data = await controller.getUserStats(toAuthContext(routeCtx));
             return successResponse(routeCtx.request, data);
           },
@@ -132,6 +155,8 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
           async ctx => {
             const routeCtx = ctx as RouteContext<unknown, unknown, UserIdParamDTO>;
             const params = userIdParamSchema.parse(routeCtx.params);
+            // Allow ADMIN to see any user, USER can only see their own profile
+            requireOwnerOrAdmin(routeCtx.user ?? null, params.id);
             const data = await controller.getUserById(params.id, toAuthContext(routeCtx));
             return successResponse(routeCtx.request, data);
           },
@@ -145,6 +170,8 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
           '/:id/activate',
           async ctx => {
             const routeCtx = ctx as RouteContext<unknown, unknown, UserIdParamDTO>;
+            // ADMIN-only guard
+            requireAdminRole(routeCtx.user ?? null);
             const params = userIdParamSchema.parse(routeCtx.params);
             const data = await controller.activateUser(params.id, toAuthContext(routeCtx));
             return successResponse(routeCtx.request, data);
@@ -159,7 +186,11 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
           '/:id/deactivate',
           async ctx => {
             const routeCtx = ctx as RouteContext<unknown, unknown, UserIdParamDTO>;
+            // ADMIN-only guard
+            requireAdminRole(routeCtx.user ?? null);
             const params = userIdParamSchema.parse(routeCtx.params);
+            // Self-protection: ADMIN cannot deactivate themselves
+            requireNotSelf(routeCtx.user ?? null, params.id, 'deactivate yourself');
             const data = await controller.deactivateUser(params.id, toAuthContext(routeCtx));
             return successResponse(routeCtx.request, data);
           },
@@ -173,7 +204,11 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
           '/:id',
           async ctx => {
             const routeCtx = ctx as RouteContext<unknown, DeleteUserQueryDTO, UserIdParamDTO>;
+            // ADMIN-only guard
+            requireAdminRole(routeCtx.user ?? null);
             const params = userIdParamSchema.parse(routeCtx.params);
+            // Self-protection: ADMIN cannot delete themselves
+            requireNotSelf(routeCtx.user ?? null, params.id, 'delete yourself');
             const query = deleteUserQuerySchema.parse(routeCtx.query);
             const force = query.force === 'true';
             const data = await controller.deleteUser(params.id, force, toAuthContext(routeCtx));
@@ -190,6 +225,8 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
           '/:id/restore',
           async ctx => {
             const routeCtx = ctx as RouteContext<unknown, unknown, UserIdParamDTO>;
+            // ADMIN-only guard
+            requireAdminRole(routeCtx.user ?? null);
             const params = userIdParamSchema.parse(routeCtx.params);
             const data = await controller.restoreUser(params.id, toAuthContext(routeCtx));
             return successResponse(routeCtx.request, data);
@@ -209,6 +246,8 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
           '/',
           async ctx => {
             const routeCtx = ctx as RouteContext<unknown, ActivityQueryDTO>;
+            // ADMIN-only guard
+            requireAdminRole(routeCtx.user ?? null);
             const query = activityQuerySchema.parse(routeCtx.query);
             const data = await controller.getActivityLogs(query, toAuthContext(routeCtx));
             return successResponse(routeCtx.request, data);

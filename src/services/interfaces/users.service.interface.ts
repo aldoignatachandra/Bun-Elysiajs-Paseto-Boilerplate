@@ -8,10 +8,10 @@ export interface UserProfile {
   username: string;
   name: string | null;
   role: string;
-  lastLoginAt: Date | null;
-  deletedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
+  lastLoginAt: string | null;
+  deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface UpdateProfileInput {
@@ -41,9 +41,9 @@ export interface GetUsersOutput {
     username: string;
     name: string | null;
     role: string;
-    createdAt: Date;
-    lastLoginAt: Date | null;
-    deletedAt: Date | null;
+    createdAt: string;
+    lastLoginAt: string | null;
+    deletedAt: string | null;
   }>;
   pagination: {
     page: number;

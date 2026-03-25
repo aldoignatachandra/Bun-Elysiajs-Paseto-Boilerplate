@@ -34,6 +34,9 @@ export class UsersController {
       const profile = await this.usersService.updateProfile({
         userId: authContext.user.id,
         ...dto,
+        ipAddress: authContext.ipAddress as string | undefined,
+        userAgent: authContext.userAgent as string | undefined,
+        performedBy: authContext.user.id,
       });
 
       logger.info('Profile updated', { userId: authContext.user.id });
@@ -183,7 +186,11 @@ export class UsersController {
     }
 
     try {
-      const result = await this.usersService.deleteUser(id, force);
+      const result = await this.usersService.deleteUser(id, force, {
+        performedBy: authContext.user.id,
+        ipAddress: authContext.ipAddress as string | undefined,
+        userAgent: authContext.userAgent as string | undefined,
+      });
 
       logger.info('User deleted', { userId: id, deletedBy: authContext.user.id, force });
       return result;
@@ -203,9 +210,13 @@ export class UsersController {
     }
 
     try {
-      return await this.usersService.activateUser(id);
+      return await this.usersService.activateUser(id, {
+        performedBy: authContext.user.id,
+        ipAddress: authContext.ipAddress as string | undefined,
+        userAgent: authContext.userAgent as string | undefined,
+      });
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof NotFoundError || error instanceof BadRequestError) {
         throw error;
       }
 
@@ -220,9 +231,13 @@ export class UsersController {
     }
 
     try {
-      return await this.usersService.deactivateUser(id);
+      return await this.usersService.deactivateUser(id, {
+        performedBy: authContext.user.id,
+        ipAddress: authContext.ipAddress as string | undefined,
+        userAgent: authContext.userAgent as string | undefined,
+      });
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof NotFoundError || error instanceof BadRequestError) {
         throw error;
       }
 
@@ -237,9 +252,13 @@ export class UsersController {
     }
 
     try {
-      return await this.usersService.restoreUser(id);
+      return await this.usersService.restoreUser(id, {
+        performedBy: authContext.user.id,
+        ipAddress: authContext.ipAddress as string | undefined,
+        userAgent: authContext.userAgent as string | undefined,
+      });
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof NotFoundError || error instanceof BadRequestError) {
         throw error;
       }
 

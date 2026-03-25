@@ -9,7 +9,9 @@ import type { AuthService } from '../services/auth.service';
 import type { ProductsService } from '../services/products.service';
 import { ProductsController } from '../controllers/products.controller';
 import { successResponse } from '../core/http/response';
-import { requireAuth, type AuthContext } from '../middlewares/auth.middleware';
+import { requireAuth, hasRole, type AuthContext } from '../middlewares/auth.middleware';
+import { ForbiddenError } from '../core/errors/app-error';
+import { getClientIp, getUserAgent } from '../helpers/ip.helper';
 import { enforceRateLimit, type RateLimitOptions } from '../middlewares/rate-limit.middleware';
 import { productsDetails } from './details/products.details';
 import {
@@ -39,6 +41,7 @@ type RouteContext<TBody = unknown, TQuery = unknown, TParams = unknown> = {
   params: TParams;
   user?: AuthContext['user'];
   tokenId?: string | null;
+  accessToken?: string | null;
 };
 
 const PRODUCT_ROUTE_LIMITS: Record<string, RouteLimitConfig> = {
@@ -52,12 +55,32 @@ const PRODUCT_ROUTE_LIMITS: Record<string, RouteLimitConfig> = {
   'PUT /api/v1/products/:id/stock': { maxRequests: 30, window: 60, strategy: 'user_or_ip' },
 };
 
-function toAuthContext(ctx: { user?: AuthContext['user']; tokenId?: string | null; accessToken?: string | null }): AuthContext {
+function toAuthContext(ctx: { user?: AuthContext['user']; tokenId?: string | null; accessToken?: string | null; request?: Request }): AuthContext {
   return {
-    user: ctx.user ?? null,
+    user: ctx.user
+      ? {
+          ...ctx.user,
+          role: ctx.user.role,
+        }
+      : null,
     tokenId: ctx.tokenId ?? null,
     accessToken: ctx.accessToken ?? null,
+    ipAddress: ctx.request ? getClientIp(ctx.request) : 'unknown',
+    userAgent: ctx.request ? getUserAgent(ctx.request) : 'unknown',
   };
+}
+
+/**
+ * Require USER role - throws ForbiddenError if user is not USER role
+ * Used to restrict write operations to USER role only (ADMIN has read-only access)
+ *
+ * @param user - User from context
+ * @throws ForbiddenError if user is not USER role
+ */
+function requireUserRole(user: AuthContext['user'] | undefined): void {
+  if (!hasRole(user ?? null, 'USER')) {
+    throw new ForbiddenError('User access required. Admin has read-only access.');
+  }
 }
 
 export function createProductsRoutes(app: Elysia, productsService: ProductsService, authService: AuthService, pasetoService: PasetoService) {
@@ -83,6 +106,8 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
         '/',
         async ctx => {
           const routeCtx = ctx as RouteContext<CreateProductDTO>;
+          // Only USER role can create products (ADMIN has read-only access)
+          requireUserRole(routeCtx.user);
           const body = createProductSchema.parse(routeCtx.body);
           const data = await controller.create(body, toAuthContext(routeCtx));
           routeCtx.set.status = 201;
@@ -98,6 +123,7 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
         '/:id',
         async ctx => {
           const routeCtx = ctx as RouteContext<unknown, GetProductQueryDTO, ProductIdParamDTO>;
+          // Both ADMIN and USER can get product by ID (ownership checked in controller)
           const params = productIdParamSchema.parse(routeCtx.params);
           const query = getProductQuerySchema.parse(routeCtx.query);
 
@@ -123,6 +149,8 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
         '/',
         async ctx => {
           const routeCtx = ctx as RouteContext<unknown, GetProductsQueryDTO>;
+          // Both ADMIN and USER can list products
+          // USER only sees their own products (ownership filter in controller)
           const query = getProductsQuerySchema.parse(routeCtx.query);
 
           const data = await controller.list(
@@ -153,6 +181,8 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
         '/:id',
         async ctx => {
           const routeCtx = ctx as RouteContext<UpdateProductDTO, unknown, ProductIdParamDTO>;
+          // Only USER role can update products (ADMIN has read-only access)
+          requireUserRole(routeCtx.user);
           const params = productIdParamSchema.parse(routeCtx.params);
           const body = updateProductSchema.parse(routeCtx.body);
           const data = await controller.update(params.id, body, toAuthContext(routeCtx));
@@ -169,6 +199,8 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
         '/:id',
         async ctx => {
           const routeCtx = ctx as RouteContext<UpdateProductDTO, unknown, ProductIdParamDTO>;
+          // Only USER role can update products (ADMIN has read-only access)
+          requireUserRole(routeCtx.user);
           const params = productIdParamSchema.parse(routeCtx.params);
           const body = updateProductSchema.parse(routeCtx.body);
           const data = await controller.update(params.id, body, toAuthContext(routeCtx));
@@ -185,6 +217,8 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
         '/:id',
         async ctx => {
           const routeCtx = ctx as RouteContext<unknown, DeleteProductQueryDTO, ProductIdParamDTO>;
+          // Only USER role can delete products (ADMIN has read-only access)
+          requireUserRole(routeCtx.user);
           const params = productIdParamSchema.parse(routeCtx.params);
           const query = deleteProductQuerySchema.parse(routeCtx.query);
           const force = query.force === 'true';
@@ -203,6 +237,8 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
         '/:id/restore',
         async ctx => {
           const routeCtx = ctx as RouteContext<unknown, unknown, ProductIdParamDTO>;
+          // Only USER role can restore products (ADMIN has read-only access)
+          requireUserRole(routeCtx.user);
           const params = productIdParamSchema.parse(routeCtx.params);
           const data = await controller.restore(params.id, toAuthContext(routeCtx));
           return successResponse(routeCtx.request, data);
@@ -217,6 +253,8 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
         '/:id/stock',
         async ctx => {
           const routeCtx = ctx as RouteContext<UpdateStockDTO, unknown, ProductIdParamDTO>;
+          // Only USER role can update stock (ADMIN has read-only access)
+          requireUserRole(routeCtx.user);
           const params = productIdParamSchema.parse(routeCtx.params);
           const body = updateStockSchema.parse(routeCtx.body);
           const data = await controller.updateStock(params.id, body.stock, toAuthContext(routeCtx));

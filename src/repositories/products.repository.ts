@@ -67,6 +67,7 @@ export interface ProductListOptions {
   includeVariants?: boolean;
   limit?: number;
   offset?: number;
+  ownerId?: string;
 }
 
 export interface ProductCreateWithVariantsInput {
@@ -169,6 +170,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
         includeVariants = false,
         limit = 10,
         offset = 0,
+        ownerId,
       } = options;
 
       const conditions = [];
@@ -197,6 +199,10 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
       if (maxPrice !== undefined) {
         conditions.push(lte(products.price, toDecimal(maxPrice)));
+      }
+
+      if (ownerId) {
+        conditions.push(eq(products.ownerId, ownerId));
       }
 
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

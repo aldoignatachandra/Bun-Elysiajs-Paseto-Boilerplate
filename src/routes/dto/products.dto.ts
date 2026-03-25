@@ -1,6 +1,34 @@
 import { z } from 'zod';
 import { paginationSchema, uuidSchema } from '../../core/validation/common.schema';
 
+/**
+ * Helper schema for optional query parameters that may be empty strings or already coerced booleans
+ * Handles both string and boolean inputs from query params
+ */
+const optionalString = z
+  .string()
+  .optional()
+  .transform(val => (val === '' ? undefined : val));
+
+const optionalBoolean = z
+  .union([z.boolean(), z.string()])
+  .optional()
+  .transform(val => {
+    if (val === '' || val === undefined || val === null) return undefined;
+    if (typeof val === 'boolean') return val;
+    return val === 'true';
+  });
+
+const optionalNumber = z
+  .union([z.number(), z.string()])
+  .optional()
+  .transform(val => {
+    if (val === '' || val === undefined || val === null) return undefined;
+    if (typeof val === 'number') return val;
+    const num = Number(val);
+    return Number.isNaN(num) ? undefined : num;
+  });
+
 export const createAttributeSchema = z.object({
   name: z.string().min(1).max(100),
   values: z.array(z.string().min(1).max(255)).min(1),
@@ -72,19 +100,23 @@ export const updateStockSchema = z.object({
 });
 
 export const getProductsQuerySchema = paginationSchema.extend({
-  search: z.string().optional(),
-  include_deleted: z.coerce.boolean().optional().default(false),
-  only_deleted: z.coerce.boolean().optional().default(false),
-  hasVariant: z.coerce.boolean().optional(),
-  inStock: z.coerce.boolean().optional(),
-  minPrice: z.coerce.number().positive().optional(),
-  maxPrice: z.coerce.number().positive().optional(),
-  includeVariants: z.coerce.boolean().optional().default(false),
+  search: optionalString,
+  include_deleted: optionalBoolean.transform(val => val ?? false),
+  only_deleted: optionalBoolean.transform(val => val ?? false),
+  hasVariant: optionalBoolean,
+  inStock: optionalBoolean,
+  minPrice: optionalNumber.refine(val => val === undefined || val > 0, {
+    message: 'Number must be greater than 0',
+  }),
+  maxPrice: optionalNumber.refine(val => val === undefined || val > 0, {
+    message: 'Number must be greater than 0',
+  }),
+  includeVariants: optionalBoolean.transform(val => val ?? false),
 });
 
 export const getProductQuerySchema = z.object({
-  include_deleted: z.coerce.boolean().optional().default(false),
-  includeVariants: z.coerce.boolean().optional().default(true),
+  include_deleted: optionalBoolean.transform(val => val ?? false),
+  includeVariants: optionalBoolean.transform(val => val ?? true),
 });
 
 export const productIdParamSchema = z.object({

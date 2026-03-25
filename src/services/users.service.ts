@@ -22,7 +22,7 @@ import type {
   GetActivityLogsOutput,
   UserActivityContext,
 } from './interfaces/users.service.interface';
-import { NotFoundError, AuthenticationError, ConflictError } from '../core/errors/app-error';
+import { NotFoundError, AuthenticationError, ConflictError, BadRequestError } from '../core/errors/app-error';
 import { logger } from '../core/logging/logger';
 import { ActivityService, type LogActivityInput } from './activity.service';
 import { formatDateFromISO } from '../helpers/date.helper';
@@ -65,10 +65,10 @@ export class UsersService implements IUsersService {
       username: user.username,
       name: user.name,
       role: user.role,
-      lastLoginAt: user.lastLoginAt,
-      deletedAt: user.deletedAt,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      lastLoginAt: formatDateFromISO(user.lastLoginAt) ?? user.lastLoginAt?.toISOString() ?? null,
+      deletedAt: formatDateFromISO(user.deletedAt) ?? user.deletedAt?.toISOString() ?? null,
+      createdAt: formatDateFromISO(user.createdAt) ?? user.createdAt.toISOString(),
+      updatedAt: formatDateFromISO(user.updatedAt) ?? user.updatedAt.toISOString(),
     };
   }
 
@@ -86,6 +86,14 @@ export class UsersService implements IUsersService {
     }
 
     if (input.username !== undefined) {
+      // Check if username is already taken by another user
+      const existingUser = await this.unitOfWork.users.findByUsername(input.username);
+      if (existingUser && existingUser.id !== input.userId) {
+        throw new ConflictError('Username already in use', {
+          field: 'username',
+          value: input.username,
+        });
+      }
       updateData.username = input.username;
     }
 
@@ -113,10 +121,10 @@ export class UsersService implements IUsersService {
       username: updatedUser.username,
       name: updatedUser.name,
       role: updatedUser.role,
-      lastLoginAt: updatedUser.lastLoginAt,
-      deletedAt: updatedUser.deletedAt,
-      createdAt: updatedUser.createdAt,
-      updatedAt: updatedUser.updatedAt,
+      lastLoginAt: formatDateFromISO(updatedUser.lastLoginAt) ?? updatedUser.lastLoginAt?.toISOString() ?? null,
+      deletedAt: formatDateFromISO(updatedUser.deletedAt) ?? updatedUser.deletedAt?.toISOString() ?? null,
+      createdAt: formatDateFromISO(updatedUser.createdAt) ?? updatedUser.createdAt.toISOString(),
+      updatedAt: formatDateFromISO(updatedUser.updatedAt) ?? updatedUser.updatedAt.toISOString(),
     };
   }
 
@@ -188,9 +196,9 @@ export class UsersService implements IUsersService {
         username: user.username,
         name: user.name,
         role: user.role,
-        createdAt: user.createdAt,
-        lastLoginAt: user.lastLoginAt,
-        deletedAt: user.deletedAt,
+        createdAt: formatDateFromISO(user.createdAt) ?? user.createdAt.toISOString(),
+        lastLoginAt: formatDateFromISO(user.lastLoginAt) ?? user.lastLoginAt?.toISOString() ?? null,
+        deletedAt: formatDateFromISO(user.deletedAt) ?? user.deletedAt?.toISOString() ?? null,
       })),
       pagination: {
         page,
@@ -241,10 +249,10 @@ export class UsersService implements IUsersService {
       username: user.username,
       name: user.name,
       role: user.role,
-      lastLoginAt: user.lastLoginAt,
-      deletedAt: user.deletedAt,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      lastLoginAt: formatDateFromISO(user.lastLoginAt) ?? user.lastLoginAt?.toISOString() ?? null,
+      deletedAt: formatDateFromISO(user.deletedAt) ?? user.deletedAt?.toISOString() ?? null,
+      createdAt: formatDateFromISO(user.createdAt) ?? user.createdAt.toISOString(),
+      updatedAt: formatDateFromISO(user.updatedAt) ?? user.updatedAt.toISOString(),
     };
   }
 
@@ -304,10 +312,10 @@ export class UsersService implements IUsersService {
       username: updatedUser.username,
       name: updatedUser.name,
       role: updatedUser.role,
-      lastLoginAt: updatedUser.lastLoginAt,
-      deletedAt: updatedUser.deletedAt,
-      createdAt: updatedUser.createdAt,
-      updatedAt: updatedUser.updatedAt,
+      lastLoginAt: formatDateFromISO(updatedUser.lastLoginAt) ?? updatedUser.lastLoginAt?.toISOString() ?? null,
+      deletedAt: formatDateFromISO(updatedUser.deletedAt) ?? updatedUser.deletedAt?.toISOString() ?? null,
+      createdAt: formatDateFromISO(updatedUser.createdAt) ?? updatedUser.createdAt.toISOString(),
+      updatedAt: formatDateFromISO(updatedUser.updatedAt) ?? updatedUser.updatedAt.toISOString(),
     };
   }
 
@@ -332,73 +340,113 @@ export class UsersService implements IUsersService {
       throw new NotFoundError('Failed to delete user');
     }
 
-    logger.info('User soft deleted by admin', { userId: id });
+    logger.info('User soft deleted by admin', { userId: id, deletedBy: activityContext?.performedBy });
 
     await this.logActivity({
-      userId: id,
+      userId: activityContext?.performedBy ?? id,
       action: 'user.deleted',
       entity: 'users',
       entityId: id,
       ipAddress: activityContext?.ipAddress,
       userAgent: activityContext?.userAgent,
-      details: { performedBy: activityContext?.performedBy },
+      details: { targetUserId: id },
     });
 
     return { message: 'User deleted successfully' };
   }
 
   async activateUser(id: string, activityContext?: UserActivityContext): Promise<{ message: string }> {
-    const updated = await this.unitOfWork.users.setActive(id, true);
-    if (!updated) {
+    // Check if user exists and get current state
+    const user = await this.unitOfWork.users.findById(id, true);
+    if (!user) {
       throw new NotFoundError('User not found');
     }
 
+    // Check if user is already active
+    if (user.deletedAt === null) {
+      console.log('[DEBUG] user => ', user);
+      throw new BadRequestError('User is already active');
+    }
+
+    const updated = await this.unitOfWork.users.setActive(id, true);
+    if (!updated) {
+      throw new NotFoundError('Failed to activate user');
+    }
+
+    logger.info('User activated by admin', { userId: id, activatedBy: activityContext?.performedBy });
+
     await this.logActivity({
-      userId: id,
+      userId: activityContext?.performedBy ?? id,
       action: 'user.activated',
       entity: 'users',
       entityId: id,
       ipAddress: activityContext?.ipAddress,
       userAgent: activityContext?.userAgent,
-      details: { performedBy: activityContext?.performedBy },
+      details: { targetUserId: id },
     });
 
     return { message: 'User activated successfully' };
   }
 
   async deactivateUser(id: string, activityContext?: UserActivityContext): Promise<{ message: string }> {
-    const updated = await this.unitOfWork.users.setActive(id, false);
-    if (!updated) {
+    // Check if user exists and get current state
+    const user = await this.unitOfWork.users.findById(id, true);
+    if (!user) {
       throw new NotFoundError('User not found');
     }
 
+    // Check if user is already inactive
+    if (user.deletedAt !== null) {
+      throw new BadRequestError('User is already inactive');
+    }
+
+    const updated = await this.unitOfWork.users.setActive(id, false);
+    if (!updated) {
+      throw new NotFoundError('Failed to deactivate user');
+    }
+
+    logger.info('User deactivated by admin', { userId: id, deactivatedBy: activityContext?.performedBy });
+
     await this.logActivity({
-      userId: id,
+      userId: activityContext?.performedBy ?? id,
       action: 'user.deactivated',
       entity: 'users',
       entityId: id,
       ipAddress: activityContext?.ipAddress,
       userAgent: activityContext?.userAgent,
-      details: { performedBy: activityContext?.performedBy },
+      details: { targetUserId: id },
     });
 
     return { message: 'User deactivated successfully' };
   }
 
   async restoreUser(id: string, activityContext?: UserActivityContext): Promise<{ message: string }> {
-    const restored = await this.unitOfWork.users.restore(id);
-    if (!restored) {
+    // Check if user exists and get current state
+    const user = await this.unitOfWork.users.findById(id, true);
+    if (!user) {
       throw new NotFoundError('User not found');
     }
 
+    // Check if user is not deleted (cannot restore active user)
+    if (user.deletedAt === null) {
+      throw new BadRequestError('User is not deleted');
+    }
+
+    const restored = await this.unitOfWork.users.restore(id);
+    if (!restored) {
+      throw new NotFoundError('Failed to restore user');
+    }
+
+    logger.info('User restored by admin', { userId: id, restoredBy: activityContext?.performedBy });
+
     await this.logActivity({
-      userId: id,
+      userId: activityContext?.performedBy ?? id,
       action: 'user.restored',
       entity: 'users',
       entityId: id,
       ipAddress: activityContext?.ipAddress,
       userAgent: activityContext?.userAgent,
-      details: { performedBy: activityContext?.performedBy },
+      details: { targetUserId: id },
     });
 
     return { message: 'User restored successfully' };
