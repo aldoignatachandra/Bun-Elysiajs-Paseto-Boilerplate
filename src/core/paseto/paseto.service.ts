@@ -1,3 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
+
 /**
  * PASETO Service - Hybrid Implementation (v4.local + v4.public)
  *
@@ -324,11 +331,12 @@ export class PasetoService {
         error: null,
       };
     } catch (error) {
+      // Handle our custom TokenExpiredError
       if (error instanceof TokenExpiredError) {
         return {
           valid: false,
           payload: null,
-          error: 'Token has expired',
+          error: 'Token has been expired',
         };
       }
       if (error instanceof InvalidTokenPayloadError) {
@@ -338,12 +346,31 @@ export class PasetoService {
           error: error.message,
         };
       }
+      // Check if the error message indicates token expiration (from paseto-ts library)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (this.isExpirationError(errorMessage)) {
+        return {
+          valid: false,
+          payload: null,
+          error: 'Token has been expired',
+        };
+      }
       return {
         valid: false,
         payload: null,
-        error: `Token validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error: `Token validation failed: ${errorMessage}`,
       };
     }
+  }
+
+  /**
+   * Check if an error message indicates token expiration
+   * Handles various expiration error formats from paseto-ts library
+   */
+  private isExpirationError(message: string): boolean {
+    const expirationPatterns = ['has expired', 'token is expired', 'exp claim', 'expiration', 'expired'];
+    const lowerMessage = message.toLowerCase();
+    return expirationPatterns.some(pattern => lowerMessage.includes(pattern));
   }
 
   /**
@@ -389,11 +416,12 @@ export class PasetoService {
         error: null,
       };
     } catch (error) {
+      // Handle our custom TokenExpiredError
       if (error instanceof TokenExpiredError) {
         return {
           valid: false,
           payload: null,
-          error: 'Token has expired',
+          error: 'Token has been expired',
         };
       }
       if (error instanceof InvalidTokenPayloadError) {
@@ -403,10 +431,19 @@ export class PasetoService {
           error: error.message,
         };
       }
+      // Check if the error message indicates token expiration (from paseto-ts library)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (this.isExpirationError(errorMessage)) {
+        return {
+          valid: false,
+          payload: null,
+          error: 'Token has been expired',
+        };
+      }
       return {
         valid: false,
         payload: null,
-        error: `Token validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error: `Token validation failed: ${errorMessage}`,
       };
     }
   }

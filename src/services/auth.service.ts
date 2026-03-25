@@ -113,11 +113,14 @@ export class AuthService implements IAuthService {
 
       const passwordHash = await this.passwordService.hash(input.password);
 
+      // Always create new users with 'user' role via register API
+      // ADMIN users can only be created via database seeder
       const newUser = {
         email: input.email,
         username: input.username,
         passwordHash,
         name: input.name,
+        role: 'user',
       };
 
       const user = await uow.users.create(newUser);
@@ -182,9 +185,12 @@ export class AuthService implements IAuthService {
     return this.unitOfWork.withTransaction(async (uow: UnitOfWork): Promise<LoginOutput> => {
       const { ipAddress, userAgent, deviceType } = activityContext || {};
 
-      const user = await uow.users.findByEmail(input.email);
+      // Check if input is email (contains @) or username
+      const isEmail = input.email.includes('@');
+      const user = isEmail ? await uow.users.findByEmail(input.email) : await uow.users.findByUsername(input.email);
+
       if (!user) {
-        throw new AuthenticationError('Invalid email or password');
+        throw new AuthenticationError('Invalid credentials');
       }
 
       if (user.deletedAt) {
@@ -359,6 +365,7 @@ export class AuthService implements IAuthService {
    * Validate an access token
    *
    * Decrypts and validates the access token signature and expiration.
+   * Also checks if the session exists in the database (token has been used check).
    * Returns user ID and payload if valid.
    *
    * @param input - Access token
@@ -375,6 +382,28 @@ export class AuthService implements IAuthService {
           userId: null,
           payload: null,
           error: result.error || 'Token validation failed',
+        };
+      }
+
+      // Check if the session exists in the database
+      // If not found, the token has been used (revoked/deleted)
+      const session = await this.unitOfWork.sessions.findByToken(input.token);
+      if (!session) {
+        return {
+          valid: false,
+          userId: null,
+          payload: null,
+          error: 'Token has been used',
+        };
+      }
+
+      // Check if the session has been revoked
+      if (session.revokedAt) {
+        return {
+          valid: false,
+          userId: null,
+          payload: null,
+          error: 'Token has been used',
         };
       }
 
