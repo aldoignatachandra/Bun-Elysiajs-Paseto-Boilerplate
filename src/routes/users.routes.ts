@@ -6,6 +6,7 @@ import { UsersController } from '../controllers/users.controller';
 import { successResponse } from '../core/http/response';
 import { requireAuth, type AuthContext } from '../middlewares/auth.middleware';
 import { enforceRateLimit, type RateLimitOptions } from '../middlewares/rate-limit.middleware';
+import { usersDetails } from './details/users.details';
 import {
   activityQuerySchema,
   deleteUserQuerySchema,
@@ -41,16 +42,17 @@ const USER_ROUTE_LIMITS: Record<string, RouteLimitConfig> = {
   '/api/v1/activity-logs': { maxRequests: 120, window: 60, strategy: 'user_or_ip' },
 };
 
-function toAuthContext(ctx: { user?: AuthContext['user']; tokenId?: string | null }): AuthContext {
+function toAuthContext(ctx: { user?: AuthContext['user']; tokenId?: string | null; accessToken?: string | null }): AuthContext {
   return {
     user: ctx.user ?? null,
     tokenId: ctx.tokenId ?? null,
+    accessToken: ctx.accessToken ?? null,
   };
 }
 
 export function createUsersRoutes(app: Elysia, usersService: UsersService, authService: AuthService, pasetoService: PasetoService) {
   const controller = new UsersController(usersService);
-  const auth = requireAuth(pasetoService, authService);
+  const authPlugin = requireAuth(pasetoService, authService);
 
   const limiters = {
     me: enforceRateLimit(USER_ROUTE_LIMITS['/api/v1/users/me']),
@@ -66,6 +68,8 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
   return app
     .group('/users', usersApp =>
       usersApp
+        // All routes in this group require authentication
+        .use(authPlugin)
         .get(
           '/me',
           async ctx => {
@@ -74,7 +78,8 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
             return successResponse(routeCtx.request, data);
           },
           {
-            beforeHandle: [auth, limiters.me],
+            beforeHandle: [limiters.me],
+            detail: usersDetails.getMe,
           }
         )
         .patch(
@@ -86,8 +91,9 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
             return successResponse(routeCtx.request, data);
           },
           {
-            beforeHandle: [auth, limiters.me],
+            beforeHandle: [limiters.me],
             body: updateProfileSchema,
+            detail: usersDetails.updateMe,
           }
         )
         .get(
@@ -99,8 +105,9 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
             return successResponse(routeCtx.request, data);
           },
           {
-            beforeHandle: [auth, limiters.list],
+            beforeHandle: [limiters.list],
             query: getUsersQuerySchema,
+            detail: usersDetails.getUsers,
           }
         )
         .get(
@@ -111,7 +118,8 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
             return successResponse(routeCtx.request, data);
           },
           {
-            beforeHandle: [auth, limiters.stats],
+            beforeHandle: [limiters.stats],
+            detail: usersDetails.getUserStats,
           }
         )
         .get(
@@ -123,8 +131,9 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
             return successResponse(routeCtx.request, data);
           },
           {
-            beforeHandle: [auth, limiters.byId],
+            beforeHandle: [limiters.byId],
             params: userIdParamSchema,
+            detail: usersDetails.getUserById,
           }
         )
         .post(
@@ -136,8 +145,9 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
             return successResponse(routeCtx.request, data);
           },
           {
-            beforeHandle: [auth, limiters.activate],
+            beforeHandle: [limiters.activate],
             params: userIdParamSchema,
+            detail: usersDetails.activateUser,
           }
         )
         .post(
@@ -149,8 +159,9 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
             return successResponse(routeCtx.request, data);
           },
           {
-            beforeHandle: [auth, limiters.deactivate],
+            beforeHandle: [limiters.deactivate],
             params: userIdParamSchema,
+            detail: usersDetails.deactivateUser,
           }
         )
         .delete(
@@ -164,9 +175,10 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
             return successResponse(routeCtx.request, data);
           },
           {
-            beforeHandle: [auth, limiters.byId],
+            beforeHandle: [limiters.byId],
             params: userIdParamSchema,
             query: deleteUserQuerySchema,
+            detail: usersDetails.deleteUser,
           }
         )
         .post(
@@ -178,24 +190,29 @@ export function createUsersRoutes(app: Elysia, usersService: UsersService, authS
             return successResponse(routeCtx.request, data);
           },
           {
-            beforeHandle: [auth, limiters.restore],
+            beforeHandle: [limiters.restore],
             params: userIdParamSchema,
+            detail: usersDetails.restoreUser,
           }
         )
     )
     .group('/activity-logs', logsApp =>
-      logsApp.get(
-        '/',
-        async ctx => {
-          const routeCtx = ctx as RouteContext<unknown, ActivityQueryDTO>;
-          const query = activityQuerySchema.parse(routeCtx.query);
-          const data = await controller.getActivityLogs(query, toAuthContext(routeCtx));
-          return successResponse(routeCtx.request, data);
-        },
-        {
-          beforeHandle: [auth, limiters.activityLogs],
-          query: activityQuerySchema,
-        }
-      )
+      logsApp
+        // All routes in this group require authentication
+        .use(authPlugin)
+        .get(
+          '/',
+          async ctx => {
+            const routeCtx = ctx as RouteContext<unknown, ActivityQueryDTO>;
+            const query = activityQuerySchema.parse(routeCtx.query);
+            const data = await controller.getActivityLogs(query, toAuthContext(routeCtx));
+            return successResponse(routeCtx.request, data);
+          },
+          {
+            beforeHandle: [limiters.activityLogs],
+            query: activityQuerySchema,
+            detail: usersDetails.getActivityLogs,
+          }
+        )
     );
 }

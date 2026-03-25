@@ -29,7 +29,7 @@ export interface PasetoServiceConfig {
 export class PasetoService {
   private readonly issuer: string;
   private readonly audience: string;
-  private readonly symmetricKey: Uint8Array;
+  private readonly symmetricKey: string; // Keep as PASERK string for encrypt/decrypt
   private readonly publicKey: string; // Keep as PASERK string for sign/verify
   private readonly secretKey: string; // Keep as PASERK string for sign/verify
   private readonly accessTokenExpiryMinutes: number;
@@ -57,38 +57,65 @@ export class PasetoService {
     this.issuer = config.issuer;
     this.audience = config.audience;
 
-    // Convert keys to the appropriate format
-    // symmetricKey needs to be Uint8Array for encrypt/decrypt
-    this.symmetricKey = this.convertSymmetricKey(config.symmetricKey);
-    // publicKey and secretKey need to be PASERK strings for sign/verify
-    this.publicKey = this.convertPaserkKey(config.publicKey);
-    this.secretKey = this.convertPaserkKey(config.secretKey);
+    // Convert keys to PASERK string format (paseto-ts expects PASERK strings)
+    this.symmetricKey = this.convertToPaserkString(config.symmetricKey, 'k4.local.');
+    this.publicKey = this.convertToPaserkString(config.publicKey, 'k4.public.');
+    this.secretKey = this.convertToPaserkString(config.secretKey, 'k4.secret.');
     this.accessTokenExpiryMinutes = config.accessTokenExpiryMinutes;
     this.refreshTokenExpiryDays = config.refreshTokenExpiryDays;
   }
 
-  private convertSymmetricKey(key: string | number[] | Uint8Array): Uint8Array {
-    if (key instanceof Uint8Array) {
-      return key;
-    } else if (typeof key === 'string') {
-      // For symmetric key, we need Uint8Array with prefix bytes
-      return new TextEncoder().encode(key);
+  /**
+   * Convert key to PASERK string format
+   * paseto-ts expects keys in PASERK format (e.g., k4.local.xxx, k4.public.xxx, k4.secret.xxx)
+   */
+  private convertToPaserkString(key: string | number[] | Uint8Array, prefix: string): string {
+    if (typeof key === 'string') {
+      // If already in PASERK format, return as-is
+      if (key.startsWith(prefix)) {
+        return key;
+      }
+      // Otherwise, assume it's a raw base64url key and add the prefix
+      return prefix + key;
+    } else if (key instanceof Uint8Array) {
+      // Convert Uint8Array to base64url string and add prefix
+      return prefix + this.uint8ArrayToBase64Url(key);
     } else {
-      return new Uint8Array(key);
+      // Convert number array to base64url string and add prefix
+      return prefix + this.uint8ArrayToBase64Url(new Uint8Array(key));
     }
   }
 
-  private convertPaserkKey(key: string | number[] | Uint8Array): string {
-    if (typeof key === 'string') {
-      return key;
-    } else if (key instanceof Uint8Array) {
-      // Convert Uint8Array back to PASERK string
-      return new TextDecoder().decode(key);
-    } else {
-      // Convert number array to Uint8Array first, then to string
-      const uint8Array = new Uint8Array(key);
-      return new TextDecoder().decode(uint8Array);
+  /**
+   * Convert Uint8Array to base64url string
+   */
+  private uint8ArrayToBase64Url(bytes: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
     }
+    const base64 = btoa(binary);
+    // Convert to base64url (remove padding, replace +/ with -_)
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  /**
+   * Convert base64url string to Uint8Array
+   */
+  private base64UrlToUint8Array(base64url: string): Uint8Array {
+    // Add padding if needed
+    const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
+    const base64 = base64url + padding;
+    // Replace URL-safe characters with standard base64 characters
+    const base64Standard = base64.replace(/-/g, '+').replace(/_/g, '/');
+    // Decode to binary string
+    const binaryString = atob(base64Standard);
+    // Convert to Uint8Array
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
   }
 
   /**
@@ -250,6 +277,7 @@ export class PasetoService {
       accessToken,
       refreshToken,
       expiresIn: this.accessTokenExpiryMinutes * 60, // Return in seconds
+      accessJti, // Include access token JTI for session tracking
     };
   }
 

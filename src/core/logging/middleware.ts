@@ -2,6 +2,7 @@ import type { Elysia } from 'elysia';
 import { logger } from './logger';
 import type { Context } from 'elysia';
 import type { Logger } from './types';
+import { getClientIp } from '@/helpers/ip.helper';
 
 export interface RequestMetadata {
   requestId: string;
@@ -24,7 +25,7 @@ export function getRequestMetadata(context: Context): RequestMetadata {
 
   return {
     requestId: headers.get('x-request-id') || crypto.randomUUID(),
-    ip: headers.get('x-forwarded-for') || headers.get('x-real-ip') || 'unknown',
+    ip: getClientIp(request),
     userAgent: headers.get('user-agent') || 'unknown',
     method: request.method,
     path: new URL(request.url).pathname,

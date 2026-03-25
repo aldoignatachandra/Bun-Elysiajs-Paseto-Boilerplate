@@ -186,7 +186,7 @@ function mergeHstsConfig(defaults: HstsConfig | boolean | undefined, user: HstsC
  * Build CSP header value
  */
 function buildCspHeaderValue(config: CspConfig | boolean | undefined): { name: string; value: string } | null {
-  if (!config || config === false) {
+  if (config === false || config === undefined) {
     return null;
   }
 
@@ -242,7 +242,7 @@ function buildCspHeaderValue(config: CspConfig | boolean | undefined): { name: s
  * Build HSTS header value
  */
 function buildHstsHeaderValue(config: HstsConfig | boolean | undefined): { name: string; value: string } | null {
-  if (!config || config === false) {
+  if (config === false || config === undefined) {
     return null;
   }
 

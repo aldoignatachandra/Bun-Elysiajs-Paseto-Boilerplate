@@ -63,7 +63,8 @@ describe('Logging Middleware', () => {
 
     const metadata = getRequestMetadata(mockContext);
 
-    expect(metadata.ip).toBe('unknown');
+    // When no IP headers are present, getClientIp returns '127.0.0.1' as default
+    expect(metadata.ip).toBe('127.0.0.1');
     expect(metadata.userAgent).toBe('unknown');
   });
 

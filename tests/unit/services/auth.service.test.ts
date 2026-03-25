@@ -5,14 +5,7 @@
 /* eslint-disable @typescript-eslint/await-thenable */
 import { describe, it, expect, beforeEach, jest } from 'bun:test';
 import { AuthService } from '../../../src/services/auth.service';
-import {
-  ConflictError,
-  AuthenticationError,
-  ForbiddenError,
-  InvalidTokenError,
-  TokenExpiredError,
-  NotFoundError,
-} from '../../../src/core/errors/app-error';
+import { ConflictError, AuthenticationError, ForbiddenError, InvalidTokenError, NotFoundError } from '../../../src/core/errors/app-error';
 import type { PasetoService } from '../../../src/core/paseto/paseto.service';
 import type { PasswordService } from '../../../src/core/crypto/password.service';
 import type { UnitOfWork } from '../../../src/repositories/unit-of-work';
@@ -41,6 +34,7 @@ describe('AuthService', () => {
     accessToken: 'v4.local.test_access_token',
     refreshToken: 'v4.public.test_refresh_token',
     expiresIn: 900,
+    accessJti: 'access-jti-123',
   };
 
   beforeEach(() => {
@@ -54,6 +48,8 @@ describe('AuthService', () => {
       },
       sessions: {
         findByTokenId: jest.fn(),
+        findByToken: jest.fn(),
+        findActiveSessionByUserId: jest.fn(),
         create: jest.fn(),
         revoke: jest.fn(),
         deleteByUserId: jest.fn(),
@@ -107,8 +103,7 @@ describe('AuthService', () => {
         email: 'new@example.com',
         username: 'newuser',
         password: 'password123!',
-        firstName: 'John',
-        lastName: 'Doe',
+        name: 'John Doe',
       });
 
       expect(result.user).toBeDefined();
@@ -123,8 +118,7 @@ describe('AuthService', () => {
           email: 'test@example.com',
           username: 'newuser',
           password: 'password123!',
-          firstName: 'John',
-          lastName: 'Doe',
+          name: 'John Doe',
         })
       ).rejects.toThrow(ConflictError);
     });
@@ -138,8 +132,7 @@ describe('AuthService', () => {
           email: 'new@example.com',
           username: 'testuser',
           password: 'password123!',
-          firstName: 'John',
-          lastName: 'Doe',
+          name: 'John Doe',
         })
       ).rejects.toThrow(ConflictError);
     });
@@ -208,21 +201,17 @@ describe('AuthService', () => {
       const session = {
         id: 'session-123',
         userId: mockUser.id,
-        token: 'v4.public.test_refresh_token',
+        token: 'v4.local.old_access_token',
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         revokedAt: null,
       };
       mockPasetoService.validateRefreshToken.mockReturnValue({
         valid: true,
-        payload: { sub: mockUser.id, tokenId: 'token-id-123' },
+        payload: { sub: mockUser.id },
       });
-      mockUnitOfWork.sessions.findByTokenId.mockResolvedValue(session);
       mockUnitOfWork.users.findById.mockResolvedValue(mockUser);
+      mockUnitOfWork.sessions.findActiveSessionByUserId.mockResolvedValue(session);
       mockPasetoService.createTokenPair.mockReturnValue(mockTokenPair);
-      mockPasetoService.validateRefreshToken.mockReturnValueOnce({
-        valid: true,
-        payload: { sub: mockUser.id, tokenId: 'new-token-id' },
-      });
       mockUnitOfWork.sessions.create.mockResolvedValue({});
       mockUnitOfWork.sessions.revoke.mockResolvedValue(true);
 
@@ -231,6 +220,7 @@ describe('AuthService', () => {
       });
 
       expect(result.tokens).toBeDefined();
+      expect(mockUnitOfWork.sessions.findActiveSessionByUserId).toHaveBeenCalledWith(mockUser.id);
     });
 
     it('should throw InvalidTokenError for invalid refresh token', async () => {
@@ -246,12 +236,27 @@ describe('AuthService', () => {
       ).rejects.toThrow(InvalidTokenError);
     });
 
-    it('should throw NotFoundError when session not found', async () => {
+    it('should throw ForbiddenError when user is deleted', async () => {
       mockPasetoService.validateRefreshToken.mockReturnValue({
         valid: true,
-        payload: { sub: mockUser.id, tokenId: 'nonexistent-token-id' },
+        payload: { sub: mockUser.id },
       });
-      mockUnitOfWork.sessions.findByTokenId.mockResolvedValue(null);
+      mockUnitOfWork.users.findById.mockResolvedValue({ ...mockUser, deletedAt: new Date() });
+
+      await expect(
+        service.refreshToken({
+          refreshToken: 'v4.public.test_refresh_token',
+        })
+      ).rejects.toThrow(ForbiddenError);
+    });
+
+    it('should throw NotFoundError when no active session found', async () => {
+      mockPasetoService.validateRefreshToken.mockReturnValue({
+        valid: true,
+        payload: { sub: mockUser.id },
+      });
+      mockUnitOfWork.users.findById.mockResolvedValue(mockUser);
+      mockUnitOfWork.sessions.findActiveSessionByUserId.mockResolvedValue(null);
 
       await expect(
         service.refreshToken({
@@ -264,115 +269,95 @@ describe('AuthService', () => {
       const revokedSession = {
         id: 'session-123',
         userId: mockUser.id,
-        token: 'v4.public.test_refresh_token',
+        token: 'v4.local.access_token',
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         revokedAt: new Date(),
       };
       mockPasetoService.validateRefreshToken.mockReturnValue({
         valid: true,
-        payload: { sub: mockUser.id, tokenId: 'token-id-123' },
+        payload: { sub: mockUser.id },
       });
-      mockUnitOfWork.sessions.findByTokenId.mockResolvedValue(revokedSession);
+      mockUnitOfWork.users.findById.mockResolvedValue(mockUser);
+      mockUnitOfWork.sessions.findActiveSessionByUserId.mockResolvedValue(revokedSession);
 
       await expect(
         service.refreshToken({
           refreshToken: 'v4.public.test_refresh_token',
         })
       ).rejects.toThrow(InvalidTokenError);
-    });
-
-    it('should throw TokenExpiredError when session is expired', async () => {
-      const expiredSession = {
-        id: 'session-123',
-        userId: mockUser.id,
-        token: 'v4.public.test_refresh_token',
-        expiresAt: new Date(Date.now() - 1000),
-        revokedAt: null,
-      };
-      mockPasetoService.validateRefreshToken.mockReturnValue({
-        valid: true,
-        payload: { sub: mockUser.id, tokenId: 'token-id-123' },
-      });
-      mockUnitOfWork.sessions.findByTokenId.mockResolvedValue(expiredSession);
-
-      await expect(
-        service.refreshToken({
-          refreshToken: 'v4.public.test_refresh_token',
-        })
-      ).rejects.toThrow(TokenExpiredError);
-    });
-
-    it('should throw ForbiddenError when user is deleted', async () => {
-      const session = {
-        id: 'session-123',
-        userId: mockUser.id,
-        token: 'v4.public.test_refresh_token',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        revokedAt: null,
-      };
-      mockPasetoService.validateRefreshToken.mockReturnValue({
-        valid: true,
-        payload: { sub: mockUser.id, tokenId: 'token-id-123' },
-      });
-      mockUnitOfWork.sessions.findByTokenId.mockResolvedValue(session);
-      mockUnitOfWork.users.findById.mockResolvedValue({ ...mockUser, deletedAt: new Date() });
-
-      await expect(
-        service.refreshToken({
-          refreshToken: 'v4.public.test_refresh_token',
-        })
-      ).rejects.toThrow(ForbiddenError);
     });
   });
 
   describe('logout', () => {
     it('should logout and revoke session', async () => {
+      const accessToken = 'v4.local.test_access_token';
       const session = {
         id: 'session-123',
         userId: mockUser.id,
-        token: 'v4.public.test_refresh_token',
+        token: accessToken,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         revokedAt: null,
       };
-      mockUnitOfWork.sessions.findByTokenId.mockResolvedValue(session);
+      mockUnitOfWork.sessions.findByToken.mockResolvedValue(session);
       mockUnitOfWork.sessions.revoke.mockResolvedValue(true);
       mockUnitOfWork.activityLogs.create.mockResolvedValue({});
 
       await service.logout({
         userId: mockUser.id,
-        tokenId: 'session-123',
+        accessToken,
       });
 
+      expect(mockUnitOfWork.sessions.findByToken).toHaveBeenCalledWith(accessToken);
       expect(mockUnitOfWork.sessions.revoke).toHaveBeenCalledWith('session-123');
     });
 
-    it('should throw NotFoundError when session not found', async () => {
-      mockUnitOfWork.sessions.findByTokenId.mockResolvedValue(null);
+    it('should throw NotFoundError when no session found', async () => {
+      mockUnitOfWork.sessions.findByToken.mockResolvedValue(null);
 
       await expect(
         service.logout({
           userId: mockUser.id,
-          tokenId: 'nonexistent-session',
+          accessToken: 'nonexistent-token',
         })
       ).rejects.toThrow(NotFoundError);
     });
 
-    it('should throw InvalidTokenError when session belongs to different user', async () => {
+    it('should throw InvalidTokenError when token already revoked (prevent reuse)', async () => {
+      const accessToken = 'v4.local.test_access_token';
       const session = {
         id: 'session-123',
-        userId: 'different-user-id',
-        token: 'v4.public.test_refresh_token',
+        userId: mockUser.id,
+        token: accessToken,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        revokedAt: null,
+        revokedAt: new Date(), // Already revoked
       };
-      mockUnitOfWork.sessions.findByTokenId.mockResolvedValue(session);
+      mockUnitOfWork.sessions.findByToken.mockResolvedValue(session);
 
       await expect(
         service.logout({
           userId: mockUser.id,
-          tokenId: 'session-123',
+          accessToken,
         })
       ).rejects.toThrow(InvalidTokenError);
+    });
+
+    it('should throw ForbiddenError when session belongs to different user', async () => {
+      const accessToken = 'v4.local.test_access_token';
+      const session = {
+        id: 'session-123',
+        userId: 'different-user-id',
+        token: accessToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        revokedAt: null,
+      };
+      mockUnitOfWork.sessions.findByToken.mockResolvedValue(session);
+
+      await expect(
+        service.logout({
+          userId: mockUser.id,
+          accessToken,
+        })
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 

@@ -115,7 +115,7 @@ async function startServer(): Promise<void> {
 
   // Log server startup info
   logger.info(`🚀 Server started on http://${server.hostname}:${server.port}`);
-  logger.info(`📚 Swagger documentation available at http://${server.hostname}:${server.port}/swagger`);
+  logger.info(`📚 OpenAPI documentation available at http://${server.hostname}:${server.port}/openapi`);
   logger.info(`💚 Health check available at http://${server.hostname}:${server.port}/health`);
 }
 

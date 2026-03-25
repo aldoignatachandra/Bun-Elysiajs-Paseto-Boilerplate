@@ -40,9 +40,9 @@ describe('app', () => {
     expect(body.status).toBe('alive');
   });
 
-  it('exposes swagger documentation', async () => {
+  it('exposes openapi documentation', async () => {
     const app = await appPromise;
-    const res = await app.handle(new Request('http://localhost/swagger'));
+    const res = await app.handle(new Request('http://localhost/openapi'));
 
     expect(res.status).toBe(200);
   });

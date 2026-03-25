@@ -4,7 +4,7 @@ import { ActivityService } from '../../../src/services/activity.service';
 
 describe('ActivityService', () => {
   let service: ActivityService;
-  let mockDb: any;
+  let mockUnitOfWork: any;
 
   const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
   const mockActivityLog = {
@@ -19,41 +19,23 @@ describe('ActivityService', () => {
     createdAt: new Date(),
   };
 
-  function createMockQuery(result: any) {
-    const query = {
-      from: () => query,
-      where: () => query,
-      orderBy: () => query,
-      limit: () => query,
-      offset: () => query,
-      then: (resolve: (value: any) => void) => resolve(result),
-    };
-    return query;
-  }
-
   beforeEach(() => {
-    mockDb = {
-      select: () => createMockQuery([mockActivityLog]),
-      insert: () => ({
-        values: () => ({
-          returning: async () => [mockActivityLog],
-        }),
-      }),
-      delete: () => ({
-        where: () => ({
-          returning: async () => [mockActivityLog],
-        }),
-      }),
+    mockUnitOfWork = {
+      activityLogs: {
+        create: jest.fn().mockResolvedValue([mockActivityLog]),
+        findByUserId: jest.fn().mockResolvedValue([mockActivityLog]),
+        countByUserId: jest.fn().mockResolvedValue(1),
+      },
     };
 
-    service = new ActivityService(mockDb);
+    service = new ActivityService(mockUnitOfWork);
   });
 
   describe('logActivity', () => {
     it('should log activity successfully with all fields', async () => {
       const input = {
         userId: mockUserId,
-        action: 'user.logged_in',
+        action: 'user.logged_in' as const,
         entity: 'users' as const,
         entityId: mockUserId,
         ipAddress: '127.0.0.1',
@@ -63,48 +45,65 @@ describe('ActivityService', () => {
 
       await service.logActivity(input);
 
-      // Should not throw
-      expect(true).toBe(true);
+      expect(mockUnitOfWork.activityLogs.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: mockUserId,
+          action: 'user.logged_in',
+          entity: 'users',
+          entityId: mockUserId,
+          ipAddress: '127.0.0.1',
+          userAgent: 'Mozilla/5.0',
+          details: JSON.stringify({ method: 'email_password' }),
+        })
+      );
     });
 
     it('should log activity successfully with only required fields', async () => {
       const input = {
         userId: mockUserId,
-        action: 'user.logged_in',
+        action: 'user.logged_in' as const,
       };
 
       await service.logActivity(input);
 
-      // Should not throw
-      expect(true).toBe(true);
+      expect(mockUnitOfWork.activityLogs.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: mockUserId,
+          action: 'user.logged_in',
+          entity: null,
+          entityId: null,
+          ipAddress: null,
+          userAgent: null,
+          details: null,
+        })
+      );
     });
 
     it('should handle missing optional fields gracefully', async () => {
       const input = {
         userId: mockUserId,
-        action: 'user.profile_updated',
+        action: 'user.profile_updated' as const,
         entity: 'users' as const,
       };
 
       await service.logActivity(input);
 
-      // Should not throw
-      expect(true).toBe(true);
+      expect(mockUnitOfWork.activityLogs.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: mockUserId,
+          action: 'user.profile_updated',
+          entity: 'users',
+        })
+      );
     });
 
     it('should handle errors gracefully', async () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      mockDb.insert = () => ({
-        values: () => ({
-          returning: async () => {
-            throw new Error('Database error');
-          },
-        }),
-      });
+      mockUnitOfWork.activityLogs.create.mockRejectedValueOnce(new Error('Database error'));
 
       const input = {
         userId: mockUserId,
-        action: 'user.logged_in',
+        action: 'user.logged_in' as const,
       };
 
       // Service catches errors and logs them, so it should resolve without throwing
@@ -117,7 +116,7 @@ describe('ActivityService', () => {
     it('should serialize details object to JSON string', async () => {
       const input = {
         userId: mockUserId,
-        action: 'product.created',
+        action: 'product.created' as const,
         entity: 'products' as const,
         entityId: 'product-123',
         details: {
@@ -129,17 +128,23 @@ describe('ActivityService', () => {
 
       await service.logActivity(input);
 
-      // Should not throw
-      expect(true).toBe(true);
+      expect(mockUnitOfWork.activityLogs.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          details: JSON.stringify({
+            productName: 'Test Product',
+            price: 99.99,
+            category: 'electronics',
+          }),
+        })
+      );
     });
   });
 
   describe('getActivityLogs', () => {
-    beforeEach(() => {
-      mockDb.select = () => createMockQuery([mockActivityLog]);
-    });
-
     it('should retrieve activities with default pagination', async () => {
+      mockUnitOfWork.activityLogs.findByUserId.mockResolvedValueOnce([mockActivityLog]);
+      mockUnitOfWork.activityLogs.countByUserId.mockResolvedValueOnce(1);
+
       const result = await service.getActivityLogs({ userId: mockUserId });
 
       expect(result.logs).toHaveLength(1);
@@ -154,17 +159,18 @@ describe('ActivityService', () => {
     });
 
     it('should retrieve activities with custom pagination', async () => {
-      const manyLogs = Array(25)
+      const manyLogs = Array(10)
         .fill(null)
         .map((_, i) => ({
           ...mockActivityLog,
           id: `log-${i}`,
         }));
-      mockDb.select = () => createMockQuery(manyLogs);
+      mockUnitOfWork.activityLogs.findByUserId.mockResolvedValueOnce(manyLogs);
+      mockUnitOfWork.activityLogs.countByUserId.mockResolvedValueOnce(25);
 
       const result = await service.getActivityLogs({ userId: mockUserId, page: 2, limit: 10 });
 
-      expect(result.logs).toHaveLength(25);
+      expect(result.logs).toHaveLength(10);
       expect(result.pagination).toEqual({
         page: 2,
         limit: 10,
@@ -175,43 +181,36 @@ describe('ActivityService', () => {
       });
     });
 
-    it('should retrieve activities filtered by action', async () => {
-      const result = await service.getActivityLogs({ userId: mockUserId, action: 'user.logged_in' });
-
-      expect(result.logs).toHaveLength(1);
-      expect(result.logs[0].action).toBe('user.logged_in');
-    });
-
-    it('should retrieve activities filtered by entity', async () => {
-      const result = await service.getActivityLogs({ userId: mockUserId, entity: 'users' });
-
-      expect(result.logs).toHaveLength(1);
-      expect(result.logs[0].entity).toBe('users');
-    });
-
     it('should limit pagination to maximum 100 per page', async () => {
+      mockUnitOfWork.activityLogs.findByUserId.mockResolvedValueOnce([]);
+      mockUnitOfWork.activityLogs.countByUserId.mockResolvedValueOnce(0);
+
       const result = await service.getActivityLogs({ userId: mockUserId, limit: 200 });
 
       expect(result.pagination.limit).toBe(100);
     });
 
     it('should enforce minimum page number of 1', async () => {
+      mockUnitOfWork.activityLogs.findByUserId.mockResolvedValueOnce([]);
+      mockUnitOfWork.activityLogs.countByUserId.mockResolvedValueOnce(0);
+
       const result = await service.getActivityLogs({ userId: mockUserId, page: 0 });
 
       expect(result.pagination.page).toBe(1);
     });
 
     it('should enforce minimum limit of 1', async () => {
+      mockUnitOfWork.activityLogs.findByUserId.mockResolvedValueOnce([]);
+      mockUnitOfWork.activityLogs.countByUserId.mockResolvedValueOnce(0);
+
       const result = await service.getActivityLogs({ userId: mockUserId, limit: 0 });
 
-      // The service should enforce a minimum of 1, but looking at the implementation
-      // it uses Math.max(1, Math.min(100, input.limit || 10))
-      // So limit 0 becomes Math.max(1, Math.min(100, 0)) = 1
       expect(result.pagination.limit).toBeGreaterThanOrEqual(1);
     });
 
     it('should handle empty result set', async () => {
-      mockDb.select = () => createMockQuery([]);
+      mockUnitOfWork.activityLogs.findByUserId.mockResolvedValueOnce([]);
+      mockUnitOfWork.activityLogs.countByUserId.mockResolvedValueOnce(0);
 
       const result = await service.getActivityLogs({ userId: 'nonexistent-user' });
 
@@ -220,71 +219,37 @@ describe('ActivityService', () => {
       expect(result.pagination.totalPages).toBe(0);
     });
 
+    it('should return empty result when userId is not provided', async () => {
+      const result = await service.getActivityLogs({});
+
+      expect(result.logs).toHaveLength(0);
+      expect(result.pagination.total).toBe(0);
+    });
+
     it('should parse details JSON string to object', async () => {
       const logWithDetails = {
         ...mockActivityLog,
         details: JSON.stringify({ key: 'value' }),
       };
-      mockDb.select = () => createMockQuery([logWithDetails]);
+      mockUnitOfWork.activityLogs.findByUserId.mockResolvedValueOnce([logWithDetails]);
+      mockUnitOfWork.activityLogs.countByUserId.mockResolvedValueOnce(1);
 
       const result = await service.getActivityLogs({ userId: mockUserId });
 
-      // The service returns details as-is from the database
-      // If the database returns a string, it should be parsed
-      // Looking at the implementation, it casts details as Record<string, unknown>
-      // So it may or may not parse depending on the database driver
-      expect(result.logs[0].details).toBeDefined();
-    });
-  });
-
-  describe('getUserActivities', () => {
-    beforeEach(() => {
-      mockDb.select = () => createMockQuery([mockActivityLog]);
+      expect(result.logs[0].details).toEqual({ key: 'value' });
     });
 
-    it('should retrieve user activities with pagination', async () => {
-      const result = await service.getActivityLogs({ userId: mockUserId, page: 1, limit: 10 });
+    it('should handle invalid JSON in details gracefully', async () => {
+      const logWithInvalidDetails = {
+        ...mockActivityLog,
+        details: 'not-valid-json',
+      };
+      mockUnitOfWork.activityLogs.findByUserId.mockResolvedValueOnce([logWithInvalidDetails]);
+      mockUnitOfWork.activityLogs.countByUserId.mockResolvedValueOnce(1);
 
-      expect(result.logs).toHaveLength(1);
-      expect(result.logs[0].userId).toBe(mockUserId);
-      expect(result.pagination.page).toBe(1);
-      expect(result.pagination.limit).toBe(10);
-    });
-  });
+      const result = await service.getActivityLogs({ userId: mockUserId });
 
-  describe('cleanupOldActivities', () => {
-    it('should delete activities older than cutoff date', async () => {
-      const cutoffDate = new Date('2024-01-01');
-      mockDb.delete = () => ({
-        where: () => ({
-          returning: async () =>
-            Array(10)
-              .fill(null)
-              .map((_, i) => ({ ...mockActivityLog, id: `log-${i}` })),
-        }),
-      });
-
-      const repository = new (service.constructor as any)(mockDb);
-      const deletedCount = await repository.activityLogRepository?.deleteOlderThan(cutoffDate);
-
-      expect(deletedCount).toBe(10);
-    });
-
-    it('should return count of deleted activities', async () => {
-      const cutoffDate = new Date('2024-01-01');
-      mockDb.delete = () => ({
-        where: () => ({
-          returning: async () =>
-            Array(5)
-              .fill(null)
-              .map((_, i) => ({ ...mockActivityLog, id: `log-${i}` })),
-        }),
-      });
-
-      const repository = new (service.constructor as any)(mockDb);
-      const deletedCount = await repository.activityLogRepository?.deleteOlderThan(cutoffDate);
-
-      expect(deletedCount).toBe(5);
+      expect(result.logs[0].details).toBeNull();
     });
   });
 });

@@ -6,6 +6,7 @@ import { ProductsController } from '../controllers/products.controller';
 import { successResponse } from '../core/http/response';
 import { requireAuth, type AuthContext } from '../middlewares/auth.middleware';
 import { enforceRateLimit, type RateLimitOptions } from '../middlewares/rate-limit.middleware';
+import { productsDetails } from './details/products.details';
 import {
   createProductSchema,
   deleteProductQuerySchema,
@@ -46,16 +47,17 @@ const PRODUCT_ROUTE_LIMITS: Record<string, RouteLimitConfig> = {
   'PUT /api/v1/products/:id/stock': { maxRequests: 30, window: 60, strategy: 'user_or_ip' },
 };
 
-function toAuthContext(ctx: { user?: AuthContext['user']; tokenId?: string | null }): AuthContext {
+function toAuthContext(ctx: { user?: AuthContext['user']; tokenId?: string | null; accessToken?: string | null }): AuthContext {
   return {
     user: ctx.user ?? null,
     tokenId: ctx.tokenId ?? null,
+    accessToken: ctx.accessToken ?? null,
   };
 }
 
 export function createProductsRoutes(app: Elysia, productsService: ProductsService, authService: AuthService, pasetoService: PasetoService) {
   const controller = new ProductsController(productsService);
-  const auth = requireAuth(pasetoService, authService);
+  const authPlugin = requireAuth(pasetoService, authService);
 
   const limiters = {
     create: enforceRateLimit(PRODUCT_ROUTE_LIMITS['POST /api/v1/products']),
@@ -70,6 +72,8 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
 
   return app.group('/products', productsApp =>
     productsApp
+      // All routes in this group require authentication
+      .use(authPlugin)
       .post(
         '/',
         async ctx => {
@@ -80,8 +84,9 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
           return successResponse(routeCtx.request, data);
         },
         {
-          beforeHandle: [auth, limiters.create],
+          beforeHandle: [limiters.create],
           body: createProductSchema,
+          detail: productsDetails.createProduct,
         }
       )
       .get(
@@ -103,9 +108,10 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
           return successResponse(routeCtx.request, data);
         },
         {
-          beforeHandle: [auth, limiters.getById],
+          beforeHandle: [limiters.getById],
           params: productIdParamSchema,
           query: getProductQuerySchema,
+          detail: productsDetails.getProductById,
         }
       )
       .get(
@@ -133,8 +139,9 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
           return successResponse(routeCtx.request, data);
         },
         {
-          beforeHandle: [auth, limiters.list],
+          beforeHandle: [limiters.list],
           query: getProductsQuerySchema,
+          detail: productsDetails.getProducts,
         }
       )
       .patch(
@@ -147,9 +154,10 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
           return successResponse(routeCtx.request, data);
         },
         {
-          beforeHandle: [auth, limiters.patch],
+          beforeHandle: [limiters.patch],
           params: productIdParamSchema,
           body: updateProductSchema,
+          detail: productsDetails.patchProduct,
         }
       )
       .put(
@@ -162,9 +170,10 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
           return successResponse(routeCtx.request, data);
         },
         {
-          beforeHandle: [auth, limiters.update],
+          beforeHandle: [limiters.update],
           params: productIdParamSchema,
           body: updateProductSchema,
+          detail: productsDetails.putProduct,
         }
       )
       .delete(
@@ -179,9 +188,10 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
           return successResponse(routeCtx.request, data);
         },
         {
-          beforeHandle: [auth, limiters.remove],
+          beforeHandle: [limiters.remove],
           params: productIdParamSchema,
           query: deleteProductQuerySchema,
+          detail: productsDetails.deleteProduct,
         }
       )
       .post(
@@ -193,8 +203,9 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
           return successResponse(routeCtx.request, data);
         },
         {
-          beforeHandle: [auth, limiters.restore],
+          beforeHandle: [limiters.restore],
           params: productIdParamSchema,
+          detail: productsDetails.restoreProduct,
         }
       )
       .put(
@@ -207,9 +218,10 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
           return successResponse(routeCtx.request, data);
         },
         {
-          beforeHandle: [auth, limiters.stock],
+          beforeHandle: [limiters.stock],
           params: productIdParamSchema,
           body: updateStockSchema,
+          detail: productsDetails.updateStock,
         }
       )
   );

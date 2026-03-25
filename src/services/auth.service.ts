@@ -37,14 +37,13 @@ import type {
   LogoutInput,
   ValidateAccessTokenInput,
   ValidateAccessTokenOutput,
+  AuthActivityContext as AuthActivityContextType,
 } from './interfaces/auth.service.interface';
 import { ConflictError, AuthenticationError, ForbiddenError, InvalidTokenError, TokenExpiredError, NotFoundError } from '../core/errors/app-error';
 import { ActivityService, type LogActivityInput } from './activity.service';
 
-export interface AuthActivityContext {
-  ipAddress?: string;
-  userAgent?: string;
-}
+// Re-export AuthActivityContext for backward compatibility
+export type { AuthActivityContextType as AuthActivityContext };
 
 /**
  * Authentication Service Implementation
@@ -91,10 +90,10 @@ export class AuthService implements IAuthService {
    * @throws ConflictError if email already exists
    */
   // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-return
-  async register(input: RegisterInput, activityContext?: AuthActivityContext): Promise<RegisterOutput> {
+  async register(input: RegisterInput, activityContext?: AuthActivityContextType): Promise<RegisterOutput> {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return this.unitOfWork.withTransaction(async (uow: UnitOfWork): Promise<RegisterOutput> => {
-      const { ipAddress, userAgent } = activityContext || {};
+      const { ipAddress, userAgent, deviceType } = activityContext || {};
 
       const existingUser = await uow.users.findByEmail(input.email);
       if (existingUser) {
@@ -133,8 +132,11 @@ export class AuthService implements IAuthService {
       if (refreshTokenPayload.valid && refreshTokenPayload.payload) {
         const session = {
           userId: user.id,
-          token: tokens.refreshToken,
+          token: tokens.accessToken, // Store full access token for logout tracking
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          ipAddress,
+          userAgent,
+          deviceType,
         };
         await uow.sessions.create(session);
       }
@@ -175,10 +177,10 @@ export class AuthService implements IAuthService {
    * @throws ForbiddenError if user account is inactive
    */
   // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-return
-  async login(input: LoginInput, activityContext?: AuthActivityContext): Promise<LoginOutput> {
+  async login(input: LoginInput, activityContext?: AuthActivityContextType): Promise<LoginOutput> {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return this.unitOfWork.withTransaction(async (uow: UnitOfWork): Promise<LoginOutput> => {
-      const { ipAddress, userAgent } = activityContext || {};
+      const { ipAddress, userAgent, deviceType } = activityContext || {};
 
       const user = await uow.users.findByEmail(input.email);
       if (!user) {
@@ -210,8 +212,11 @@ export class AuthService implements IAuthService {
       if (refreshTokenPayload.valid && refreshTokenPayload.payload) {
         const session = {
           userId: user.id,
-          token: tokens.refreshToken,
+          token: tokens.accessToken, // Store full access token for logout tracking
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          ipAddress,
+          userAgent,
+          deviceType,
         };
         await uow.sessions.create(session);
       }
@@ -241,57 +246,62 @@ export class AuthService implements IAuthService {
   /**
    * Refresh access token using refresh token
    *
-   * Validates refresh token, checks session exists and is not revoked,
+   * Validates refresh token, finds active session by user ID,
    * and generates new token pair.
    *
    * @param input - Refresh token
    * @returns New token pair
    * @throws InvalidTokenError if refresh token is invalid
    * @throws TokenExpiredError if refresh token has expired
-   * @throws NotFoundError if session is not found or revoked
+   * @throws NotFoundError if no active session found
    */
-  async refreshToken(input: RefreshTokenInput): Promise<RefreshTokenOutput> {
+  async refreshToken(input: RefreshTokenInput, activityContext?: AuthActivityContextType): Promise<RefreshTokenOutput> {
+    const { ipAddress, userAgent, deviceType } = activityContext || {};
+
+    // Validate the refresh token
     const result = this.pasetoService.validateRefreshToken(input.refreshToken);
     if (!result.valid || !result.payload) {
       throw new InvalidTokenError('Invalid refresh token');
     }
 
-    const payload = result.payload as TokenPayload & { tokenId: string };
+    const payload = result.payload;
 
-    const session = await this.unitOfWork.sessions.findByTokenId(payload.tokenId);
-    if (!session) {
-      throw new NotFoundError('Session not found or has been revoked');
-    }
-
-    if (session.revokedAt) {
-      throw new InvalidTokenError('Refresh token has been revoked');
-    }
-
-    if (session.expiresAt < new Date()) {
-      throw new TokenExpiredError('Refresh token session has expired');
-    }
-
-    const user = await this.unitOfWork.users.findById(session.userId);
+    // Verify user exists and is active
+    const user = await this.unitOfWork.users.findById(payload.sub);
     if (!user || user.deletedAt) {
       throw new ForbiddenError('User account is inactive or does not exist');
     }
 
+    // Find active session for this user (single session policy)
+    const session = await this.unitOfWork.sessions.findActiveSessionByUserId(user.id);
+    if (!session) {
+      throw new NotFoundError('No active session found. Please login again.');
+    }
+
+    if (session.revokedAt) {
+      throw new InvalidTokenError('Session has been revoked');
+    }
+
+    // Generate new token pair
     const tokens = this.pasetoService.createTokenPair({
       sub: user.id,
       email: user.email,
       role: user.role,
     });
 
-    const newRefreshTokenPayload = this.pasetoService.validateRefreshToken(tokens.refreshToken);
-    if (newRefreshTokenPayload.valid && newRefreshTokenPayload.payload) {
-      const newSession = {
-        userId: user.id,
-        token: tokens.refreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      };
-      await this.unitOfWork.sessions.create(newSession);
-      await this.unitOfWork.sessions.revoke(session.id);
-    }
+    // Create new session with the new access token
+    const newSession = {
+      userId: user.id,
+      token: tokens.accessToken, // Store full access token for logout tracking
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      ipAddress,
+      userAgent,
+      deviceType,
+    };
+    await this.unitOfWork.sessions.create(newSession);
+
+    // Revoke the old session
+    await this.unitOfWork.sessions.revoke(session.id);
 
     return { tokens };
   }
@@ -299,30 +309,47 @@ export class AuthService implements IAuthService {
   /**
    * Logout user and revoke session
    *
-   * Revokes the refresh token session, preventing further token refreshes.
-   * Access tokens will still be valid until they expire naturally.
+   * Finds session by access token and revokes it.
+   * Prevents token reuse: if session is already revoked, throws error.
+   * Throws error if no session found (token not tracked or already deleted).
    *
-   * @param input - User ID and token ID
-   * @throws NotFoundError if session is not found
+   * @param input - User ID and access token
+   * @throws InvalidTokenError if token has already been used (session revoked)
+   * @throws NotFoundError if no session found for this token
    */
-  async logout(input: LogoutInput, activityContext?: AuthActivityContext): Promise<void> {
+  async logout(input: LogoutInput, activityContext?: AuthActivityContextType): Promise<void> {
     const { ipAddress, userAgent } = activityContext || {};
 
-    const session = await this.unitOfWork.sessions.findByTokenId(input.tokenId);
+    // Find session by full access token (stored in session.token)
+    const session = await this.unitOfWork.sessions.findByToken(input.accessToken);
+
+    // No session found - this means:
+    // 1. Token was never tracked (shouldn't happen in normal flow)
+    // 2. Session was hard-deleted
+    // Either way, we should inform the user their token is invalid
     if (!session) {
-      throw new NotFoundError('Session not found');
+      throw new NotFoundError('No active session found for this token');
     }
 
+    // Session exists but already revoked - token reuse attempt!
+    if (session.revokedAt) {
+      throw new InvalidTokenError('Token has already been used');
+    }
+
+    // Verify session belongs to the user (security check)
     if (session.userId !== input.userId) {
-      throw new InvalidTokenError('Session does not belong to user');
+      throw new ForbiddenError('Session does not belong to user');
     }
 
+    // Revoke the session (soft delete by setting revokedAt)
     await this.unitOfWork.sessions.revoke(session.id);
 
+    // Log the logout activity
     await this.logActivity({
       userId: input.userId,
       action: 'user.logged_out',
       entity: 'sessions',
+      entityId: session.id,
       ipAddress,
       userAgent,
     });

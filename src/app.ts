@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia';
 import { cors } from '@elysiajs/cors';
-import { swagger } from '@elysiajs/swagger';
+import { createOpenApiConfig } from './core/openapi';
 import { logger } from './core/logging/logger';
 import { loggingPlugin } from './core/logging/middleware';
 import { getConnection } from './database/connection';
@@ -87,22 +87,7 @@ export function createApp() {
         .use(createUsersRoutes(new Elysia(), usersService, authService, pasetoService))
         .use(createProductsRoutes(new Elysia(), productsService, authService, pasetoService))
     )
-    .use(
-      swagger({
-        documentation: {
-          info: {
-            title: 'Bun Elysia PASETO API',
-            version: '1.0.0',
-            description: 'Monolith REST API with PASETO authentication',
-          },
-          tags: [
-            { name: 'Authentication', description: 'User authentication endpoints' },
-            { name: 'Users', description: 'User management endpoints' },
-            { name: 'Products', description: 'Product management endpoints' },
-          ],
-        },
-      })
-    )
+    .use(createOpenApiConfig())
     .all('*', ctx => {
       const { set, request } = ctx;
       set.status = 404;

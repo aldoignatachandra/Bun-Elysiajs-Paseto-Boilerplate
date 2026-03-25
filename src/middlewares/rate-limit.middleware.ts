@@ -2,7 +2,8 @@ import type { Elysia } from 'elysia';
 import { TooManyRequestsError } from '../core/errors/app-error';
 import { logger } from '../core/logging/logger';
 import { getRedisConnection, isRedisHealthy } from '../core/redis/connection';
-import { checkAndConsume } from '../helpers/in-memory-rate-limiter';
+import { checkAndConsume } from '../helpers/rate-limiter.helper';
+import { getClientIp } from '../helpers/ip.helper';
 
 export interface RateLimitOptions {
   maxRequests?: number;
@@ -14,6 +15,12 @@ export interface RateLimitOptions {
   strategy?: 'ip' | 'user_or_ip';
 }
 
+interface RateLimitStatus {
+  limit: number;
+  remaining: number;
+  reset: number;
+}
+
 const DEFAULT_OPTIONS: Required<Omit<RateLimitOptions, 'keyGenerator'>> = {
   maxRequests: 100,
   window: 60,
@@ -22,20 +29,6 @@ const DEFAULT_OPTIONS: Required<Omit<RateLimitOptions, 'keyGenerator'>> = {
   prefix: 'ratelimit',
   strategy: 'ip',
 };
-
-function getClientIp(request: Request): string {
-  const forwardedFor = request.headers.get('x-forwarded-for');
-  if (forwardedFor) {
-    return forwardedFor.split(',')[0].trim();
-  }
-
-  const realIp = request.headers.get('x-real-ip');
-  if (realIp) {
-    return realIp;
-  }
-
-  return 'unknown';
-}
 
 function buildDefaultKey(ctx: { request: Request; user?: { id?: string } | null }, strategy: 'ip' | 'user_or_ip'): string {
   const path = new URL(ctx.request.url).pathname;
@@ -54,10 +47,7 @@ function buildDefaultKey(ctx: { request: Request; user?: { id?: string } | null 
  * Uses sliding window algorithm with Redis ZSET.
  * This is the preferred method when Redis is available.
  */
-async function enforceWithRedis(
-  key: string,
-  options: Required<Omit<RateLimitOptions, 'keyGenerator'>>
-): Promise<{ limit: number; remaining: number; reset: number }> {
+async function enforceWithRedis(key: string, options: Required<Omit<RateLimitOptions, 'keyGenerator'>>): Promise<RateLimitStatus> {
   const redisKey = `${options.prefix}:${key}`;
 
   const redis = getRedisConnection();
@@ -109,10 +99,7 @@ async function enforceWithRedis(
  * Uses token bucket algorithm with Map storage.
  * Used when Redis is unavailable to ensure graceful degradation.
  */
-function enforceWithInMemory(
-  key: string,
-  options: Required<Omit<RateLimitOptions, 'keyGenerator'>>
-): { limit: number; remaining: number; reset: number } {
+function enforceWithInMemory(key: string, options: Required<Omit<RateLimitOptions, 'keyGenerator'>>): RateLimitStatus {
   const windowMs = options.window * 1000;
   const result = checkAndConsume(key, options.maxRequests, windowMs);
 
@@ -146,7 +133,7 @@ function enforceWithInMemory(
  * Flow:
  * 1. Check Redis health using isRedisHealthy()
  * 2. If healthy -> use Redis enforcement (enforceWithRedis)
- * 3. If unhealthy -> use in-memory fallback (enforceWithInMemory) with warning log
+ * 3. if unhealthy -> use in-memory fallback (enforceWithInMemory) with warning log
  * 4. On Redis errors -> gracefully fall back to in-memory
  *
  * This ensures graceful degradation when Redis is temporarily unavailable,
@@ -157,7 +144,7 @@ async function enforce(
   options: Required<Omit<RateLimitOptions, 'keyGenerator'>> & {
     keyGenerator?: (ctx: { request: Request; user?: { id?: string } | null }) => string;
   }
-): Promise<{ limit: number; remaining: number; reset: number }> {
+): Promise<RateLimitStatus> {
   const key = options.keyGenerator?.(ctx) || buildDefaultKey(ctx, options.strategy);
 
   try {
@@ -195,7 +182,7 @@ async function enforce(
 export function enforceRateLimit(options: RateLimitOptions = {}) {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
-  return async (ctx: { request: Request; user?: { id?: string } | null; rateLimit?: unknown }) => {
+  return async (ctx: { request: Request; user?: { id?: string } | null; rateLimit?: RateLimitStatus }) => {
     const status = await enforce(
       {
         request: ctx.request,
@@ -204,9 +191,9 @@ export function enforceRateLimit(options: RateLimitOptions = {}) {
       opts
     );
 
-    return {
-      rateLimit: status,
-    };
+    // Store rate limit info in context for later use (e.g., adding headers)
+    // Do NOT return anything - returning would short-circuit the handler
+    ctx.rateLimit = status;
   };
 }
 

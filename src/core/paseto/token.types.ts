@@ -33,6 +33,7 @@ export interface TokenPair {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+  accessJti: string; // Access token JTI for session tracking
 }
 
 export interface TokenValidationResult {

@@ -50,7 +50,7 @@
   },
   "dependencies": {
     "@elysiajs/cors": "^1.0.2",
-    "@elysiajs/swagger": "^1.0.2",
+    "@elysiajs/openapi": "^1.4.14",
     "@tsoa/runtime": "^5.0.0",
     "argon2": "^0.40.0",
     "drizzle-orm": "^0.29.3",
@@ -62,7 +62,8 @@
     "pino-pretty": "^11.0.0",
     "tsyringe": "^4.8.0",
     "uuid": "^13.0.0",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "zod-to-json-schema": "^3.25.1"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.0",

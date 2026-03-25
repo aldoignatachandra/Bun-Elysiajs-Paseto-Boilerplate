@@ -1,5 +1,4 @@
 import type { Database } from './base.repository';
-import type { PgTransaction } from 'drizzle-orm/pg-core';
 import type { NewProduct, NewUserSession, NewUser, Product, UserSession, User } from '../database/schema';
 import type { ProductCreateWithVariantsInput, ProductUpdateWithVariantsInput, ProductView } from './products.repository';
 import { logger } from '../core/logging/logger';
@@ -9,14 +8,26 @@ import { UserRepository } from './users.repository';
 import { eq, count } from 'drizzle-orm';
 import { userActivityLogs } from '../database/schema';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type AnyPgTransaction = PgTransaction<any, any, any>;
-/* eslint-enable @typescript-eslint/no-explicit-any */
-
-export type TransactionClient = AnyPgTransaction & {
-  commit(): Promise<void>;
-  rollback(err?: Error): Promise<void>;
-};
+/**
+ * Unit of Work Pattern Implementation
+ *
+ * Provides a way to manage database transactions and repository instances.
+ * Supports both direct database operations and transactional operations.
+ *
+ * Usage:
+ * ```typescript
+ * const uow = new UnitOfWork(db);
+ *
+ * // With transaction (recommended for multi-step operations)
+ * await uow.withTransaction(async (tx) => {
+ *   await uow.users.create(userData);
+ *   await uow.sessions.create(sessionData);
+ * });
+ *
+ * // Or without transaction (for single operations)
+ * const user = await uow.users.findByEmail('test@example.com');
+ * ```
+ */
 
 export interface IUserRepository {
   findAll(options?: { limit?: number; offset?: number; search?: string; includeDeleted?: boolean; onlyDeleted?: boolean }): Promise<User[]>;
@@ -71,9 +82,8 @@ export interface IProductRepository {
   delete(id: string): Promise<boolean>;
 }
 
-export class UnitOfWork implements AsyncDisposable {
+export class UnitOfWork {
   private _db: Database;
-  private _transaction: TransactionClient | null = null;
   private _users: IUserRepository | null = null;
   private _sessions: ISessionRepository | null = null;
   private _products: IProductRepository | null = null;
@@ -95,27 +105,23 @@ export class UnitOfWork implements AsyncDisposable {
     this._db = db;
   }
 
-  private get client(): Database | TransactionClient {
-    return this._transaction ?? this._db;
-  }
-
   get users(): IUserRepository {
     if (!this._users) {
-      this._users = new UserRepository(this.client as Database);
+      this._users = new UserRepository(this._db);
     }
     return this._users;
   }
 
   get sessions(): ISessionRepository {
     if (!this._sessions) {
-      this._sessions = new SessionRepository(this.client as Database);
+      this._sessions = new SessionRepository(this._db);
     }
     return this._sessions;
   }
 
   get products(): IProductRepository {
     if (!this._products) {
-      this._products = new ProductRepository(this.client as Database);
+      this._products = new ProductRepository(this._db);
     }
     return this._products;
   }
@@ -132,10 +138,10 @@ export class UnitOfWork implements AsyncDisposable {
           ipAddress?: string;
           userAgent?: string;
         }): Promise<void> => {
-          await this.client.insert(userActivityLogs).values(data).returning();
+          await this._db.insert(userActivityLogs).values(data).returning();
         },
         findByUserId: (userId: string, options: { limit?: number; offset?: number } = {}) =>
-          this.client
+          this._db
             .select()
             .from(userActivityLogs)
             .where(eq(userActivityLogs.userId, userId))
@@ -143,7 +149,7 @@ export class UnitOfWork implements AsyncDisposable {
             .limit(options.limit ?? 50)
             .offset(options.offset ?? 0),
         countByUserId: async (userId: string) => {
-          const result = await this.client.select({ count: count() }).from(userActivityLogs).where(eq(userActivityLogs.userId, userId));
+          const result = await this._db.select({ count: count() }).from(userActivityLogs).where(eq(userActivityLogs.userId, userId));
           return result[0]?.count ?? 0;
         },
       };
@@ -151,83 +157,153 @@ export class UnitOfWork implements AsyncDisposable {
     return this._activityLogs;
   }
 
-  async beginTransaction(): Promise<void> {
-    if (this._transaction) {
-      throw new Error('Transaction already started');
-    }
-
-    // eslint-disable-next-line @typescript-eslint/require-await
-    this._transaction = (await this._db.transaction(async tx => tx)) as TransactionClient;
-
-    this._users = null;
-    this._sessions = null;
-    this._products = null;
-    this._activityLogs = null;
-
-    logger.debug('Transaction started');
-  }
-
-  async commit(): Promise<void> {
-    if (!this._transaction) {
-      throw new Error('No active transaction');
-    }
+  /**
+   * Execute operations within a database transaction
+   *
+   * This is the recommended way to perform multi-step database operations.
+   * The transaction will automatically commit if the callback succeeds,
+   * or rollback if it throws an error.
+   *
+   * @param fn - Callback function that receives a transaction client
+   * @returns The result of the callback function
+   * @throws Re-throws any error from the callback after rolling back
+   *
+   * @example
+   * ```typescript
+   * await uow.withTransaction(async (tx) => {
+   *   const user = await uow.users.create(userData);
+   *   await uow.sessions.create(sessionData);
+   *   return user;
+   * });
+   * ```
+   */
+  async withTransaction<T>(fn: (tx: unknown) => Promise<T>): Promise<T> {
+    logger.debug('Starting transaction');
 
     try {
-      await this._transaction.commit();
-      logger.debug('Transaction committed');
+      // Use Drizzle's transaction API directly
+      // The callback receives the transaction object (tx) which should be used
+      // for all database operations within the transaction
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return (await this._db.transaction(async tx => {
+        // Create new repository instances with transaction
+        const txUsers = new UserRepository(tx as Database);
+        const txSessions = new SessionRepository(tx as Database);
+        const txProducts = new ProductRepository(tx as Database);
+        const txActivityLogs = {
+          create: async (data: {
+            userId: string;
+            action: string;
+            entity: string;
+            entityId?: string;
+            details?: Record<string, unknown>;
+            ipAddress?: string;
+            userAgent?: string;
+          }): Promise<void> => {
+            await tx.insert(userActivityLogs).values(data).returning();
+          },
+          findByUserId: (userId: string, options: { limit?: number; offset?: number } = {}) =>
+            tx
+              .select()
+              .from(userActivityLogs)
+              .where(eq(userActivityLogs.userId, userId))
+              .orderBy(userActivityLogs.createdAt)
+              .limit(options.limit ?? 50)
+              .offset(options.offset ?? 0),
+          countByUserId: async (userId: string) => {
+            const result = await tx.select({ count: count() }).from(userActivityLogs).where(eq(userActivityLogs.userId, userId));
+            return result[0]?.count ?? 0;
+          },
+        };
+
+        // Create a new UnitOfWork with transaction context
+        const txUow = new TransactionUnitOfWork(tx as Database, txUsers, txSessions, txProducts, txActivityLogs);
+
+        // Execute the callback with the transaction-aware unit of work
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return await fn(txUow);
+      })) as T;
     } catch (error) {
-      this._transaction.rollback();
-      throw error;
-    } finally {
-      this._transaction = null;
-      this._users = null;
-      this._sessions = null;
-      this._products = null;
-      this._activityLogs = null;
-    }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async rollback(): Promise<void> {
-    if (!this._transaction) {
-      throw new Error('No active transaction');
-    }
-
-    this._transaction.rollback();
-    logger.warn('Transaction rolled back');
-
-    this._transaction = null;
-    this._users = null;
-    this._sessions = null;
-    this._products = null;
-    this._activityLogs = null;
-  }
-
-  get isTransactionActive(): boolean {
-    return this._transaction !== null;
-  }
-
-  async [Symbol.asyncDispose](): Promise<void> {
-    if (this._transaction) {
-      await this.rollback();
-    }
-  }
-
-  async withTransaction<T>(fn: (unitOfWork: UnitOfWork) => Promise<T>): Promise<T> {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    if (this._transaction) {
-      return fn(this);
-    }
-
-    await this.beginTransaction();
-    try {
-      const result = await fn(this);
-      await this.commit();
-      return result;
-    } catch (error) {
-      await this.rollback();
+      logger.error('Transaction failed', { message: error instanceof Error ? error.message : 'Unknown error' });
       throw error;
     }
+  }
+}
+
+/**
+ * Transaction-aware Unit of Work
+ *
+ * Used internally during transactions to provide repository instances
+ * that use the transaction client instead of the main database connection.
+ */
+class TransactionUnitOfWork {
+  private _users: IUserRepository;
+  private _sessions: ISessionRepository;
+  private _products: IProductRepository;
+  private _activityLogs: {
+    create(data: {
+      userId: string;
+      action: string;
+      entity: string;
+      entityId?: string;
+      details?: Record<string, unknown>;
+      ipAddress?: string;
+      userAgent?: string;
+    }): Promise<void>;
+    findByUserId(userId: string, options?: { limit?: number; offset?: number }): Promise<unknown[]>;
+    countByUserId(userId: string): Promise<number>;
+  };
+
+  constructor(
+    _db: Database,
+    users: IUserRepository,
+    sessions: ISessionRepository,
+    products: IProductRepository,
+    activityLogs: {
+      create(data: {
+        userId: string;
+        action: string;
+        entity: string;
+        entityId?: string;
+        details?: Record<string, unknown>;
+        ipAddress?: string;
+        userAgent?: string;
+      }): Promise<void>;
+      findByUserId(userId: string, options?: { limit?: number; offset?: number }): Promise<unknown[]>;
+      countByUserId(userId: string): Promise<number>;
+    }
+  ) {
+    this._users = users;
+    this._sessions = sessions;
+    this._products = products;
+    this._activityLogs = activityLogs;
+  }
+
+  get users(): IUserRepository {
+    return this._users;
+  }
+
+  get sessions(): ISessionRepository {
+    return this._sessions;
+  }
+
+  get products(): IProductRepository {
+    return this._products;
+  }
+
+  get activityLogs() {
+    return this._activityLogs;
+  }
+
+  /**
+   * Execute callback within existing transaction context
+   *
+   * Since we're already in a transaction, this just executes the callback directly
+   * with the current transaction context.
+   */
+  async withTransaction<T>(fn: (uow: TransactionUnitOfWork) => Promise<T>): Promise<T> {
+    // We're already in a transaction, just execute the callback
+    return await fn(this);
   }
 }
 

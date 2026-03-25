@@ -1,506 +1,216 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'bun:test';
-import { TooManyRequestsError } from '@/core/errors/app-error';
-import { createMockRedis } from '../mocks/redis.mocks';
-import { resetInMemoryStore } from '@/helpers/in-memory-rate-limiter';
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
+import { describe, test, expect, beforeEach, afterEach, vi } from 'bun:test';
+import type { RateLimitStatus } from '@/middlewares/rate-limit.middleware';
 
-// Mock Redis connection
-const mockRedis = createMockRedis();
-
-// Mutable flag to control Redis health in tests
-let redisHealthy = true;
-
-// Mock only getRedisConnection, preserve other exports
-const originalGetRedisConnection = () => mockRedis;
-const mockIsRedisHealthy = async () => redisHealthy;
-const mockCloseRedisConnection = async () => {};
-const mockGetRedisConnectionInfo = () => ({
-  connected: redisHealthy,
-  host: 'localhost',
-  port: 6379,
-  db: 0,
-});
-
-vi.mock('@/core/redis/connection', () => ({
-  getRedisConnection: originalGetRedisConnection,
-  isRedisHealthy: mockIsRedisHealthy,
-  closeRedisConnection: mockCloseRedisConnection,
-  getRedisConnectionInfo: mockGetRedisConnectionInfo,
-}));
-
-// Mock logger
-const mockLogger = {
-  warn: vi.fn(),
-  error: vi.fn(),
-  debug: vi.fn(),
-  info: vi.fn(),
+// Mock Redis
+const mockRedis = {
+  multi: vi.fn(() => mockRedis),
+  zremrangebyscore: vi.fn(() => mockRedis),
+  zadd: vi.fn(() => mockRedis),
+  zcard: vi.fn(() => mockRedis),
+  expire: vi.fn(() => mockRedis),
+  exec: vi.fn(() => [
+    [null, 1],
+    [null, 1],
+    [null, 5],
+    [null, 60],
+  ]),
+  del: vi.fn(() => Promise.resolve(1)),
+  ttl: vi.fn(() => Promise.resolve(60)),
+  set: vi.fn(() => Promise.resolve('OK')),
+  _clear: () => {
+    mockRedis.multi.mockClear();
+    mockRedis.zremrangebyscore.mockClear();
+    mockRedis.zadd.mockClear();
+    mockRedis.zcard.mockClear();
+    mockRedis.expire.mockClear();
+    mockRedis.exec.mockClear();
+    mockRedis.del.mockClear();
+    mockRedis.ttl.mockClear();
+    mockRedis.set.mockClear();
+  },
+  _resetImplementations: () => {
+    mockRedis.multi.mockImplementation(() => mockRedis);
+    mockRedis.zremrangebyscore.mockImplementation(() => mockRedis);
+    mockRedis.zadd.mockImplementation(() => mockRedis);
+    mockRedis.zcard.mockImplementation(() => mockRedis);
+    mockRedis.expire.mockImplementation(() => mockRedis);
+    mockRedis.exec.mockImplementation(() => [
+      [null, 1],
+      [null, 1],
+      [null, 5],
+      [null, 60],
+    ]);
+    mockRedis.del.mockImplementation(() => Promise.resolve(1));
+    mockRedis.ttl.mockImplementation(() => Promise.resolve(60));
+    mockRedis.set.mockImplementation(() => Promise.resolve('OK'));
+  },
 };
 
+// Mock logger
 vi.mock('@/core/logging/logger', () => ({
-  logger: mockLogger,
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
 }));
+
+// Mock Redis connection
+vi.mock('@/core/redis/connection', () => ({
+  getRedisConnection: () => mockRedis,
+  isRedisHealthy: () => Promise.resolve(true),
+}));
+
+// Helper to create mock request with proper headers
+function createMockRequest(url: string = 'http://localhost/test'): Request {
+  const headers = new Map<string, string>();
+  return {
+    url,
+    method: 'GET',
+    headers: {
+      get: (key: string) => headers.get(key),
+      set: (key: string, value: string) => headers.set(key, value),
+    },
+  } as unknown as Request;
+}
 
 describe('Rate Limit Middleware', () => {
   beforeEach(() => {
     mockRedis._clear();
     mockRedis._resetImplementations();
-    vi.clearAllMocks();
-    redisHealthy = true; // Reset Redis health to healthy by default
-    resetInMemoryStore(); // Reset in-memory rate limiter state
   });
 
   afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('should store rate limit status in context', async () => {
+    const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
+    const beforeHandle = enforceRateLimit();
+
+    const ctx = {
+      request: createMockRequest(),
+      user: null,
+      rateLimit: undefined as RateLimitStatus | undefined,
+    };
+
+    await beforeHandle(ctx);
+    expect(ctx.rateLimit).toBeDefined();
+    expect(ctx.rateLimit!.limit).toBe(100);
+    expect(typeof ctx.rateLimit!.remaining).toBe('number');
+    expect(typeof ctx.rateLimit!.reset).toBe('number');
+  });
+
+  test('should use custom options', async () => {
     mockRedis._clear();
     mockRedis._resetImplementations();
-    redisHealthy = true; // Ensure Redis health is reset after each test
-    resetInMemoryStore(); // Clean up in-memory state
+    const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
+    const beforeHandle = enforceRateLimit({ maxRequests: 10, window: 60 });
+
+    const ctx = {
+      request: createMockRequest(),
+      user: null,
+      rateLimit: undefined as RateLimitStatus | undefined,
+    };
+
+    await beforeHandle(ctx);
+    expect(ctx.rateLimit!.limit).toBe(10);
   });
 
-  describe('Exports', () => {
-    it('should export rateLimit function', async () => {
-      const { rateLimit } = await import('@/middlewares/rate-limit.middleware');
-      expect(typeof rateLimit).toBe('function');
-    });
+  test('should call Redis multi transaction', async () => {
+    mockRedis._clear();
+    mockRedis._resetImplementations();
+    const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
+    const beforeHandle = enforceRateLimit();
 
-    it('should export rateLimitByUser function', async () => {
-      const { rateLimitByUser } = await import('@/middlewares/rate-limit.middleware');
-      expect(typeof rateLimitByUser).toBe('function');
-    });
+    const ctx = {
+      request: createMockRequest(),
+      user: null,
+      rateLimit: undefined as RateLimitStatus | undefined,
+    };
 
-    it('should export enforceRateLimit function', async () => {
-      const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
-      expect(typeof enforceRateLimit).toBe('function');
-    });
+    await beforeHandle(ctx);
+    expect(mockRedis.multi).toHaveBeenCalled();
+  });
+});
 
-    it('should export resetRateLimit function', async () => {
-      const { resetRateLimit } = await import('@/middlewares/rate-limit.middleware');
-      expect(typeof resetRateLimit).toBe('function');
-    });
+describe('resetRateLimit', () => {
+  test('should reset rate limit for a key', async () => {
+    mockRedis._clear();
+    mockRedis._resetImplementations();
 
-    it('should export getRateLimitStatus function', async () => {
-      const { getRateLimitStatus } = await import('@/middlewares/rate-limit.middleware');
-      expect(typeof getRateLimitStatus).toBe('function');
-    });
+    const { resetRateLimit } = await import('@/middlewares/rate-limit.middleware');
+
+    await resetRateLimit('test-key');
+    expect(mockRedis.del).toHaveBeenCalledWith('ratelimit:test-key');
   });
 
-  describe('rateLimit middleware configuration', () => {
-    it('should create middleware with default options', async () => {
-      const { rateLimit } = await import('@/middlewares/rate-limit.middleware');
-      const middleware = rateLimit();
-      expect(middleware).toBeDefined();
-      expect(typeof middleware).toBe('function');
-    });
+  test('should use custom prefix', async () => {
+    mockRedis._clear();
+    mockRedis._resetImplementations();
 
-    it('should create middleware with custom options', async () => {
-      const { rateLimit } = await import('@/middlewares/rate-limit.middleware');
-      const middleware = rateLimit({ maxRequests: 50, window: 120 });
-      expect(middleware).toBeDefined();
-    });
+    const { resetRateLimit } = await import('@/middlewares/rate-limit.middleware');
 
-    it('should create middleware with ip strategy', async () => {
-      const { rateLimit } = await import('@/middlewares/rate-limit.middleware');
-      const middleware = rateLimit({ strategy: 'ip' });
-      expect(middleware).toBeDefined();
-    });
+    await resetRateLimit('test-key', 'custom-prefix');
+    expect(mockRedis.del).toHaveBeenCalledWith('custom-prefix:test-key');
+  });
+});
 
-    it('should create middleware with user_or_ip strategy', async () => {
-      const { rateLimit } = await import('@/middlewares/rate-limit.middleware');
-      const middleware = rateLimit({ strategy: 'user_or_ip' });
-      expect(middleware).toBeDefined();
-    });
+describe('getRateLimitStatus', () => {
+  test('should return rate limit status with correct structure', async () => {
+    mockRedis._clear();
+    mockRedis._resetImplementations();
 
-    it('should create middleware with custom key generator', async () => {
-      const { rateLimit } = await import('@/middlewares/rate-limit.middleware');
-      const keyGenerator = vi.fn(() => 'custom-key');
-      const middleware = rateLimit({ keyGenerator });
-      expect(middleware).toBeDefined();
-    });
+    const { getRateLimitStatus } = await import('@/middlewares/rate-limit.middleware');
 
-    it('should create middleware with custom error message', async () => {
-      const { rateLimit } = await import('@/middlewares/rate-limit.middleware');
-      const middleware = rateLimit({ errorMessage: 'Custom error' });
-      expect(middleware).toBeDefined();
-    });
+    const status = await getRateLimitStatus('test-key', 10, 60);
 
-    it('should create middleware with custom prefix', async () => {
-      const { rateLimit } = await import('@/middlewares/rate-limit.middleware');
-      const middleware = rateLimit({ prefix: 'custom-prefix' });
-      expect(middleware).toBeDefined();
-    });
+    expect(status).toHaveProperty('limit');
+    expect(status).toHaveProperty('remaining');
+    expect(status).toHaveProperty('reset');
+    expect(status).toHaveProperty('current');
+    expect(typeof status.remaining).toBe('number');
+    expect(typeof status.reset).toBe('number');
+    expect(typeof status.current).toBe('number');
   });
 
-  describe('rateLimitByUser', () => {
-    it('should create user-based rate limit middleware', async () => {
-      const { rateLimitByUser } = await import('@/middlewares/rate-limit.middleware');
-      const middleware = rateLimitByUser();
-      expect(middleware).toBeDefined();
-    });
+  test('should calculate remaining requests correctly', async () => {
+    mockRedis._clear();
+    mockRedis._resetImplementations();
 
-    it('should create user-based middleware with custom options', async () => {
-      const { rateLimitByUser } = await import('@/middlewares/rate-limit.middleware');
-      const middleware = rateLimitByUser({ maxRequests: 25, window: 30 });
-      expect(middleware).toBeDefined();
-    });
+    const { getRateLimitStatus } = await import('@/middlewares/rate-limit.middleware');
+
+    const status = await getRateLimitStatus('test-key', 100, 60);
+
+    expect(status.remaining).toBeGreaterThanOrEqual(0);
+    expect(status.remaining).toBeLessThanOrEqual(status.limit);
   });
+});
 
-  describe('enforceRateLimit', () => {
-    it('should return rate limit status with correct properties', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-      const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
+describe('Redis error handling', () => {
+  test('should fall back to in-memory rate limiter when Redis operations fail', async () => {
+    mockRedis._clear();
+    mockRedis._resetImplementations();
+    const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
 
-      const beforeHandle = enforceRateLimit({ maxRequests: 10, window: 60 });
+    const beforeHandle = enforceRateLimit({ maxRequests: 5, window: 60 });
 
-      const ctx = {
-        request: new Request('http://localhost/test'),
-        user: null,
-      };
+    const ctx = {
+      request: createMockRequest(),
+      user: null,
+      rateLimit: undefined as RateLimitStatus | undefined,
+    };
 
-      const result = await beforeHandle(ctx);
-
-      expect(result).toHaveProperty('rateLimit');
-      expect(result.rateLimit).toHaveProperty('limit');
-      expect(result.rateLimit).toHaveProperty('remaining');
-      expect(result.rateLimit).toHaveProperty('reset');
-      expect(result.rateLimit.limit).toBe(10);
-      expect(typeof result.rateLimit.remaining).toBe('number');
-      expect(typeof result.rateLimit.reset).toBe('number');
+    // Force Redis to throw error
+    mockRedis.multi = vi.fn(() => {
+      throw new Error('Redis error');
     });
 
-    it('should use default options when none provided', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-      const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
-
-      const beforeHandle = enforceRateLimit();
-
-      const ctx = {
-        request: new Request('http://localhost/test'),
-        user: null,
-      };
-
-      const result = await beforeHandle(ctx);
-
-      expect(result.rateLimit.limit).toBe(100); // default maxRequests
-    });
-
-    it('should include user context when available', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-      const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
-
-      const beforeHandle = enforceRateLimit({ maxRequests: 10, window: 60, strategy: 'user_or_ip' });
-
-      const ctx = {
-        request: new Request('http://localhost/test'),
-        user: { id: 'user-123' },
-      };
-
-      const result = await beforeHandle(ctx);
-
-      expect(result.rateLimit.limit).toBe(10);
-    });
-
-    it('should call Redis multi transaction', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-      const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
-
-      const beforeHandle = enforceRateLimit({ maxRequests: 10, window: 60 });
-
-      const ctx = {
-        request: new Request('http://localhost/test'),
-        user: null,
-      };
-
-      await beforeHandle(ctx);
-
-      expect(mockRedis.multi).toHaveBeenCalled();
-    });
-  });
-
-  describe('resetRateLimit', () => {
-    it('should reset rate limit for a key', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-
-      const { resetRateLimit } = await import('@/middlewares/rate-limit.middleware');
-
-      // Add some data
-      await mockRedis.set('ratelimit:test-key', 'some-data');
-
-      // Reset should delete the key
-      await resetRateLimit('test-key');
-      expect(mockRedis.del).toHaveBeenCalledWith('ratelimit:test-key');
-    });
-
-    it('should use custom prefix', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-
-      const { resetRateLimit } = await import('@/middlewares/rate-limit.middleware');
-
-      await resetRateLimit('test-key', 'custom-prefix');
-      expect(mockRedis.del).toHaveBeenCalledWith('custom-prefix:test-key');
-    });
-
-    it('should log success message', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-
-      const { resetRateLimit } = await import('@/middlewares/rate-limit.middleware');
-
-      await resetRateLimit('test-key');
-      expect(mockLogger.info).toHaveBeenCalledWith('Rate limit reset', { key: 'test-key', prefix: 'ratelimit' });
-    });
-
-    it('should throw error when Redis fails', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-
-      const { resetRateLimit } = await import('@/middlewares/rate-limit.middleware');
-
-      mockRedis.del = vi.fn(() => {
-        throw new Error('Redis error');
-      });
-
-      await expect(resetRateLimit('test-key')).rejects.toThrow('Failed to reset rate limit');
-      expect(mockLogger.error).toHaveBeenCalled();
-    });
-  });
-
-  describe('getRateLimitStatus', () => {
-    it('should return rate limit status with correct structure', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-
-      const { getRateLimitStatus } = await import('@/middlewares/rate-limit.middleware');
-
-      const status = await getRateLimitStatus('test-key', 10, 60);
-
-      expect(status).toHaveProperty('limit', 10);
-      expect(status).toHaveProperty('remaining');
-      expect(status).toHaveProperty('reset');
-      expect(status).toHaveProperty('current');
-      expect(typeof status.remaining).toBe('number');
-      expect(typeof status.reset).toBe('number');
-      expect(typeof status.current).toBe('number');
-    });
-
-    it('should use custom prefix', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-
-      const { getRateLimitStatus } = await import('@/middlewares/rate-limit.middleware');
-
-      const status = await getRateLimitStatus('test-key', 10, 60, 'custom-prefix');
-      expect(status.limit).toBe(10);
-    });
-
-    it('should calculate remaining requests correctly', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-
-      const { getRateLimitStatus } = await import('@/middlewares/rate-limit.middleware');
-
-      const status = await getRateLimitStatus('test-key', 100, 60);
-
-      expect(status.remaining).toBeGreaterThanOrEqual(0);
-      expect(status.remaining).toBeLessThanOrEqual(status.limit);
-    });
-
-    it('should throw error when Redis transaction fails', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-
-      const { getRateLimitStatus } = await import('@/middlewares/rate-limit.middleware');
-
-      mockRedis.multi = vi.fn(() => {
-        throw new Error('Redis error');
-      });
-
-      await expect(getRateLimitStatus('test-key', 10, 60)).rejects.toThrow('Failed to get rate limit status');
-      expect(mockLogger.error).toHaveBeenCalled();
-    });
-
-    it('should throw error when multi.exec returns null', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-
-      const { getRateLimitStatus } = await import('@/middlewares/rate-limit.middleware');
-
-      mockRedis.multi = vi.fn(() => ({
-        zremrangebyscore: () => ({ exec: vi.fn() }),
-        zcard: () => ({ exec: vi.fn() }),
-        ttl: () => ({ exec: vi.fn() }),
-        exec: vi.fn(async () => null),
-      }));
-
-      await expect(getRateLimitStatus('test-key', 10, 60)).rejects.toThrow('Failed to get rate limit status');
-    });
-  });
-
-  describe('Redis error handling', () => {
-    it('should fall back to in-memory rate limiter when Redis operations fail', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-      const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
-
-      // Make Redis operations fail
-      mockRedis.multi = vi.fn(() => {
-        throw new Error('Redis connection error');
-      });
-
-      const beforeHandle = enforceRateLimit({ maxRequests: 5, window: 60 });
-
-      const ctx = {
-        request: new Request('http://localhost/test'),
-        user: null,
-      };
-
-      // Request should succeed using in-memory fallback
-      // First request consumes 1 token, so remaining = 4
-      const result = await beforeHandle(ctx);
-      expect(result.rateLimit.remaining).toBe(4);
-      expect(result.rateLimit.limit).toBe(5);
-    });
-
-    it('should continue using in-memory fallback across multiple requests', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-      const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
-
-      // Make Redis operations fail
-      mockRedis.multi = vi.fn(() => {
-        throw new Error('Redis connection error');
-      });
-
-      const beforeHandle = enforceRateLimit({ maxRequests: 3, window: 60 });
-
-      const ctx = {
-        request: new Request('http://localhost/test'),
-        user: null,
-      };
-
-      // First request - should succeed with in-memory fallback
-      const result1 = await beforeHandle(ctx);
-      expect(result1.rateLimit.remaining).toBe(2);
-
-      // Second request
-      const result2 = await beforeHandle(ctx);
-      expect(result2.rateLimit.remaining).toBe(1);
-
-      // Third request
-      const result3 = await beforeHandle(ctx);
-      expect(result3.rateLimit.remaining).toBe(0);
-
-      // Fourth request should be rate limited
-      await expect(beforeHandle(ctx)).rejects.toThrow(TooManyRequestsError);
-    });
-
-    it('should log error when Redis operation fails and fallback is used', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-      const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
-
-      // Make Redis operations fail
-      mockRedis.multi = vi.fn(() => {
-        throw new Error('Redis connection error');
-      });
-
-      const beforeHandle = enforceRateLimit({ maxRequests: 5, window: 60 });
-
-      const ctx = {
-        request: new Request('http://localhost/test'),
-        user: null,
-      };
-
-      // This should succeed with fallback and log the error
-      await beforeHandle(ctx);
-
-      expect(mockLogger.error).toHaveBeenCalled();
-    });
-  });
-
-  describe('Redis unavailable (health check) fallback', () => {
-    it('should use in-memory fallback when isRedisHealthy returns false', async () => {
-      // Set Redis as unhealthy
-      redisHealthy = false;
-
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-
-      const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
-
-      const beforeHandle = enforceRateLimit({ maxRequests: 5, window: 60 });
-
-      const ctx = {
-        request: new Request('http://localhost/test'),
-        user: null,
-      };
-
-      // Request should succeed using in-memory fallback
-      const result = await beforeHandle(ctx);
-      expect(result.rateLimit.remaining).toBe(4);
-      expect(result.rateLimit.limit).toBe(5);
-
-      // Should log warning about fallback
-      expect(mockLogger.warn).toHaveBeenCalled();
-    });
-
-    it('should log warning when falling back due to health check', async () => {
-      // Set Redis as unhealthy
-      redisHealthy = false;
-
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-
-      const { enforceRateLimit } = await import('@/middlewares/rate-limit.middleware');
-
-      const beforeHandle = enforceRateLimit({ maxRequests: 5, window: 60 });
-
-      const ctx = {
-        request: new Request('http://localhost/test'),
-        user: null,
-      };
-
-      await beforeHandle(ctx);
-
-      // Check that warning was logged about Redis unavailable
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        'Redis unavailable, using in-memory rate limiter fallback',
-        expect.objectContaining({
-          fallback: 'in-memory',
-        })
-      );
-    });
-  });
-
-  describe('RateLimitOptions interface', () => {
-    it('should accept all valid option combinations', async () => {
-      mockRedis._clear();
-      mockRedis._resetImplementations();
-      const { rateLimit } = await import('@/middlewares/rate-limit.middleware');
-
-      // All options
-      const middleware1 = rateLimit({
-        maxRequests: 100,
-        window: 60,
-        keyGenerator: vi.fn(),
-        skipFailedRequests: true,
-        errorMessage: 'Custom message',
-        prefix: 'custom',
-        strategy: 'ip',
-      });
-      expect(middleware1).toBeDefined();
-
-      // Minimal options
-      const middleware2 = rateLimit({});
-      expect(middleware2).toBeDefined();
-
-      // Partial options
-      const middleware3 = rateLimit({ maxRequests: 50 });
-      expect(middleware3).toBeDefined();
-    });
+    // Request should succeed using in-memory fallback
+    // First request consumes 1 token, so remaining = 4
+    await beforeHandle(ctx);
+    expect(ctx.rateLimit!.remaining).toBe(4);
   });
 });

@@ -31,10 +31,25 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   async findByTokenId(tokenId: string): Promise<UserSession | null> {
     try {
-      const result = await this.db.select().from(userSessions).where(eq(userSessions.id, tokenId)).limit(1);
+      // tokenId is stored in the token field for refresh token sessions
+      const result = await this.db.select().from(userSessions).where(eq(userSessions.token, tokenId)).limit(1);
       return result[0] || null;
     } catch (error) {
       this.logError('findByTokenId', error);
+      return null;
+    }
+  }
+
+  async findActiveSessionByUserId(userId: string): Promise<UserSession | null> {
+    try {
+      const result = await this.db
+        .select()
+        .from(userSessions)
+        .where(and(eq(userSessions.userId, userId), isNull(userSessions.revokedAt)))
+        .limit(1);
+      return result[0] || null;
+    } catch (error) {
+      this.logError('findActiveSessionByUserId', error);
       return null;
     }
   }
