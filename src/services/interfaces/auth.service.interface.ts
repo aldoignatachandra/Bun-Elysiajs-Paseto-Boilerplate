@@ -8,6 +8,8 @@
 import type { TokenPair } from '../../core/paseto/token.types';
 
 export interface AuthActivityContext {
+  /** ID of the user performing the action (for activity logging) */
+  performedBy?: string;
   ipAddress?: string;
   userAgent?: string;
   deviceType?: string;

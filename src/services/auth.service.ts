@@ -93,7 +93,7 @@ export class AuthService implements IAuthService {
   async register(input: RegisterInput, activityContext?: AuthActivityContextType): Promise<RegisterOutput> {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return this.unitOfWork.withTransaction(async (uow: UnitOfWork): Promise<RegisterOutput> => {
-      const { ipAddress, userAgent, deviceType } = activityContext || {};
+      const { performedBy, ipAddress, userAgent, deviceType } = activityContext || {};
 
       const existingUser = await uow.users.findByEmail(input.email);
       if (existingUser) {
@@ -144,8 +144,10 @@ export class AuthService implements IAuthService {
         await uow.sessions.create(session);
       }
 
+      // Use performedBy (admin who created the user) for activity log
+      // Falls back to the new user's ID if no performedBy is provided
       await uow.activityLogs.create({
-        userId: user.id,
+        userId: performedBy || user.id,
         action: 'user.registered',
         entity: 'users',
         entityId: user.id,

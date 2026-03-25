@@ -178,7 +178,10 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
           }
 
           const body = registerRequestSchema.parse(routeCtx.body);
-          const activityContext = getActivityContext(routeCtx.request);
+          const activityContext = {
+            ...getActivityContext(routeCtx.request),
+            performedBy: routeCtx.user?.id, // Admin who is creating the new user
+          };
 
           const result = await authController.register(
             {
