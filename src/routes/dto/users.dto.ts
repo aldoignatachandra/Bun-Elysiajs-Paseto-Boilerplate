@@ -22,9 +22,19 @@ export type GetUsersQueryDTO = z.infer<typeof getUsersQuerySchema>;
 export const activityQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10),
-  user_id: uuidSchema.optional(),
-  action: z.string().optional(),
-  resource: z.string().optional(),
+  user_id: z
+    .string()
+    .transform(val => (val === '' ? undefined : val))
+    .pipe(uuidSchema.optional())
+    .optional(),
+  action: z
+    .string()
+    .transform(val => (val === '' ? undefined : val))
+    .optional(),
+  resource: z
+    .string()
+    .transform(val => (val === '' ? undefined : val))
+    .optional(),
 });
 
 export type ActivityQueryDTO = z.infer<typeof activityQuerySchema>;
