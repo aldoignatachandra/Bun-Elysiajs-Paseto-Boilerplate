@@ -86,3 +86,58 @@ export function getCurrentTimezone(): string {
 
   return offsetMins > 0 ? `GMT${offsetSign}${offsetHours}:${String(offsetMins).padStart(2, '0')}` : `GMT${offsetSign}${offsetHours}`;
 }
+
+/**
+ * Options for formatting dates from ISO string or Date object
+ */
+export interface FormatDateOptions {
+  /**
+   * Whether to include timezone information in the output
+   * @default true
+   */
+  includeTimezone?: boolean;
+}
+
+/**
+ * Format a date from ISO string or Date object to readable local timezone string
+ *
+ * @param dateInput - ISO date string or Date object
+ * @param options - Formatting options
+ * @returns Formatted timestamp string or null if invalid input
+ *
+ * @example
+ * ```typescript
+ * // From ISO string
+ * formatDateFromISO('2026-03-24T14:23:16.013Z')
+ * // "2026-03-24 21:23:16 (GMT+7)"
+ *
+ * // From Date object
+ * formatDateFromISO(new Date('2026-03-24T14:23:16.013Z'))
+ * // "2026-03-24 21:23:16 (GMT+7)"
+ *
+ * // Without timezone
+ * formatDateFromISO('2026-03-24T14:23:16.013Z', { includeTimezone: false })
+ * // "2026-03-24 21:23:16"
+ *
+ * // Invalid input returns null
+ * formatDateFromISO(null)
+ * // null
+ * ```
+ */
+export function formatDateFromISO(dateInput: string | Date | null | undefined, options: FormatDateOptions = {}): string | null {
+  if (!dateInput) {
+    return null;
+  }
+
+  const { includeTimezone = true } = options;
+
+  // Parse input to Date object
+  const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+
+  // Validate date
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+
+  return formatLocalTimestamp({ date, includeTimezone });
+}

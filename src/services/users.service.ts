@@ -25,6 +25,7 @@ import type {
 import { NotFoundError, AuthenticationError, ConflictError } from '../core/errors/app-error';
 import { logger } from '../core/logging/logger';
 import { ActivityService, type LogActivityInput } from './activity.service';
+import { formatDateFromISO } from '../helpers/date.helper';
 
 export class UsersService implements IUsersService {
   private readonly unitOfWork: UnitOfWork;
@@ -424,7 +425,7 @@ export class UsersService implements IUsersService {
         userId: log.userId,
         action: log.action,
         resource: log.entity ?? '',
-        createdAt: log.createdAt.toISOString(),
+        createdAt: formatDateFromISO(log.createdAt) ?? log.createdAt.toISOString(),
       })),
       pagination: result.pagination,
     };
