@@ -91,11 +91,11 @@ export class UnitOfWork {
     create(data: {
       userId: string;
       action: string;
-      entity: string;
-      entityId?: string;
-      details?: Record<string, unknown>;
-      ipAddress?: string;
-      userAgent?: string;
+      entity?: string | null;
+      entityId?: string | null;
+      details?: Record<string, unknown> | null;
+      ipAddress?: string | null;
+      userAgent?: string | null;
     }): Promise<void>;
     findByUserId(userId: string, options?: { limit?: number; offset?: number }): Promise<unknown[]>;
     countByUserId(userId: string): Promise<number>;
@@ -132,11 +132,11 @@ export class UnitOfWork {
         create: async (data: {
           userId: string;
           action: string;
-          entity: string;
-          entityId?: string;
-          details?: Record<string, unknown>;
-          ipAddress?: string;
-          userAgent?: string;
+          entity?: string | null;
+          entityId?: string | null;
+          details?: Record<string, unknown> | null;
+          ipAddress?: string | null;
+          userAgent?: string | null;
         }): Promise<void> => {
           await this._db.insert(userActivityLogs).values(data).returning();
         },
@@ -164,20 +164,20 @@ export class UnitOfWork {
    * The transaction will automatically commit if the callback succeeds,
    * or rollback if it throws an error.
    *
-   * @param fn - Callback function that receives a transaction client
+   * @param fn - Callback function that receives a transaction unit of work
    * @returns The result of the callback function
    * @throws Re-throws any error from the callback after rolling back
    *
    * @example
    * ```typescript
-   * await uow.withTransaction(async (tx) => {
-   *   const user = await uow.users.create(userData);
-   *   await uow.sessions.create(sessionData);
+   * await uow.withTransaction(async (txUow) => {
+   *   const user = await txUow.users.create(userData);
+   *   await txUow.sessions.create(sessionData);
    *   return user;
    * });
    * ```
    */
-  async withTransaction<T>(fn: (tx: unknown) => Promise<T>): Promise<T> {
+  async withTransaction<T>(fn: (txUow: TransactionUnitOfWork) => Promise<T>): Promise<T> {
     logger.debug('Starting transaction');
 
     try {
@@ -194,11 +194,11 @@ export class UnitOfWork {
           create: async (data: {
             userId: string;
             action: string;
-            entity: string;
-            entityId?: string;
-            details?: Record<string, unknown>;
-            ipAddress?: string;
-            userAgent?: string;
+            entity?: string | null;
+            entityId?: string | null;
+            details?: Record<string, unknown> | null;
+            ipAddress?: string | null;
+            userAgent?: string | null;
           }): Promise<void> => {
             await tx.insert(userActivityLogs).values(data).returning();
           },
@@ -235,8 +235,9 @@ export class UnitOfWork {
  *
  * Used internally during transactions to provide repository instances
  * that use the transaction client instead of the main database connection.
+ * Exported for type annotations in service callbacks.
  */
-class TransactionUnitOfWork {
+export class TransactionUnitOfWork {
   private _users: IUserRepository;
   private _sessions: ISessionRepository;
   private _products: IProductRepository;
@@ -244,11 +245,11 @@ class TransactionUnitOfWork {
     create(data: {
       userId: string;
       action: string;
-      entity: string;
-      entityId?: string;
-      details?: Record<string, unknown>;
-      ipAddress?: string;
-      userAgent?: string;
+      entity?: string | null;
+      entityId?: string | null;
+      details?: Record<string, unknown> | null;
+      ipAddress?: string | null;
+      userAgent?: string | null;
     }): Promise<void>;
     findByUserId(userId: string, options?: { limit?: number; offset?: number }): Promise<unknown[]>;
     countByUserId(userId: string): Promise<number>;
@@ -263,11 +264,11 @@ class TransactionUnitOfWork {
       create(data: {
         userId: string;
         action: string;
-        entity: string;
-        entityId?: string;
-        details?: Record<string, unknown>;
-        ipAddress?: string;
-        userAgent?: string;
+        entity?: string | null;
+        entityId?: string | null;
+        details?: Record<string, unknown> | null;
+        ipAddress?: string | null;
+        userAgent?: string | null;
       }): Promise<void>;
       findByUserId(userId: string, options?: { limit?: number; offset?: number }): Promise<unknown[]>;
       countByUserId(userId: string): Promise<number>;

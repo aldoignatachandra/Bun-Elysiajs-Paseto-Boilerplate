@@ -29,8 +29,36 @@ export interface FieldErrorObject {
 }
 
 /**
+ * Elysia ValidationError structure
+ */
+export interface ElysiaValidationError {
+  type: 'validation';
+  on: string;
+  property?: string;
+  message?: string;
+  found?: Record<string, unknown>;
+  errors?: Array<{
+    validation?: string;
+    code?: string;
+    message: string;
+    path?: (string | number)[];
+    expected?: string;
+    received?: unknown;
+  }>;
+}
+
+/**
  * Zod error check type guard
  */
 export function isZodError(error: unknown): error is z.ZodError {
   return error instanceof Error && 'name' in error && error.name === 'ZodError' && 'issues' in error && Array.isArray((error as z.ZodError).issues);
+}
+
+/**
+ * Elysia validation error check type guard
+ */
+export function isElysiaValidationError(error: unknown): error is ElysiaValidationError {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as Record<string, unknown>;
+  return err.type === 'validation' && typeof err.on === 'string';
 }

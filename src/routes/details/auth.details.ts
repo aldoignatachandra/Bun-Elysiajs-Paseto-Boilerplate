@@ -11,20 +11,19 @@ export const requireAuth = [{ BearerAuth: [] }];
  */
 export const authDetails: Record<string, DocumentDecoration> = {
   register: {
-    summary: 'Register a new user',
+    summary: 'Register a new user (Admin only)',
     description: `Creates a new user account and returns authentication tokens.
 
-**Request Body:**
-- \`email\`: Valid email address
-- \`username\`: Unique username (alphanumeric with underscores/hyphens)
-- \`password\`: Strong password (min 8 chars, uppercase, lowercase, number, special char)
-- \`name\`: Optional display name (alternative to firstName/lastName)
-- \`firstName\`: Optional first name (used with lastName if name not provided)
-- \`lastName\`: Optional last name (used with firstName if name not provided)
+**Requires ADMIN role.** Only administrators can register new users. All users created via this endpoint will have the USER role.
 
-**Note:** Either \`name\` OR both \`firstName\` and \`lastName\` must be provided.`,
+**Request Body:**
+- \`email\`: Valid email address (required)
+- \`username\`: Unique username (alphanumeric with underscores/hyphens) (required)
+- \`password\`: Strong password (min 8 chars, uppercase, lowercase, number, special char) (required)
+- \`confirmPassword\`: Must match password exactly (required)
+- \`name\`: Optional display name`,
     tags: ['Authentication'],
-    security: [],
+    security: requireAuth,
   },
 
   login: {
@@ -32,7 +31,7 @@ export const authDetails: Record<string, DocumentDecoration> = {
     description: `Authenticates a user and returns access tokens.
 
 **Request Body:**
-- \`email\`: User's email address
+- \`email\`: User's email address OR username (auto-detected by presence of @ symbol)
 - \`password\`: User's password`,
     tags: ['Authentication'],
     security: [],

@@ -32,6 +32,7 @@ export interface RegisterOutput {
 }
 
 export interface LoginInput {
+  /** Email or username for login */
   email: string;
   password: string;
 }

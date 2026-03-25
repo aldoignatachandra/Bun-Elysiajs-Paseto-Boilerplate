@@ -8,12 +8,11 @@ export const registerRequestSchema = z
     email: emailSchema,
     username: usernameSchema,
     password: passwordSchema,
-    firstName: nameSchema.optional(),
-    lastName: nameSchema.optional(),
+    confirmPassword: passwordSchema,
     name: nameSchema.optional(),
   })
-  .refine(value => Boolean((value.firstName && value.lastName) || value.name), {
-    message: 'firstName and lastName or name is required',
+  .refine(data => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
   });
 
 export type RegisterRequestDTO = z.infer<typeof registerRequestSchema>;

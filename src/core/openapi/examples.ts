@@ -10,28 +10,26 @@
  */
 export const authExamples = {
   registerRequest: {
-    summary: 'Register new user',
+    summary: 'Register new user (ADMIN only)',
     value: {
       email: 'john.doe@example.com',
       username: 'johndoe',
       password: 'SecureP@ss123',
+      confirmPassword: 'SecureP@ss123',
       name: 'John Doe',
     },
   },
-  registerRequestWithFirstLastName: {
-    summary: 'Register with first/last name',
-    value: {
-      email: 'jane.smith@example.com',
-      username: 'janesmith',
-      password: 'SecureP@ss123',
-      firstName: 'Jane',
-      lastName: 'Smith',
-    },
-  },
-  loginRequest: {
-    summary: 'Login credentials',
+  loginRequestWithEmail: {
+    summary: 'Login with email',
     value: {
       email: 'john.doe@example.com',
+      password: 'SecureP@ss123',
+    },
+  },
+  loginRequestWithUsername: {
+    summary: 'Login with username',
+    value: {
+      email: 'johndoe',
       password: 'SecureP@ss123',
     },
   },

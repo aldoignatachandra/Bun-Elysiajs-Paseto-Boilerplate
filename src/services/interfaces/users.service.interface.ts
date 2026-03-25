@@ -97,17 +97,23 @@ export interface GetActivityLogsOutput {
   };
 }
 
+export interface UserActivityContext {
+  performedBy?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
 export interface IUsersService {
   getProfile(input: GetProfileInput): Promise<UserProfile>;
-  updateProfile(input: UpdateProfileInput): Promise<UserProfile>;
-  updatePassword(input: UpdatePasswordInput): Promise<{ message: string }>;
+  updateProfile(input: UpdateProfileInput & UserActivityContext): Promise<UserProfile>;
+  updatePassword(input: UpdatePasswordInput & UserActivityContext): Promise<{ message: string }>;
   getUsers(input: GetUsersInput): Promise<GetUsersOutput>;
-  createUser(input: CreateUserInput): Promise<UserProfile>;
-  updateUser(input: UpdateUserInput): Promise<UserProfile>;
-  deleteUser(id: string, force?: boolean): Promise<{ message: string }>;
-  activateUser(id: string): Promise<{ message: string }>;
-  deactivateUser(id: string): Promise<{ message: string }>;
-  restoreUser(id: string): Promise<{ message: string }>;
+  createUser(input: CreateUserInput & UserActivityContext): Promise<UserProfile>;
+  updateUser(input: UpdateUserInput & UserActivityContext): Promise<UserProfile>;
+  deleteUser(id: string, force?: boolean, activityContext?: UserActivityContext): Promise<{ message: string }>;
+  activateUser(id: string, activityContext?: UserActivityContext): Promise<{ message: string }>;
+  deactivateUser(id: string, activityContext?: UserActivityContext): Promise<{ message: string }>;
+  restoreUser(id: string, activityContext?: UserActivityContext): Promise<{ message: string }>;
   getActivityLogs(input: GetActivityLogsInput): Promise<GetActivityLogsOutput>;
   getUserStats(): Promise<{
     totalUsers: number;

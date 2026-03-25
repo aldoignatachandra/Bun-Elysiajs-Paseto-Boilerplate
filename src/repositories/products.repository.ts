@@ -33,6 +33,7 @@ export interface ProductView {
   };
   stock: number;
   hasVariant: boolean;
+  images: string | null;
   attributes?: Array<{
     id: string;
     name: string;
@@ -48,6 +49,7 @@ export interface ProductView {
     availableStock: number;
     isActive: boolean;
     attributeValues: Record<string, string>;
+    images: string | null;
   }>;
   deletedAt: Date | null;
   createdAt: Date;
@@ -314,6 +316,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
         availableStock: variant.stockQuantity - variant.stockReserved,
         isActive: variant.isActive,
         attributeValues: variant.attributeValues as Record<string, string>,
+        images: variant.images,
       }));
 
       const variantPrices = variants.map(variant => variant.price).filter((price): price is number => typeof price === 'number' && price > 0);
@@ -409,6 +412,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
             availableStock: variant.stockQuantity - variant.stockReserved,
             isActive: variant.isActive,
             attributeValues: variant.attributeValues as Record<string, string>,
+            images: variant.images,
           }));
         }
 
@@ -597,6 +601,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
             availableStock: variant.stockQuantity - variant.stockReserved,
             isActive: variant.isActive,
             attributeValues: variant.attributeValues as Record<string, string>,
+            images: variant.images,
           }));
         } else {
           const existingVariants = await tx
@@ -613,6 +618,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
             availableStock: variant.stockQuantity - variant.stockReserved,
             isActive: variant.isActive,
             attributeValues: variant.attributeValues as Record<string, string>,
+            images: variant.images,
           }));
         }
 
@@ -704,6 +710,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
       price: toPriceRange(basePrice, variantPrices),
       stock: product.stock,
       hasVariant: product.hasVariant,
+      images: product.images,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
       deletedAt: product.deletedAt,

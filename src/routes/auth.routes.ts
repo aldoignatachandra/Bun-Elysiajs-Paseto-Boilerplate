@@ -1,3 +1,17 @@
+/**
+ * Authentication Routes
+ *
+ * ESLint type-checking rules are disabled for this file because Elysia's
+ * context type is complex and requires type assertions when accessing
+ * route-specific properties. This is a standard pattern when working
+ * with dynamic route handlers in Elysia.
+ */
+
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+
 import type { Elysia } from 'elysia';
 import type { PasetoService } from '../core/paseto/paseto.service';
 import type { AuthService } from '../services/auth.service';
@@ -5,7 +19,8 @@ import type { UsersService } from '../services/users.service';
 import { AuthController } from '../controllers/auth.controller';
 import { UsersController } from '../controllers/users.controller';
 import { successResponse } from '../core/http/response';
-import { requireAuth, type AuthContext } from '../middlewares/auth.middleware';
+import { requireAuth, type AuthContext, hasRole } from '../middlewares/auth.middleware';
+import { ForbiddenError } from '../core/errors/app-error';
 import { enforceRateLimit, type RateLimitOptions } from '../middlewares/rate-limit.middleware';
 import { authDetails } from './details/auth.details';
 import { getClientIp } from '../helpers/ip.helper';
@@ -17,7 +32,7 @@ import {
   registerRequestSchema,
   type ChangePasswordRequestDTO,
   type LoginRequestDTO,
-  type RefreshTokenDTO,
+  type RefreshRequestDTO,
   type RegisterRequestDTO,
 } from './dto/auth.dto';
 
@@ -33,7 +48,7 @@ type RouteContext<TBody = unknown> = {
 };
 
 const AUTH_ROUTE_LIMITS: Record<string, RouteLimitConfig> = {
-  '/api/v1/auth/register': { maxRequests: 10, window: 60, strategy: 'ip' },
+  '/api/v1/auth/register': { maxRequests: 10, window: 60, strategy: 'user_or_ip' },
   '/api/v1/auth/login': { maxRequests: 10, window: 60, strategy: 'ip' },
   '/api/v1/auth/refresh': { maxRequests: 10, window: 60, strategy: 'ip' },
   '/api/v1/auth/logout': { maxRequests: 30, window: 60, strategy: 'user_or_ip' },
@@ -84,42 +99,6 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
       // Public routes (no authentication required)
       // ========================================
       .post(
-        '/register',
-        async ctx => {
-          const routeCtx = ctx as RouteContext<RegisterRequestDTO>;
-          const body = registerRequestSchema.parse(routeCtx.body);
-          const activityContext = getActivityContext(routeCtx.request);
-
-          // Use name directly from body or construct from firstName/lastName if provided
-          const name = body.name || [body.firstName, body.lastName].filter(Boolean).join(' ') || null;
-
-          const result = await authController.register(
-            {
-              email: body.email,
-              username: body.username,
-              password: body.password,
-              name,
-            },
-            activityContext
-          );
-
-          const data = {
-            user: result.user,
-            accessToken: result.tokens.accessToken,
-            refreshToken: result.tokens.refreshToken,
-            expiresIn: result.tokens.expiresIn,
-          };
-
-          routeCtx.set.status = 201;
-          return successResponse(routeCtx.request, data);
-        },
-        {
-          beforeHandle: [limiters.register],
-          body: registerRequestSchema,
-          detail: authDetails.register,
-        }
-      )
-      .post(
         '/login',
         async ctx => {
           const routeCtx = ctx as RouteContext<LoginRequestDTO>;
@@ -146,7 +125,7 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
       .post(
         '/refresh',
         async ctx => {
-          const routeCtx = ctx as RouteContext<RefreshTokenDTO>;
+          const routeCtx = ctx as RouteContext<RefreshRequestDTO>;
           const body = refreshRequestSchema.parse(routeCtx.body);
           const activityContext = getActivityContext(routeCtx.request);
 
@@ -185,6 +164,51 @@ export function createAuthRoutes(app: Elysia, authService: AuthService, usersSer
       // Uses .use(authPlugin) with derive pattern to avoid short-circuiting
       // ========================================
       .use(authPlugin)
+      // ========================================
+      // Admin-only routes (requires ADMIN role)
+      // ========================================
+      .post(
+        '/register',
+        async ctx => {
+          const routeCtx = ctx as RouteContext<RegisterRequestDTO>;
+
+          // ADMIN role check - only ADMIN can create new users
+          if (!hasRole(routeCtx.user ?? null, 'ADMIN')) {
+            throw new ForbiddenError('Only administrators can register new users');
+          }
+
+          const body = registerRequestSchema.parse(routeCtx.body);
+          const activityContext = getActivityContext(routeCtx.request);
+
+          const result = await authController.register(
+            {
+              email: body.email,
+              username: body.username,
+              password: body.password,
+              name: body.name ?? null,
+            },
+            activityContext
+          );
+
+          const data = {
+            user: result.user,
+            accessToken: result.tokens.accessToken,
+            refreshToken: result.tokens.refreshToken,
+            expiresIn: result.tokens.expiresIn,
+          };
+
+          routeCtx.set.status = 201;
+          return successResponse(routeCtx.request, data);
+        },
+        {
+          beforeHandle: [limiters.register],
+          body: registerRequestSchema,
+          detail: authDetails.register,
+        }
+      )
+      // ========================================
+      // Standard protected routes
+      // ========================================
       .post(
         '/logout',
         async ctx => {

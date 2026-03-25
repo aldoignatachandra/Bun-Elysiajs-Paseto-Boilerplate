@@ -1,5 +1,4 @@
 import type { UnitOfWork } from '../repositories/unit-of-work';
-import type { NewUserActivityLog } from '../database/schema';
 
 export type ActivityAction =
   | 'user.registered'
@@ -77,17 +76,15 @@ export class ActivityService implements IActivityService {
 
   async logActivity(input: LogActivityInput): Promise<void> {
     try {
-      const activityData: NewUserActivityLog = {
+      await this.unitOfWork.activityLogs.create({
         userId: input.userId,
         action: input.action,
         entity: input.entity || null,
         entityId: input.entityId || null,
         ipAddress: input.ipAddress || null,
         userAgent: input.userAgent || null,
-        details: input.details ? JSON.stringify(input.details) : null,
-      };
-
-      await this.unitOfWork.activityLogs.create(activityData);
+        details: input.details ?? null,
+      });
     } catch (error) {
       console.error('Failed to log activity:', error);
     }

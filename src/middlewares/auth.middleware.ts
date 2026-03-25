@@ -45,11 +45,16 @@ export interface AuthUser {
 
 /**
  * Augmented Elysia context with user information
+ *
+ * Note: Index signature is required for Elysia's derive() compatibility.
+ * Elysia expects derive() return types to be compatible with Record<string, unknown>.
  */
 export interface AuthContext {
   user: AuthUser | null;
   tokenId: string | null;
   accessToken: string | null;
+  // Required for Elysia derive() compatibility - allows merging into request context
+  [key: string]: unknown;
 }
 
 /**

@@ -81,19 +81,26 @@ export class ProductsService implements IProductsService {
       throw new NotFoundError('Product not found');
     }
 
-    if ((!input.isAdmin && product.ownerId !== input.currentUserId) || '') {
+    if (!input.isAdmin && product.ownerId !== (input.currentUserId || '')) {
       throw new ForbiddenError('You do not have permission to view this product');
     }
 
+    // Ensure images property is present for ProductDTO compatibility
+    // ProductView from repository doesn't include images, default to null
+    const productDTO: ProductDTO = {
+      ...product,
+      images: null,
+    };
+
     if (!input.includeVariants) {
       return {
-        ...product,
+        ...productDTO,
         attributes: undefined,
         variants: undefined,
       };
     }
 
-    return product;
+    return productDTO;
   }
 
   private checkOwnership(productOwnerId: string, currentUserId: string, isAdmin?: boolean): void {
