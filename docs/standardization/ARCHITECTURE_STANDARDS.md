@@ -223,61 +223,95 @@ class UserRepository implements IUserRepository {
 ### Unit of Work Pattern
 
 ```typescript
-// Unit of Work interface
-interface IUnitOfWork extends AsyncDisposable {
-  users: IUserRepository;
-  sessions: ISessionRepository;
-  products: IProductRepository;
+// Unit of Work interface (simplified)
+interface IUnitOfWork {
+  readonly users: IUserRepository;
+  readonly sessions: ISessionRepository;
+  readonly products: IProductRepository;
+  readonly activityLogs: ActivityLogRepository;
 
-  beginTransaction(): Promise<void>;
-  commit(): Promise<void>;
-  rollback(): Promise<void>;
+  withTransaction<T>(fn: (txUow: TransactionUnitOfWork) => Promise<T>): Promise<T>;
 }
 
-// Implementation
+// Implementation with lazy-loaded repositories
 class UnitOfWork implements IUnitOfWork {
-  private transaction: Transaction | null = null;
+  private _users: IUserRepository | null = null;
+  private _sessions: ISessionRepository | null = null;
+  private _products: IProductRepository | null = null;
 
-  constructor(
-    private db: Database,
-    public users: IUserRepository,
-    public sessions: ISessionRepository,
-    public products: IProductRepository
-  ) {}
+  constructor(private db: Database) {}
 
-  async beginTransaction(): Promise<void> {
-    this.transaction = await this.db.transaction();
+  // Lazy initialization of repositories
+  get users(): IUserRepository {
+    if (!this._users) {
+      this._users = new UserRepository(this.db);
+    }
+    return this._users;
   }
 
-  async commit(): Promise<void> {
-    await this.transaction?.commit();
-  }
+  // Transaction support with callback pattern
+  async withTransaction<T>(fn: (txUow: TransactionUnitOfWork) => Promise<T>): Promise<T> {
+    // Use Drizzle's transaction API
+    return await this.db.transaction(async tx => {
+      // Create new repository instances with transaction client
+      const txUsers = new UserRepository(tx);
+      const txSessions = new SessionRepository(tx);
+      const txProducts = new ProductRepository(tx);
 
-  async rollback(): Promise<void> {
-    await this.transaction?.rollback();
-  }
+      // Create transaction-aware Unit of Work
+      const txUow = new TransactionUnitOfWork(tx, txUsers, txSessions, txProducts);
 
-  async [Symbol.asyncDispose](): Promise<void> {
-    await this.rollback();
+      // Execute callback with transaction context
+      return await fn(txUow);
+    });
   }
 }
 
-// Usage
-async function createUserWithSession(dto: RegisterDto): Promise<void> {
-  await using uow = new UnitOfWork(db, userRepo, sessionRepo, productRepo);
+// Usage in service layer
+async function registerUser(dto: RegisterDto): Promise<RegisterOutput> {
+  return this.unitOfWork.withTransaction(async uow => {
+    // All operations use transaction client
+    const existingUser = await uow.users.findByEmail(dto.email);
+    if (existingUser) {
+      throw new ConflictError('User already exists');
+    }
 
-  await uow.beginTransaction();
+    const passwordHash = await this.passwordService.hash(dto.password);
+    const user = await uow.users.create({ ...dto, passwordHash });
 
-  try {
-    const user = await uow.users.create(dto);
-    await uow.sessions.create({ userId: user.id, ... });
-    await uow.commit();
-  } catch (error) {
-    await uow.rollback();
-    throw error;
-  }
+    const tokens = this.pasetoService.createTokenPair({ sub: user.id, email: user.email });
+
+    // Create session with token data
+    await uow.sessions.create({
+      userId: user.id,
+      token: tokens.accessToken,
+      refreshTokenId: tokens.refreshTokenId,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
+
+    // Log activity
+    await uow.activityLogs.create({
+      userId: user.id,
+      action: 'user.registered',
+      entity: 'users',
+      entityId: user.id,
+    });
+
+    return { user, tokens };
+    // Transaction auto-commits on success, rolls back on error
+  });
 }
 ```
+
+**Benefits:**
+
+| Benefit               | Description                                  |
+| --------------------- | -------------------------------------------- |
+| **Atomic Operations** | Multiple operations succeed or fail together |
+| **Automatic Cleanup** | Transaction auto-commits/rolls back          |
+| **Lazy Loading**      | Repositories created only when needed        |
+| **Type Safety**       | Full TypeScript support                      |
+| **Testability**       | Easy to mock for unit tests                  |
 
 ### Dependency Injection
 
@@ -614,6 +648,6 @@ Before committing code:
 
 ---
 
-**Last Updated:** 2025-03-09
+**Last Updated:** 2026-03-26
 
 **Version:** 1.0.0

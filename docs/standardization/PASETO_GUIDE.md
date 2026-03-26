@@ -34,10 +34,11 @@ PASETO (Platform-Agnostic Security Tokens) is a secure token format that address
 | Feature                 | Description                                            |
 | ----------------------- | ------------------------------------------------------ |
 | **Version 4**           | Uses modern cryptography (XChaCha20-Poly1305, Ed25519) |
-| **Local Purpose**       | Symmetric encryption (both parties share secret)       |
-| **Public Purpose**      | Asymmetric signatures (public/private key pairs)       |
-| **Payload Encryption**  | Encrypts payload by default (not just signs)           |
+| **Local Purpose**       | Symmetric encryption (access tokens)                   |
+| **Public Purpose**      | Asymmetric signatures (refresh tokens)                 |
+| **Payload Encryption**  | Access tokens encrypted, refresh tokens signed         |
 | **Explicit Versioning** | Version number in token prevents ambiguity             |
+| **Single-Use Rotation** | Refresh tokens can only be used once                   |
 
 ---
 
@@ -127,12 +128,12 @@ v4.local.encoded_encrypted_data
 │  v4.local (Symmetric Encryption)                           │
 │  ├─ Same key for encrypt/decrypt                           │
 │  ├─ Payload is encrypted (confidential)                    │
-│  └─ Use case: API tokens, session tokens                   │
+│  └─ Use case: Access tokens (API tokens, session tokens)   │
 │                                                             │
 │  v4.public (Asymmetric Signature)                          │
 │  ├─ Private key signs, public key verifies                 │
 │  ├─ Payload is visible (not encrypted)                     │
-│  └─ Use case: Public APIs, verifiable claims               │
+│  └─ Use case: Refresh tokens (verifiable, single-use)      │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -171,11 +172,11 @@ v4.local.encoded_encrypted_data
        ├─▶ Generate access token (v4.local, 15min)
        │   └─ Include: userId, email, role, permissions
        │
-       ├─▶ Generate refresh token (v4.local, 7 days)
-       │   └─ Include: userId, tokenId
+       ├─▶ Generate refresh token (v4.public, 7 days)
+       │   └─ Include: userId, tokenId (unique JTI)
        │
        ├─▶ Store refresh token session
-       │   └─ Hash token, store in database
+       │   └─ Store tokenId (JTI) for single-use validation
        │
        └─▶ Return token pair to client
 
@@ -201,21 +202,36 @@ v4.local.encoded_encrypted_data
        └─▶ Process request with user context
 
 
-  TOKEN REFRESH
+  TOKEN REFRESH (Single-Use Rotation)
        │
-       ├─▶ Validate refresh token
-       │   └─ Decrypt, verify not revoked
+       ├─▶ Validate refresh token signature & expiration
+       │   └─ Decrypt v4.public refresh token
        │
-       ├─▶ Check session exists
-       │   └─ Query database by tokenId
+       ├─▶ Extract tokenId from refresh token payload
+       │   └─ Unique JTI for this specific refresh token
        │
-       ├─▶ Generate new token pair
-       │   └─ New access + new refresh token
+       ├─▶ Find active session by refreshTokenId (tokenId)
+       │   └─ If not found: token already used (theft detection)
        │
-       ├─▶ Revoke old refresh token
-       │   └─ Mark session as revoked
+       ├─▶ Generate NEW token pair
+       │   ├─ New v4.local access token (15min)
+       │   └─ New v4.public refresh token (with NEW tokenId)
+       │
+       ├─▶ Revoke old session (invalidates old refresh token)
+       │   └─ Mark session.revokedAt = now
+       │
+       ├─▶ Create new session with NEW refreshTokenId
+       │   └─ Store new session for next refresh
        │
        └─▶ Return new token pair
+           └─ Old refresh token cannot be reused (single-use)
+
+  SECURITY: Token Theft Detection
+       │
+       └─▶ If old refresh token is reused after rotation:
+           ├─ Session lookup fails (already revoked)
+           ├─ Throw InvalidTokenError
+           └─ Force user to re-login (potential breach detected)
 ```
 
 ---
@@ -292,7 +308,7 @@ interface AccessTokenPayload {
 }
 ```
 
-### Refresh Token Payload
+### Refresh Token Payload (v4.public)
 
 ```typescript
 interface RefreshTokenPayload {
@@ -305,10 +321,11 @@ interface RefreshTokenPayload {
   type: 'refresh';
 
   // Refresh-specific claims
-  tokenId: string; // Reference to stored session
+  tokenId: string; // Unique JTI for single-use validation
 
   // Note: Minimal payload for security
-  // Additional claims retrieved from database
+  // v4.public payload is visible (not encrypted)
+  // Additional claims retrieved from database via tokenId
 }
 ```
 
@@ -446,78 +463,115 @@ try {
 }
 ```
 
-### 6. Refresh Token Security
+### 6. Refresh Token Security (Single-Use Pattern)
 
 ```typescript
-// ✅ Good: Store hashed tokens, support revocation
+// ✅ Good: Store tokenId for single-use validation
 async function createRefreshToken(userId: string): Promise<string> {
+  // Create v4.public refresh token with unique tokenId (JTI)
   const token = await pasetoService.createRefreshToken(userId);
-  const payload = await pasetoService.validateAndDecodeToken(token);
 
-  // Store hash, not plaintext
-  const hash = await passwordService.hash(token);
+  // Extract tokenId from token for session tracking
+  const payload = pasetoService.validateRefreshToken(token);
+  const tokenId = payload.payload.tokenId; // Unique JTI
 
+  // Store session with tokenId (not the token itself)
   await sessionsRepository.create({
     userId,
-    tokenId: payload.tokenId,
-    refreshTokenHash: hash,
-    expiresAt: new Date(payload.exp * 1000),
+    token: accessToken, // Store access token for logout tracking
+    refreshTokenId: tokenId, // Store JTI for single-use validation
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    revokedAt: null,
   });
 
   return token;
 }
 
-// ✅ Good: Validate against stored session
+// ✅ Good: Validate refresh token hasn't been used (single-use)
 async function validateRefreshToken(token: string): Promise<boolean> {
-  const result = await pasetoService.validateAndDecodeToken(token);
+  // 1. Validate token signature and expiration
+  const result = pasetoService.validateRefreshToken(token);
+  if (!result.valid) return false;
 
-  if (!result.valid || !result.payload) {
+  const tokenId = result.payload.tokenId;
+
+  // 2. Find session by refreshTokenId
+  // If not found, token was already used (session revoked)
+  const session = await sessionsRepository.findByRefreshTokenId(tokenId);
+
+  if (!session) {
+    // Token already used or never existed
     return false;
   }
 
-  const payload = result.payload as RefreshTokenPayload;
-
-  // Check session exists and not revoked
-  const session = await sessionsRepository.findByTokenId(payload.tokenId);
-
-  if (!session || session.isRevoked) {
+  if (session.revokedAt) {
+    // Session was explicitly revoked
     return false;
   }
 
-  // Verify hash
-  const isValid = await passwordService.verify(session.refreshTokenHash, token);
-
-  return isValid;
+  return true;
 }
 
-// ❌ Bad: Stateless refresh tokens (no revocation)
+// ✅ Good: Single-use rotation on refresh
+async function refreshToken(oldToken: string): Promise<TokenPair> {
+  // After validation, revoke old session immediately
+  // Then create new session with new refresh token's tokenId
+  // (See "Token Rotation" section above for full implementation)
+}
+
+// ❌ Bad: Stateless refresh tokens (no revocation, no rotation)
 // Once issued, cannot be revoked until expiration
+// ❌ Bad: Reusable refresh tokens (can be stolen and reused)
 ```
 
-### 7. Token Rotation
+### 7. Token Rotation (Single-Use Pattern)
 
 ```typescript
-// ✅ Good: Rotate refresh tokens on use
+// ✅ Good: Single-use refresh token rotation
 async function refreshToken(oldRefreshToken: string): Promise<TokenPair> {
-  // Validate old token
-  const payload = await validateRefreshToken(oldRefreshToken);
+  // 1. Validate refresh token signature and extract tokenId
+  const result = pasetoService.validateRefreshToken(oldRefreshToken);
+  if (!result.valid) throw new InvalidTokenError('Invalid refresh token');
 
-  // Generate new token pair
-  const newTokens = await pasetoService.createTokenPair(payload.userId);
+  const tokenId = result.payload.tokenId; // JTI of this refresh token
 
-  // Revoke old refresh token
-  await revokeRefreshToken(oldRefreshToken);
+  // 2. Find active session by tokenId (single-use check)
+  const session = await sessionsRepository.findByRefreshTokenId(tokenId);
+  if (!session) {
+    // Session not found means token was already used (revoked)
+    // This indicates potential token theft - force re-login
+    throw new InvalidTokenError('Invalid or already used refresh token');
+  }
 
-  // Store new refresh token session
-  await storeRefreshToken(payload.userId, newTokens.refreshToken);
+  // 3. Generate new token pair with NEW refresh token
+  const newTokens = pasetoService.createTokenPair({
+    sub: session.userId,
+    email: user.email,
+    role: user.role,
+  });
+
+  // 4. Extract new refresh token's tokenId
+  const newTokenId = pasetoService.validateRefreshToken(newTokens.refreshToken).payload.tokenId;
+
+  // 5. Revoke old session (invalidates old refresh token)
+  await sessionsRepository.revoke(session.id);
+
+  // 6. Create new session with NEW refreshTokenId
+  await sessionsRepository.create({
+    userId: session.userId,
+    token: newTokens.accessToken,
+    refreshTokenId: newTokenId, // Store NEW JTI
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  });
 
   return newTokens;
 }
 
 // Benefits:
-// - Limits damage of token leakage
-// - Shortens window for token reuse attacks
-// - Maintains session validity
+// - Token theft detection: Reusing old refresh token fails
+// - Limited damage window: Old tokens become invalid immediately
+// - Audit trail: Each refresh generates new session record
+// - Security breach detection: Multiple reuse attempts indicate theft
 ```
 
 ### 8. Context Binding (Optional Advanced)
@@ -953,7 +1007,7 @@ const tokens = await pasetoService.createTokenPair(userId, {
 
 ---
 
-**Last Updated:** 2025-03-09
+**Last Updated:** 2026-03-26
 
 **Version:** 1.0.0
 

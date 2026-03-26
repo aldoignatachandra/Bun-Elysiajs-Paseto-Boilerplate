@@ -394,17 +394,19 @@ GET /api/users/me?token=v4.local.encrypted_token_here
 ```typescript
 // POST /api/auth/refresh
 {
-  "refreshToken": "v4.local.encrypted_refresh_token"
+  "refreshToken": "v4.public.signed_refresh_token"
 }
 
-// Response
+// Response (Single-use rotation - new tokens returned)
 {
   "success": true,
   "message": "Token refreshed successfully",
   "data": {
-    "accessToken": "v4.local.new_access_token",
-    "refreshToken": "v4.local.new_refresh_token",
-    "expiresIn": 900
+    "tokens": {
+      "accessToken": "v4.local.new_access_token",
+      "refreshToken": "v4.public.new_refresh_token",
+      "expiresIn": 900
+    }
   }
 }
 ```
@@ -659,6 +661,6 @@ Before implementing an endpoint:
 
 ---
 
-**Last Updated:** 2025-03-09
+**Last Updated:** 2026-03-26
 
 **Version:** 1.0.0

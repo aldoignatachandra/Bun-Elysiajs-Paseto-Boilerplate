@@ -7,11 +7,11 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-4169E1?logo=postgresql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7+-DC382D?logo=redis&logoColor=white)
 ![Drizzle ORM](https://img.shields.io/badge/Drizzle-ORM-1E1E1E)
-![Test Coverage](https://img.shields.io/badge/coverage-1226_tests_passing-brightgreen)
+![Test Coverage](https://img.shields.io/badge/coverage-1121_tests_passing-brightgreen)
 
 High-performance **monolith REST API boilerplate** using **Bun + Elysia + PASETO** with PostgreSQL (Drizzle ORM) and Redis (rate limiting).
 
-This boilerplate implements modern authentication with **PASETO v4** tokens, provides a clean layered architecture, and includes comprehensive test coverage (1226+ tests passing).
+This boilerplate implements modern authentication with **PASETO v4** tokens, provides a clean layered architecture, and includes comprehensive test coverage (1121+ tests passing).
 
 ---
 
@@ -55,7 +55,7 @@ This boilerplate implements modern authentication with **PASETO v4** tokens, pro
 - **Hot Reload**: Bun's native `--watch` mode for rapid development iteration
 - **Docker Development**: Complete containerized development with hot reload
 - **Operational excellence**: Health endpoints and structured request logging
-- **Comprehensive testing**: 1226+ tests covering all core functionality
+- **Comprehensive testing**: 1121+ tests covering all core functionality
 - **Docker-ready**: Production-like compose setup with API + PostgreSQL + Redis + Nginx
 
 ---
@@ -153,6 +153,59 @@ bun-elysia-paseto-boilerplate/
 ├── scripts/
 └── docs/
 ```
+
+---
+
+## 🏗️ Architecture & Design Patterns
+
+### Unit of Work Pattern
+
+This boilerplate implements the **Unit of Work (UoW)** pattern for transaction management.
+
+**What is Unit of Work?**
+
+The Unit of Work pattern maintains a list of objects affected by a business transaction and coordinates the writing out of changes. It ensures that all operations within a transaction succeed or fail as a unit.
+
+**Why We Use It:**
+
+| Benefit                              | Description                                                                  |
+| ------------------------------------ | ---------------------------------------------------------------------------- |
+| **Transaction Consistency**          | Ensures atomicity - all related operations succeed together or fail together |
+| **Database Round-trip Optimization** | Batches multiple operations into a single transaction                        |
+| **Separation of Concerns**           | Business logic doesn't need to know about transaction management             |
+| **Testability**                      | Easy to mock repositories for unit testing                                   |
+| **Rollback Support**                 | Automatic rollback on errors, preventing partial updates                     |
+
+**Example Usage:**
+
+```typescript
+// Service layer uses Unit of Work for transaction management
+return this.unitOfWork.withTransaction(async (uow: UnitOfWork) => {
+  // All these operations execute in a single transaction
+  const user = await uow.users.create(userData);
+  await uow.sessions.create(sessionData);
+  await uow.activityLogs.create(logData);
+
+  return { user, tokens };
+  // If any operation fails, everything rolls back automatically
+});
+```
+
+### Layered Architecture
+
+The application follows a clean layered architecture:
+
+```
+Routes → Controllers → Services → Repositories → Database
+```
+
+Each layer has specific responsibilities:
+
+- **Routes**: HTTP concerns, request parsing, middleware
+- **Controllers**: Request orchestration, DTO validation, response formatting
+- **Services**: Business logic, use cases (uses Unit of Work for transactions)
+- **Repositories**: Data access, queries (uses Drizzle ORM)
+- **Database**: PostgreSQL with automatic migrations
 
 ---
 
@@ -361,7 +414,7 @@ Base prefix: `/api/v1`
 
 ## 🧪 Testing
 
-This boilerplate includes comprehensive test coverage with **1226+ tests** covering all core functionality.
+This boilerplate includes comprehensive test coverage with **1121+ tests** covering all core functionality.
 
 ### Test Structure
 
@@ -417,8 +470,8 @@ Output:
 
 ```
 Coverage Summary
-- Overall Functions Coverage: 81.57%
-- Overall Lines Coverage: 89.58%
+- Overall Functions Coverage: 85.61%
+- Overall Lines Coverage: 90.52%
 ```
 
 **Generate LCOV coverage:**
