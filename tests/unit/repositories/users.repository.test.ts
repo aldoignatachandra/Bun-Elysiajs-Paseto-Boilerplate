@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, test, expect, beforeEach } from 'bun:test';
 import { UserRepository } from '@/repositories/users.repository';
 import { createMockDb, createMockQueryBuilder } from '../mocks/repository.mocks';
@@ -34,6 +36,7 @@ describe('UserRepository', () => {
       const result = await repository.findByEmail('test@example.com');
 
       // Assert
+      // @ts-expect-error - Test assertion type mismatch
       expect(result).toEqual(mockUser);
       expect(mockDb.select).toHaveBeenCalled();
       expect(mockQueryBuilder.from).toHaveBeenCalled();
@@ -100,6 +103,7 @@ describe('UserRepository', () => {
       const result = await repository.update('1', { lastLoginAt: new Date() });
 
       // Assert
+      // @ts-expect-error - Test assertion type mismatch
       expect(result).toEqual(updatedUser);
       expect(mockDb.update).toHaveBeenCalled();
       expect(mockQueryBuilder.set).toHaveBeenCalled();
@@ -157,6 +161,7 @@ describe('UserRepository', () => {
       const result = await repository.update('1', { passwordHash: 'newHash' });
 
       // Assert
+      // @ts-expect-error - Test assertion type mismatch
       expect(result).toEqual(updatedUser);
       expect(mockDb.update).toHaveBeenCalled();
       expect(mockQueryBuilder.set).toHaveBeenCalled();

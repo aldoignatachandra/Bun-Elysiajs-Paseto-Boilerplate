@@ -338,7 +338,7 @@ describe('Security Headers Middleware - Integration', () => {
       expect(response.status).toBe(200);
       expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
 
-      const data = await response.json();
+      const data = (await response.json()) as { customData: string; timestamp: number };
       expect(data.customData).toBe('test-value');
       expect(data.timestamp).toBeGreaterThan(0);
     });

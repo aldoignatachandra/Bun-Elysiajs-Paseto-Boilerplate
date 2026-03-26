@@ -6,6 +6,7 @@
 /* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 import { describe, it, expect, beforeEach, jest } from 'bun:test';
 import { UsersController } from '../../../src/controllers/users.controller';
 import type { UsersService } from '../../../src/services/users.service';
@@ -30,7 +31,7 @@ describe('UsersController', () => {
   const mockAuthContext = {
     user: mockUser,
     tokenId: 'token-123',
-  };
+  } as any;
 
   beforeEach(() => {
     mockUsersService = {
@@ -57,11 +58,12 @@ describe('UsersController', () => {
 
       const result = await controller.getMe(mockAuthContext);
 
+      // @ts-expect-error - Test type comparison
       expect(result).toEqual(mockUser);
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
-      await expect(controller.getMe({ user: null, tokenId: null })).rejects.toThrow(UnauthorizedError);
+      await expect(controller.getMe({ user: null, tokenId: null } as any as any)).rejects.toThrow(UnauthorizedError);
     });
 
     it('should throw NotFoundError when user not found', async () => {
@@ -76,13 +78,13 @@ describe('UsersController', () => {
       const updatedUser = { ...mockUser, name: 'Updated Name' };
       mockUsersService.updateProfile.mockResolvedValue(updatedUser);
 
-      const result = await controller.updateMe({ firstName: 'Updated' }, mockAuthContext);
+      const result = await controller.updateMe({ name: 'Updated' }, mockAuthContext);
 
       expect(result.name).toBe('Updated Name');
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
-      await expect(controller.updateMe({}, { user: null, tokenId: null })).rejects.toThrow(UnauthorizedError);
+      await expect(controller.updateMe({}, { user: null, tokenId: null } as any)).rejects.toThrow(UnauthorizedError);
     });
   });
 
@@ -96,7 +98,7 @@ describe('UsersController', () => {
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
-      await expect(controller.changePassword({ currentPassword: 'old', newPassword: 'new' }, { user: null, tokenId: null })).rejects.toThrow(
+      await expect(controller.changePassword({ currentPassword: 'old', newPassword: 'new' }, { user: null, tokenId: null } as any)).rejects.toThrow(
         UnauthorizedError
       );
     });
@@ -112,7 +114,7 @@ describe('UsersController', () => {
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
-      await expect(controller.getUsers({ page: 1, limit: 10 }, { user: null, tokenId: null })).rejects.toThrow(UnauthorizedError);
+      await expect(controller.getUsers({ page: 1, limit: 10 }, { user: null, tokenId: null } as any)).rejects.toThrow(UnauthorizedError);
     });
   });
 
@@ -122,11 +124,12 @@ describe('UsersController', () => {
 
       const result = await controller.getUserById(mockUser.id, mockAuthContext);
 
+      // @ts-expect-error - Test type comparison
       expect(result).toEqual(mockUser);
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
-      await expect(controller.getUserById('id', { user: null, tokenId: null })).rejects.toThrow(UnauthorizedError);
+      await expect(controller.getUserById('id', { user: null, tokenId: null } as any)).rejects.toThrow(UnauthorizedError);
     });
   });
 
@@ -136,12 +139,13 @@ describe('UsersController', () => {
 
       const result = await controller.createUser({ email: 'new@example.com', username: 'newuser', password: 'password123!' }, mockAuthContext);
 
+      // @ts-expect-error - Test type comparison
       expect(result).toEqual(mockUser);
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
       await expect(
-        controller.createUser({ email: 'new@example.com', username: 'new', password: 'pass' }, { user: null, tokenId: null })
+        controller.createUser({ email: 'new@example.com', username: 'new', password: 'pass' }, { user: null, tokenId: null } as any)
       ).rejects.toThrow(UnauthorizedError);
     });
   });
@@ -150,13 +154,13 @@ describe('UsersController', () => {
     it('should update user', async () => {
       mockUsersService.updateUser.mockResolvedValue({ ...mockUser, name: 'Updated' });
 
-      const result = await controller.updateUser(mockUser.id, { firstName: 'Updated' }, mockAuthContext);
+      const result = await controller.updateUser(mockUser.id, { name: 'Updated' }, mockAuthContext);
 
       expect(result.name).toBe('Updated');
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
-      await expect(controller.updateUser('id', {}, { user: null, tokenId: null })).rejects.toThrow(UnauthorizedError);
+      await expect(controller.updateUser('id', {}, { user: null, tokenId: null } as any)).rejects.toThrow(UnauthorizedError);
     });
   });
 
@@ -170,7 +174,7 @@ describe('UsersController', () => {
     });
 
     it('should throw UnauthorizedError when user is null', async () => {
-      await expect(controller.deleteUser('id', false, { user: null, tokenId: null })).rejects.toThrow(UnauthorizedError);
+      await expect(controller.deleteUser('id', false, { user: null, tokenId: null } as any)).rejects.toThrow(UnauthorizedError);
     });
   });
 

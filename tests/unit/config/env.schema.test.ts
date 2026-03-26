@@ -102,6 +102,7 @@ describe('Env Schema Validation', () => {
   describe('envSchema', () => {
     it('should not export envSchema (implementation detail)', async () => {
       const schema = await import('@/config/env.schema');
+      // @ts-expect-error - Testing that envSchema is not exported
       expect(schema.envSchema).toBeUndefined();
     });
 

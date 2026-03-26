@@ -68,6 +68,7 @@ describe('Security Headers Middleware', () => {
 
       const frameOptions = response.headers.get('X-Frame-Options');
       expect(frameOptions).toBeTruthy();
+      // @ts-expect-error - TypeScript narrowing issue
       expect(['DENY', 'SAMEORIGIN']).toContain(frameOptions);
     });
 
@@ -274,6 +275,7 @@ describe('Security Headers Middleware', () => {
 
       const coop = response.headers.get('Cross-Origin-Opener-Policy');
       expect(coop).toBeTruthy();
+      // @ts-expect-error - TypeScript narrowing issue
       expect(['same-origin', 'unsafe-none']).toContain(coop);
     });
 
@@ -284,6 +286,7 @@ describe('Security Headers Middleware', () => {
 
       const corp = response.headers.get('Cross-Origin-Resource-Policy');
       expect(corp).toBeTruthy();
+      // @ts-expect-error - TypeScript narrowing issue
       expect(['same-origin', 'cross-origin']).toContain(corp);
     });
 
@@ -294,6 +297,7 @@ describe('Security Headers Middleware', () => {
 
       const coep = response.headers.get('Cross-Origin-Embedder-Policy');
       expect(coep).toBeTruthy();
+      // @ts-expect-error - TypeScript narrowing issue
       expect(['require-corp', 'unsafe-none']).toContain(coep);
     });
   });

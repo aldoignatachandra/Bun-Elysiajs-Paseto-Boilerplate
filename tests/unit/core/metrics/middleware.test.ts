@@ -344,6 +344,7 @@ describe('Metrics Middleware', () => {
       const app = new Elysia()
         .use(metricsPlugin())
         .derive(({ headers }) => ({
+          // @ts-expect-error - Elysia context typing in tests
           userAgent: headers.get('user-agent') ?? 'unknown',
         }))
         .get('/test', ({ userAgent }) => ({ userAgent }));

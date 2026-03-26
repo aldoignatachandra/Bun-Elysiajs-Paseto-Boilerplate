@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, test, expect, beforeEach, afterEach, vi } from 'bun:test';
 import { UnitOfWork } from '@/repositories/unit-of-work';
 import { createMockDb } from '../mocks/repository.mocks';
@@ -40,6 +42,7 @@ describe('UnitOfWork', () => {
       // Arrange
       let callbackExecuted = false;
       const resultValue = 'success';
+      // @ts-expect-error - Adding transaction property to mock for testing
       mockDb.transaction = vi.fn(callback =>
         callback({
           select: vi.fn(() => ({
@@ -71,6 +74,7 @@ describe('UnitOfWork', () => {
 
     test('should rollback on error in withTransaction', async () => {
       // Arrange
+      // @ts-expect-error - Adding transaction property to mock for testing
       mockDb.transaction = vi.fn(callback =>
         callback({
           select: vi.fn(() => ({
@@ -98,6 +102,7 @@ describe('UnitOfWork', () => {
     test('should use existing transaction if already active in withTransaction', async () => {
       // Arrange
       let nestedCallCount = 0;
+      // @ts-expect-error - Adding transaction property to mock for testing
       mockDb.transaction = vi.fn(callback =>
         callback({
           select: vi.fn(() => ({

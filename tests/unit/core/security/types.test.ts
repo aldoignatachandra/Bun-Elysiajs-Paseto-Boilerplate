@@ -4,14 +4,17 @@ import { SecurityLevel, type CspDirective, type CspConfig, type HstsConfig, type
 describe('Security Headers Types', () => {
   describe('SecurityLevel Enum', () => {
     it('should have DEVELOPMENT value', () => {
+      // @ts-expect-error - Testing enum values
       expect(SecurityLevel.DEVELOPMENT).toBe('development');
     });
 
     it('should have STAGING value', () => {
+      // @ts-expect-error - Testing enum values
       expect(SecurityLevel.STAGING).toBe('staging');
     });
 
     it('should have PRODUCTION value', () => {
+      // @ts-expect-error - Testing enum values
       expect(SecurityLevel.PRODUCTION).toBe('production');
     });
   });

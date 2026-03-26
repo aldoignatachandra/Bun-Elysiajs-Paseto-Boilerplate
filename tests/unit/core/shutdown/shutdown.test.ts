@@ -97,7 +97,8 @@ class TestShutdownManager {
     await this.closeConnections();
 
     await Bun.sleep(100);
-    (process.exit as unknown as () => void)(0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (process.exit as unknown as (code: number) => void)(0);
   }
 
   private async drainRequests(): Promise<void> {
@@ -152,8 +153,8 @@ class TestShutdownManager {
   }
 }
 
-const originalExit = (...args: unknown[]) => process.exit(...args);
-let exitMock: typeof process.exit;
+const originalExit = (...args: any[]) => process.exit(...args);
+let exitMock: any;
 
 describe('ShutdownManager', () => {
   let shutdownManager: TestShutdownManager;
@@ -162,7 +163,7 @@ describe('ShutdownManager', () => {
 
   beforeEach(() => {
     // Reset mocks
-    exitMock = mock(() => {}) as typeof process.exit;
+    exitMock = mock(() => {});
     process.exit = originalExit;
     closeDatabaseMock = mock(async () => Promise.resolve());
     closeRedisMock = mock(async () => Promise.resolve());
@@ -276,10 +277,9 @@ describe('ShutdownManager', () => {
     });
 
     it('should call shutdown handler on SIGTERM', async () => {
-      shutdownManager.initialize();
-
-      // Mock process.exit for this test
+      // Mock process.exit for this test BEFORE initialize
       process.exit = exitMock;
+      shutdownManager.initialize();
 
       // Emit SIGTERM signal
       process.emit('SIGTERM', 'SIGTERM');
@@ -292,10 +292,9 @@ describe('ShutdownManager', () => {
     });
 
     it('should call shutdown handler on SIGINT', async () => {
-      shutdownManager.initialize();
-
-      // Mock process.exit for this test
+      // Mock process.exit for this test BEFORE initialize
       process.exit = exitMock;
+      shutdownManager.initialize();
 
       // Emit SIGINT signal
       process.emit('SIGINT', 'SIGINT');
@@ -308,10 +307,9 @@ describe('ShutdownManager', () => {
     });
 
     it('should prevent duplicate shutdown attempts', async () => {
-      shutdownManager.initialize();
-
-      // Mock process.exit for this test
+      // Mock process.exit for this test BEFORE initialize
       process.exit = exitMock;
+      shutdownManager.initialize();
 
       // Emit multiple signals
       process.emit('SIGTERM', 'SIGTERM');
@@ -351,7 +349,7 @@ describe('ShutdownManager', () => {
 
     it('should include ISO timestamp in response', async () => {
       const response = shutdownManager.createServiceUnavailableResponse();
-      const body = await response.json();
+      const body = (await response.json()) as { meta: { timestamp: string } };
 
       expect(body.meta.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     });
@@ -359,10 +357,9 @@ describe('ShutdownManager', () => {
 
   describe('Request Draining', () => {
     it('should wait for active requests to complete', async () => {
-      shutdownManager.initialize();
-
-      // Mock process.exit for this test
+      // Mock process.exit for this test BEFORE initialize
       process.exit = exitMock;
+      shutdownManager.initialize();
 
       // Simulate active request
       shutdownManager.incrementRequest();

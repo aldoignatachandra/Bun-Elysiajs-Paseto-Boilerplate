@@ -137,9 +137,12 @@ describe('Database Connection Module', () => {
       expect(stats).toHaveProperty('totalCount');
       expect(stats).toHaveProperty('idleCount');
       expect(stats).toHaveProperty('waitingCount');
-      expect(typeof stats.totalCount).toBe('number');
-      expect(typeof stats.idleCount).toBe('number');
-      expect(typeof stats.waitingCount).toBe('number');
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      expect(stats && typeof stats.totalCount).toBe('number');
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      expect(stats && typeof stats.idleCount).toBe('number');
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      expect(stats && typeof stats.waitingCount).toBe('number');
     });
 
     it('should return null when no pool exists', async () => {

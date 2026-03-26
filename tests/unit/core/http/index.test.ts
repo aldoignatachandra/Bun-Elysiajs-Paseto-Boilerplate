@@ -274,7 +274,7 @@ describe('Core HTTP Index', () => {
     });
 
     it('should handle null values', () => {
-      const result = parsePagination({ page: null, limit: null });
+      const result = parsePagination({ page: null as any, limit: null as any });
 
       expect(result).toEqual({
         page: 1,

@@ -85,7 +85,11 @@ describe('Health Plugin', () => {
       const response = await app.handle(new Request('http://localhost/health'));
       expect(response.status).toBe(200);
 
-      const body = await response.json();
+      const body = (await response.json()) as {
+        status: string;
+        timestamp: string;
+        checks: { database: { status: string }; redis: { status: string } };
+      };
       expect(body).toHaveProperty('status', 'ok');
       expect(body).toHaveProperty('timestamp');
       expect(body).toHaveProperty('checks');
@@ -109,7 +113,10 @@ describe('Health Plugin', () => {
       const response = await app.handle(new Request('http://localhost/health'));
       expect(response.status).toBe(503);
 
-      const body = await response.json();
+      const body = (await response.json()) as {
+        status: string;
+        checks: { database: { status: string; error?: string } };
+      };
       expect(body).toHaveProperty('status', 'degraded');
       expect(body.checks.database.status).toBe('error');
       expect(body.checks.database).toHaveProperty('error');
@@ -129,7 +136,7 @@ describe('Health Plugin', () => {
       const response = await app.handle(new Request('http://localhost/health'));
       expect(response.status).toBe(503);
 
-      const body = await response.json();
+      const body = (await response.json()) as any;
       expect(body).toHaveProperty('status', 'degraded');
       expect(body.checks.redis.status).toBe('error');
       expect(body.checks.redis).toHaveProperty('error');
@@ -152,7 +159,7 @@ describe('Health Plugin', () => {
       const response = await app.handle(new Request('http://localhost/health'));
       expect(response.status).toBe(503);
 
-      const body = await response.json();
+      const body = (await response.json()) as any;
       expect(body).toHaveProperty('status', 'degraded');
       expect(body.checks.database.status).toBe('error');
       expect(body.checks.redis.status).toBe('error');
@@ -167,7 +174,7 @@ describe('Health Plugin', () => {
       const response = await app.handle(new Request('http://localhost/health'));
       expect(response.status).toBe(200);
 
-      const body = await response.json();
+      const body = (await response.json()) as any;
       expect(body.checks.database).toHaveProperty('latency');
       expect(body.checks.redis).toHaveProperty('latency');
       expect(typeof body.checks.database.latency).toBe('number');
@@ -188,7 +195,7 @@ describe('Health Plugin', () => {
       const response = await app.handle(new Request('http://localhost/health'));
       expect(response.status).toBe(503);
 
-      const body = await response.json();
+      const body = (await response.json()) as any;
       expect(body.checks.database).toHaveProperty('latency');
       expect(typeof body.checks.database.latency).toBe('number');
     });
@@ -214,7 +221,7 @@ describe('Health Plugin', () => {
       const response = await app.handle(new Request('http://localhost/health/ready'));
       expect(response.status).toBe(200);
 
-      const body = await response.json();
+      const body = (await response.json()) as any;
       expect(body).toHaveProperty('status', 'ready');
       expect(body).toHaveProperty('timestamp');
     });
@@ -240,7 +247,7 @@ describe('Health Plugin', () => {
       const response = await app.handle(new Request('http://localhost/health/live'));
       expect(response.status).toBe(200);
 
-      const body = await response.json();
+      const body = (await response.json()) as any;
       expect(body).toHaveProperty('status', 'alive');
       expect(body).toHaveProperty('timestamp');
     });
@@ -348,7 +355,7 @@ describe('Health Plugin', () => {
       const app = new Elysia().use(healthPlugin());
 
       const response = await app.handle(new Request('http://localhost/health'));
-      const body = await response.json();
+      const body = (await response.json()) as any;
 
       expect(body.status).toBe('ok');
       expect(response.status).toBe(200);
@@ -366,7 +373,7 @@ describe('Health Plugin', () => {
       const app = new Elysia().use(healthPlugin());
 
       const response = await app.handle(new Request('http://localhost/health'));
-      const body = await response.json();
+      const body = (await response.json()) as any;
 
       expect(body.status).toBe('degraded');
       expect(response.status).toBe(503);
@@ -406,7 +413,7 @@ describe('Health Plugin', () => {
       const app = new Elysia().use(healthPlugin());
 
       const response = await app.handle(new Request('http://localhost/health'));
-      const body = await response.json();
+      const body = (await response.json()) as any;
 
       expect(body).toHaveProperty('timestamp');
       expect(typeof body.timestamp).toBe('string');
@@ -420,7 +427,7 @@ describe('Health Plugin', () => {
       const app = new Elysia().use(healthPlugin());
 
       const response = await app.handle(new Request('http://localhost/health/ready'));
-      const body = await response.json();
+      const body = (await response.json()) as any;
 
       expect(body).toHaveProperty('timestamp');
       expect(typeof body.timestamp).toBe('string');
@@ -433,7 +440,7 @@ describe('Health Plugin', () => {
       const app = new Elysia().use(healthPlugin());
 
       const response = await app.handle(new Request('http://localhost/health/live'));
-      const body = await response.json();
+      const body = (await response.json()) as any;
 
       expect(body).toHaveProperty('timestamp');
       expect(typeof body.timestamp).toBe('string');
@@ -458,7 +465,7 @@ describe('Health Plugin', () => {
 
       for (const response of responses) {
         expect(response.status).toBe(200);
-        const body = await response.json();
+        const body = (await response.json()) as any;
         expect(body.status).toBe('ok');
       }
     });
