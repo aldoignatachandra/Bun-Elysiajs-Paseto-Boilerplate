@@ -50,6 +50,7 @@ describe('AuthService', () => {
       sessions: {
         findByTokenId: jest.fn(),
         findByToken: jest.fn(),
+        findByRefreshTokenId: jest.fn(),
         findActiveSessionByUserId: jest.fn(),
         create: jest.fn(),
         revoke: jest.fn(),
@@ -199,19 +200,21 @@ describe('AuthService', () => {
 
   describe('refreshToken', () => {
     it('should refresh token with valid refresh token', async () => {
+      const tokenId = 'refresh-token-123';
       const session = {
         id: 'session-123',
         userId: mockUser.id,
         token: 'v4.local.old_access_token',
+        refreshTokenId: tokenId,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         revokedAt: null,
       };
       mockPasetoService.validateRefreshToken.mockReturnValue({
         valid: true,
-        payload: { sub: mockUser.id },
+        payload: { sub: mockUser.id, tokenId },
       });
       mockUnitOfWork.users.findById.mockResolvedValue(mockUser);
-      mockUnitOfWork.sessions.findActiveSessionByUserId.mockResolvedValue(session);
+      mockUnitOfWork.sessions.findByRefreshTokenId.mockResolvedValue(session);
       mockPasetoService.createTokenPair.mockReturnValue(mockTokenPair);
       mockUnitOfWork.sessions.create.mockResolvedValue({});
       mockUnitOfWork.sessions.revoke.mockResolvedValue(true);
@@ -221,7 +224,7 @@ describe('AuthService', () => {
       });
 
       expect(result.tokens).toBeDefined();
-      expect(mockUnitOfWork.sessions.findActiveSessionByUserId).toHaveBeenCalledWith(mockUser.id);
+      expect(mockUnitOfWork.sessions.findByRefreshTokenId).toHaveBeenCalledWith(tokenId);
     });
 
     it('should throw InvalidTokenError for invalid refresh token', async () => {
@@ -238,9 +241,10 @@ describe('AuthService', () => {
     });
 
     it('should throw ForbiddenError when user is deleted', async () => {
+      const tokenId = 'refresh-token-123';
       mockPasetoService.validateRefreshToken.mockReturnValue({
         valid: true,
-        payload: { sub: mockUser.id },
+        payload: { sub: mockUser.id, tokenId },
       });
       mockUnitOfWork.users.findById.mockResolvedValue({ ...mockUser, deletedAt: new Date() });
 
@@ -252,34 +256,31 @@ describe('AuthService', () => {
     });
 
     it('should throw NotFoundError when no active session found', async () => {
+      const tokenId = 'refresh-token-123';
       mockPasetoService.validateRefreshToken.mockReturnValue({
         valid: true,
-        payload: { sub: mockUser.id },
+        payload: { sub: mockUser.id, tokenId },
       });
       mockUnitOfWork.users.findById.mockResolvedValue(mockUser);
-      mockUnitOfWork.sessions.findActiveSessionByUserId.mockResolvedValue(null);
+      mockUnitOfWork.sessions.findByRefreshTokenId.mockResolvedValue(null);
 
       await expect(
         service.refreshToken({
           refreshToken: 'v4.public.test_refresh_token',
         })
-      ).rejects.toThrow(NotFoundError);
+      ).rejects.toThrow(InvalidTokenError); // Changed from NotFoundError to InvalidTokenError
     });
 
     it('should throw InvalidTokenError when session is revoked', async () => {
-      const revokedSession = {
-        id: 'session-123',
-        userId: mockUser.id,
-        token: 'v4.local.access_token',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        revokedAt: new Date(),
-      };
+      const tokenId = 'refresh-token-123';
       mockPasetoService.validateRefreshToken.mockReturnValue({
         valid: true,
-        payload: { sub: mockUser.id },
+        payload: { sub: mockUser.id, tokenId },
       });
       mockUnitOfWork.users.findById.mockResolvedValue(mockUser);
-      mockUnitOfWork.sessions.findActiveSessionByUserId.mockResolvedValue(revokedSession);
+      // findByRefreshTokenId only returns non-revoked sessions (revokedAt IS NULL)
+      // So a revoked session won't be found, resulting in InvalidTokenError
+      mockUnitOfWork.sessions.findByRefreshTokenId.mockResolvedValue(null);
 
       await expect(
         service.refreshToken({

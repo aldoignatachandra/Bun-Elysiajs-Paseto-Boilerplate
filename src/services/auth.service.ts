@@ -133,9 +133,12 @@ export class AuthService implements IAuthService {
 
       const refreshTokenPayload = this.pasetoService.validateRefreshToken(tokens.refreshToken);
       if (refreshTokenPayload.valid && refreshTokenPayload.payload) {
+        // Extract tokenId from refresh token payload for single-use token rotation
+        const tokenId = (refreshTokenPayload.payload as unknown as { tokenId: string }).tokenId;
         const session = {
           userId: user.id,
           token: tokens.accessToken, // Store full access token for logout tracking
+          refreshTokenId: tokenId, // Store refresh token JTI for single-use validation
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           ipAddress,
           userAgent,
@@ -219,9 +222,12 @@ export class AuthService implements IAuthService {
       const refreshTokenPayload = this.pasetoService.validateRefreshToken(tokens.refreshToken);
       let sessionId: string | undefined;
       if (refreshTokenPayload.valid && refreshTokenPayload.payload) {
+        // Extract tokenId from refresh token payload for single-use token rotation
+        const tokenId = (refreshTokenPayload.payload as unknown as { tokenId: string }).tokenId;
         const session = {
           userId: user.id,
           token: tokens.accessToken, // Store full access token for logout tracking
+          refreshTokenId: tokenId, // Store refresh token JTI for single-use validation
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           ipAddress,
           userAgent,
@@ -257,19 +263,26 @@ export class AuthService implements IAuthService {
   /**
    * Refresh access token using refresh token
    *
-   * Validates refresh token, finds active session by user ID,
-   * and generates new token pair.
+   * Implements SINGLE-USE REFRESH TOKEN ROTATION:
+   * 1. Validates refresh token signature and expiration
+   * 2. Finds active session by refresh token's tokenId (JTI)
+   * 3. Generates new token pair with NEW refresh token
+   * 4. Revokes old session (invalidates old refresh token)
+   * 5. Creates new session with new refresh token's tokenId
+   *
+   * Token theft detection: If old refresh token is reused after rotation,
+   * the session lookup will fail (already revoked), detecting potential theft.
    *
    * @param input - Refresh token
-   * @returns New token pair
-   * @throws InvalidTokenError if refresh token is invalid
+   * @returns New token pair with NEW access token and NEW refresh token
+   * @throws InvalidTokenError if refresh token is invalid or already used
    * @throws TokenExpiredError if refresh token has expired
-   * @throws NotFoundError if no active session found
+   * @throws NotFoundError if no active session found for this refresh token
    */
   async refreshToken(input: RefreshTokenInput, activityContext?: AuthActivityContextType): Promise<RefreshTokenOutput> {
     const { ipAddress, userAgent, deviceType } = activityContext || {};
 
-    // Validate the refresh token
+    // Validate the refresh token signature and expiration
     const result = this.pasetoService.validateRefreshToken(input.refreshToken);
     if (!result.valid || !result.payload) {
       throw new InvalidTokenError('Invalid refresh token');
@@ -277,42 +290,56 @@ export class AuthService implements IAuthService {
 
     const payload = result.payload;
 
+    // Extract tokenId from refresh token payload
+    const tokenId = (payload as unknown as { tokenId: string }).tokenId;
+    if (!tokenId) {
+      throw new InvalidTokenError('Refresh token missing tokenId');
+    }
+
     // Verify user exists and is active
     const user = await this.unitOfWork.users.findById(payload.sub);
     if (!user || user.deletedAt) {
       throw new ForbiddenError('User account is inactive or does not exist');
     }
 
-    // Find active session for this user (single session policy)
-    const session = await this.unitOfWork.sessions.findActiveSessionByUserId(user.id);
+    // Find active session by refresh token's tokenId (not by userId)
+    // This ensures single-use: if the refresh token was already used, session won't be found
+    const session = await this.unitOfWork.sessions.findByRefreshTokenId(tokenId);
     if (!session) {
-      throw new NotFoundError('No active session found. Please login again.');
+      // Session not found by tokenId - either:
+      // 1. Refresh token was already used (revoked) -> token theft detection
+      // 2. Refresh token never existed -> invalid token
+      throw new InvalidTokenError('Invalid or already used refresh token. Please login again.');
     }
 
-    if (session.revokedAt) {
-      throw new InvalidTokenError('Session has been revoked');
-    }
-
-    // Generate new token pair
+    // Generate new token pair with NEW refresh token
     const tokens = this.pasetoService.createTokenPair({
       sub: user.id,
       email: user.email,
       role: user.role,
     });
 
-    // Create new session with the new access token
+    // Extract the new refresh token's tokenId
+    const newRefreshTokenPayload = this.pasetoService.validateRefreshToken(tokens.refreshToken);
+    if (!newRefreshTokenPayload.valid || !newRefreshTokenPayload.payload) {
+      throw new InternalServerError('Failed to generate new refresh token');
+    }
+    const newTokenId = (newRefreshTokenPayload.payload as unknown as { tokenId: string }).tokenId;
+
+    // Revoke the old session (invalidates old refresh token)
+    await this.unitOfWork.sessions.revoke(session.id);
+
+    // Create new session with the new access token and NEW refresh token's tokenId
     const newSession = {
       userId: user.id,
       token: tokens.accessToken, // Store full access token for logout tracking
+      refreshTokenId: newTokenId, // Store NEW refresh token JTI
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       ipAddress,
       userAgent,
       deviceType,
     };
     await this.unitOfWork.sessions.create(newSession);
-
-    // Revoke the old session
-    await this.unitOfWork.sessions.revoke(session.id);
 
     return { tokens };
   }

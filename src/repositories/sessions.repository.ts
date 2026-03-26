@@ -40,6 +40,20 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
     }
   }
 
+  async findByRefreshTokenId(refreshTokenId: string): Promise<UserSession | null> {
+    try {
+      const result = await this.db
+        .select()
+        .from(userSessions)
+        .where(and(eq(userSessions.refreshTokenId, refreshTokenId), isNull(userSessions.revokedAt)))
+        .limit(1);
+      return result[0] || null;
+    } catch (error) {
+      this.logError('findByRefreshTokenId', error);
+      return null;
+    }
+  }
+
   async findActiveSessionByUserId(userId: string): Promise<UserSession | null> {
     try {
       const result = await this.db

@@ -48,6 +48,8 @@ export interface ISessionRepository {
   findById(id: string): Promise<UserSession | null>;
   findByToken(token: string): Promise<UserSession | null>;
   findByTokenId(tokenId: string): Promise<UserSession | null>;
+  findByRefreshTokenId(refreshTokenId: string): Promise<UserSession | null>;
+  findActiveSessionByUserId(userId: string): Promise<UserSession | null>;
   findByUserId(userId: string): Promise<UserSession[]>;
   create(session: NewUserSession): Promise<UserSession>;
   revoke(id: string): Promise<boolean>;

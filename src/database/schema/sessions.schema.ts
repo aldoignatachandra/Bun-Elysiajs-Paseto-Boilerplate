@@ -6,7 +6,8 @@ export const userSessions = pgTable('user_sessions', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  token: text('token').notNull(),
+  token: text('token').notNull(), // Access token for logout tracking
+  refreshTokenId: text('refresh_token_id').notNull(), // Refresh token JTI for single-use rotation
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   lastUsedAt: timestamp('last_used_at', { withTimezone: true }).notNull().defaultNow(),
