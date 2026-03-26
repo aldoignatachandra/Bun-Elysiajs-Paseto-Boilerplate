@@ -62,6 +62,33 @@ export class ProductsService implements IProductsService {
     };
   }
 
+  /**
+   * Track changes between old and new values for activity logging
+   */
+  private trackChanges<T extends Record<string, unknown>>(
+    oldData: T,
+    newData: Partial<T>,
+    fieldsToTrack: (keyof T)[]
+  ): Array<{ field: string; oldValue: unknown; newValue: unknown }> {
+    const changes: Array<{ field: string; oldValue: unknown; newValue: unknown }> = [];
+
+    for (const field of fieldsToTrack) {
+      const oldValue = oldData[field];
+      const newValue = newData[field];
+
+      // Only track if value actually changed
+      if (newValue !== undefined && JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+        changes.push({
+          field: String(field),
+          oldValue,
+          newValue,
+        });
+      }
+    }
+
+    return changes;
+  }
+
   async list(input: ListProductsInput): Promise<ListProductsOutput> {
     const page = Math.max(1, input.page || 1);
     const limit = Math.max(1, Math.min(100, input.limit || 10));
@@ -191,6 +218,30 @@ export class ProductsService implements IProductsService {
 
     this.checkOwnership(existing.ownerId, input.currentUserId || '', input.isAdmin);
 
+    // Track changes for activity log
+    const changes = this.trackChanges(existing, input, ['name', 'price', 'stock', 'images', 'attributes', 'variants']);
+
+    // Track variant changes separately if variants are being updated
+    const variantChanges: Array<{ variantName: string; changes: Array<{ field: string; oldValue: unknown; newValue: unknown }> }> = [];
+    if (input.variants && existing.variants) {
+      for (const newVariant of input.variants) {
+        const oldVariant = existing.variants.find(v => v.sku === newVariant.sku);
+        if (oldVariant) {
+          const variantDiff = this.trackChanges(oldVariant as Record<string, unknown>, newVariant as Record<string, unknown>, [
+            'price',
+            'stock',
+            'isActive',
+          ]);
+          if (variantDiff.length > 0) {
+            variantChanges.push({
+              variantName: newVariant.name,
+              changes: variantDiff,
+            });
+          }
+        }
+      }
+    }
+
     const updated = await this.unitOfWork.products.updateWithVariants(input.id || '', {
       name: input.name,
       price: input.price,
@@ -203,6 +254,7 @@ export class ProductsService implements IProductsService {
       throw new NotFoundError('Product not found');
     }
 
+    // Log activity with change details
     await this.logActivity({
       userId: existing.ownerId,
       action: 'product.updated',
@@ -210,7 +262,12 @@ export class ProductsService implements IProductsService {
       entityId: input.id,
       ipAddress: input.ipAddress,
       userAgent: input.userAgent,
-      details: { performedBy: input.performedBy },
+      details: {
+        performedBy: input.performedBy,
+        changes,
+        variantChanges,
+        changeCount: changes.length + variantChanges.length,
+      },
     });
 
     return {
@@ -327,6 +384,10 @@ export class ProductsService implements IProductsService {
       }
 
       try {
+        // Find the variant to get old stock value
+        const oldVariant = existing.variants?.find(v => v.id === input.variantId);
+        const oldVariantStock = oldVariant?.stockQuantity ?? 0;
+
         const result = await this.unitOfWork.products.updateVariantStock(input.id, input.variantId, input.stock);
 
         if (!result) {
@@ -344,8 +405,10 @@ export class ProductsService implements IProductsService {
             performedBy: input.performedBy,
             productId: input.id,
             variantId: input.variantId,
-            newVariantStock: input.stock,
-            newParentStock: result.product.stock,
+            variantName: result.variant.name,
+            oldStock: oldVariantStock,
+            newStock: input.stock,
+            stockChange: input.stock - oldVariantStock,
           },
         });
 

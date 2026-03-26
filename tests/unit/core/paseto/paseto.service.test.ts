@@ -13,13 +13,13 @@ import { generateTokenId, calculateExpiry, calculateExpiryDays } from '@/core/pa
 
 describe('PasetoService - Token Generation (v4.local and v4.public)', () => {
   let service: PasetoService;
-  let testSymmetricKey: Uint8Array;
+  let testSymmetricKey: string;
   let testKeyPair: { publicKey: string; secretKey: string };
 
   beforeEach(() => {
     // Generate fresh keys for each test
-    // For v4.local we need a symmetric key (use buffer format for encrypt/decrypt)
-    testSymmetricKey = generateKeys('local', { format: 'buffer' });
+    // For v4.local we need a symmetric key in PASERK format
+    testSymmetricKey = generateKeys('local');
     // For v4.public we need a key pair (PASERK returns string format for sign/verify)
     testKeyPair = generateKeys('public');
 

@@ -36,7 +36,7 @@ export interface PasetoServiceConfig {
 export class PasetoService {
   private readonly issuer: string;
   private readonly audience: string;
-  private readonly symmetricKey: Uint8Array; // Raw Uint8Array for encrypt/decrypt
+  private readonly symmetricKey: string; // PASERK string for encrypt/decrypt
   private readonly publicKey: string; // PASERK string for sign/verify
   private readonly secretKey: string; // PASERK string for sign/verify
   private readonly accessTokenExpiryMinutes: number;
@@ -64,9 +64,8 @@ export class PasetoService {
     this.issuer = config.issuer;
     this.audience = config.audience;
 
-    // For symmetric key: store as Uint8Array for paseto-ts encrypt/decrypt
-    this.symmetricKey = this.convertToUint8Array(config.symmetricKey);
-    // For asymmetric keys: store as PASERK strings for paseto-ts sign/verify
+    // For all keys: store as PASERK strings for paseto-ts
+    this.symmetricKey = this.convertToPaserkString(config.symmetricKey, 'k4.local.');
     this.publicKey = this.convertToPaserkString(config.publicKey, 'k4.public.');
     this.secretKey = this.convertToPaserkString(config.secretKey, 'k4.secret.');
     this.accessTokenExpiryMinutes = config.accessTokenExpiryMinutes;
@@ -74,28 +73,7 @@ export class PasetoService {
   }
 
   /**
-   * Convert key to Uint8Array (for symmetric crypto operations)
-   */
-  private convertToUint8Array(key: string | number[] | Uint8Array): Uint8Array {
-    if (key instanceof Uint8Array) {
-      return key;
-    } else if (typeof key === 'string') {
-      // Check if it's a PASERK string (k4.local.xxx)
-      if (key.startsWith('k4.local.')) {
-        // Extract the base64url part and convert to Uint8Array
-        const base64urlPart = key.slice(9); // Remove 'k4.local.' prefix
-        return this.base64UrlToUint8Array(base64urlPart);
-      }
-      // Assume it's raw base64url and convert directly
-      return this.base64UrlToUint8Array(key);
-    } else {
-      // Convert number array to Uint8Array
-      return new Uint8Array(key);
-    }
-  }
-
-  /**
-   * Convert key to PASERK string format (for asymmetric crypto operations)
+   * Convert key to PASERK string format
    */
   private convertToPaserkString(key: string | number[] | Uint8Array, prefix: string): string {
     if (typeof key === 'string') {
