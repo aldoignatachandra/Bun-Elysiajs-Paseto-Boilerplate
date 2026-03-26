@@ -97,6 +97,7 @@ export const updateProductSchema = z
 
 export const updateStockSchema = z.object({
   stock: z.number().int().min(0),
+  variantId: z.string().uuid('Invalid variant ID format').optional(),
 });
 
 export const getProductsQuerySchema = paginationSchema.extend({

@@ -681,6 +681,82 @@ export class ProductRepository extends CRUDRepository<Product, string> {
     }
   }
 
+  /**
+   * Update variant stock and recalculate parent product stock
+   * This method ensures the parent product stock is the sum of all active variant stocks
+   *
+   * @param productId - The parent product ID
+   * @param variantId - The variant ID to update
+   * @param stock - The new stock quantity for the variant
+   * @returns The updated variant and parent product
+   * @throws Error if variant doesn't belong to the product (IDOR prevention)
+   */
+  async updateVariantStock(
+    productId: string,
+    variantId: string,
+    stock: number
+  ): Promise<{ variant: { id: string; stockQuantity: number }; product: { id: string; stock: number } } | null> {
+    try {
+      return await this.db.transaction(async tx => {
+        // First, verify the variant belongs to the product (IDOR prevention)
+        const [variant] = await tx
+          .select()
+          .from(productVariants)
+          .where(and(eq(productVariants.id, variantId), eq(productVariants.productId, productId), isNull(productVariants.deletedAt)));
+
+        if (!variant) {
+          throw new Error('Variant not found or does not belong to this product');
+        }
+
+        // Update the variant stock
+        const [updatedVariant] = await tx
+          .update(productVariants)
+          .set({ stockQuantity: stock, updatedAt: new Date() })
+          .where(eq(productVariants.id, variantId))
+          .returning();
+
+        if (!updatedVariant) {
+          throw new Error('Failed to update variant stock');
+        }
+
+        // Recalculate parent product stock (sum of all active variant stocks)
+        const [stockAggregation] = await tx
+          .select({
+            totalStock: sql<number>`COALESCE(SUM(${productVariants.stockQuantity}), 0)`,
+          })
+          .from(productVariants)
+          .where(and(eq(productVariants.productId, productId), isNull(productVariants.deletedAt), eq(productVariants.isActive, true)));
+
+        const newParentStock = stockAggregation?.totalStock ?? 0;
+
+        // Update parent product stock
+        const [updatedProduct] = await tx
+          .update(products)
+          .set({ stock: newParentStock, updatedAt: new Date() })
+          .where(eq(products.id, productId))
+          .returning();
+
+        if (!updatedProduct) {
+          throw new Error('Failed to update parent product stock');
+        }
+
+        return {
+          variant: {
+            id: updatedVariant.id,
+            stockQuantity: updatedVariant.stockQuantity,
+          },
+          product: {
+            id: updatedProduct.id,
+            stock: updatedProduct.stock,
+          },
+        };
+      });
+    } catch (error) {
+      this.logError('updateVariantStock', error);
+      throw error;
+    }
+  }
+
   async delete(id: string): Promise<boolean> {
     try {
       const result = await this.db.delete(products).where(eq(products.id, id)).returning();

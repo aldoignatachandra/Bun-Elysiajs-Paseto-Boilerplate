@@ -257,7 +257,7 @@ export function createProductsRoutes(app: Elysia, productsService: ProductsServi
           requireUserRole(routeCtx.user);
           const params = productIdParamSchema.parse(routeCtx.params);
           const body = updateStockSchema.parse(routeCtx.body);
-          const data = await controller.updateStock(params.id, body.stock, toAuthContext(routeCtx));
+          const data = await controller.updateStock(params.id, body.stock, toAuthContext(routeCtx), body.variantId);
           return successResponse(routeCtx.request, data);
         },
         {

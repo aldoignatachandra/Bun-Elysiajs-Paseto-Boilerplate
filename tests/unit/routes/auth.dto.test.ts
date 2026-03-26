@@ -8,8 +8,8 @@ describe('Auth DTO Validation', () => {
         email: 'test@example.com',
         username: 'testuser',
         password: 'Password123!',
-        firstName: 'John',
-        lastName: 'Doe',
+        confirmPassword: 'Password123!',
+        name: 'John Doe',
       };
 
       const result = registerRequestSchema.safeParse(validData);
@@ -17,12 +17,12 @@ describe('Auth DTO Validation', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should validate registration with name instead of firstName/lastName', () => {
+    it('should validate registration without optional name field', () => {
       const validData = {
         email: 'test@example.com',
         username: 'testuser',
         password: 'Password123!',
-        name: 'John Doe',
+        confirmPassword: 'Password123!',
       };
 
       const result = registerRequestSchema.safeParse(validData);
@@ -35,8 +35,8 @@ describe('Auth DTO Validation', () => {
         email: 'invalid-email',
         username: 'testuser',
         password: 'Password123!',
-        firstName: 'John',
-        lastName: 'Doe',
+        confirmPassword: 'Password123!',
+        name: 'John Doe',
       };
 
       const result = registerRequestSchema.safeParse(invalidData);
@@ -49,8 +49,8 @@ describe('Auth DTO Validation', () => {
         email: 'test@example.com',
         username: 'testuser',
         password: 'weak',
-        firstName: 'John',
-        lastName: 'Doe',
+        confirmPassword: 'weak',
+        name: 'John Doe',
       };
 
       const result = registerRequestSchema.safeParse(invalidData);
@@ -63,8 +63,8 @@ describe('Auth DTO Validation', () => {
         email: 'test@example.com',
         username: 'test-user!',
         password: 'Password123!',
-        firstName: 'John',
-        lastName: 'Doe',
+        confirmPassword: 'Password123!',
+        name: 'John Doe',
       };
 
       const result = registerRequestSchema.safeParse(invalidData);
@@ -82,11 +82,12 @@ describe('Auth DTO Validation', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should reject missing name information', () => {
+    it('should reject passwords that do not match', () => {
       const invalidData = {
         email: 'test@example.com',
         username: 'testuser',
         password: 'Password123!',
+        confirmPassword: 'DifferentPassword123!',
       };
 
       const result = registerRequestSchema.safeParse(invalidData);
@@ -99,8 +100,8 @@ describe('Auth DTO Validation', () => {
         email: 'test@example.com',
         username: 'ab',
         password: 'Password123!',
-        firstName: 'John',
-        lastName: 'Doe',
+        confirmPassword: 'Password123!',
+        name: 'John Doe',
       };
 
       const result = registerRequestSchema.safeParse(invalidData);
@@ -114,8 +115,8 @@ describe('Auth DTO Validation', () => {
         email: longEmail,
         username: 'testuser',
         password: 'Password123!',
-        firstName: 'John',
-        lastName: 'Doe',
+        confirmPassword: 'Password123!',
+        name: 'John Doe',
       };
 
       const result = registerRequestSchema.safeParse(invalidData);

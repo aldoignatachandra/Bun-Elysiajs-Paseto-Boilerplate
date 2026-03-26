@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/await-thenable */
+
 import { describe, it, expect, beforeEach, jest } from 'bun:test';
 import { AuthService } from '../../../src/services/auth.service';
 import { ConflictError, AuthenticationError, ForbiddenError, InvalidTokenError, NotFoundError } from '../../../src/core/errors/app-error';
@@ -363,8 +364,18 @@ describe('AuthService', () => {
 
   describe('validateAccessToken', () => {
     it('should validate a valid access token', async () => {
+      const accessToken = 'v4.local.valid_token';
+      const session = {
+        id: 'session-123',
+        userId: mockUser.id,
+        token: accessToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        revokedAt: null,
+      };
+      mockUnitOfWork.sessions.findByToken.mockResolvedValue(session);
+
       const result = await service.validateAccessToken({
-        token: 'v4.local.valid_token',
+        token: accessToken,
       });
 
       expect(result.valid).toBe(true);

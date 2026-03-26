@@ -53,7 +53,7 @@ describe('ActivityService', () => {
           entityId: mockUserId,
           ipAddress: '127.0.0.1',
           userAgent: 'Mozilla/5.0',
-          details: JSON.stringify({ method: 'email_password' }),
+          details: { method: 'email_password' },
         })
       );
     });
@@ -113,7 +113,7 @@ describe('ActivityService', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should serialize details object to JSON string', async () => {
+    it('should pass details object to repository', async () => {
       const input = {
         userId: mockUserId,
         action: 'product.created' as const,
@@ -130,11 +130,15 @@ describe('ActivityService', () => {
 
       expect(mockUnitOfWork.activityLogs.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          details: JSON.stringify({
+          userId: mockUserId,
+          action: 'product.created',
+          entity: 'products',
+          entityId: 'product-123',
+          details: {
             productName: 'Test Product',
             price: 99.99,
             category: 'electronics',
-          }),
+          },
         })
       );
     });

@@ -1,5 +1,18 @@
 {
   "enabledPlugins": {
     "superpowers@superpowers-marketplace": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Before performing any code changes, updates, or creating plans, you MUST ALWAYS read the file at '/Users/ignata/Desktop/Self Project/Project-Javascript/bun-elysia-paseto-boilerplate/memory/MEMORY.md' first. This file contains critical project-specific information including:\n\n- Coding standards and patterns\n- Security checklists (CRITICAL)\n- Testing standards (CRITICAL)\n- Data validation standards (CRITICAL)\n- Error response standards (HIGH)\n- Performance guidelines (HIGH)\n- Environment configuration (HIGH)\n- AI-assisted development patterns\n\nTreat this file as the source of truth for this project's conventions and standards. Following these guidelines prevents bugs, reduces iterations, and ensures consistent code quality across the codebase."
+          }
+        ]
+      }
+    ]
   }
 }

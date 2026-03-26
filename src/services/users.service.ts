@@ -364,7 +364,6 @@ export class UsersService implements IUsersService {
 
     // Check if user is already active
     if (user.deletedAt === null) {
-      console.log('[DEBUG] user => ', user);
       throw new BadRequestError('User is already active');
     }
 

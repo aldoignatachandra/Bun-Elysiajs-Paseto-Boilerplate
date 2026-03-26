@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/await-thenable */
+
 import { describe, it, expect, beforeEach, jest } from 'bun:test';
 import { UsersService } from '../../../src/services/users.service';
 import { NotFoundError, AuthenticationError, ConflictError } from '../../../src/core/errors/app-error';
@@ -294,6 +295,8 @@ describe('UsersService', () => {
 
   describe('activateUser', () => {
     it('should activate a user', async () => {
+      const inactiveUser = { ...mockUser, deletedAt: new Date() };
+      mockUnitOfWork.users.findById.mockResolvedValue(inactiveUser);
       mockUnitOfWork.users.setActive.mockResolvedValue(true);
 
       const result = await service.activateUser(mockUser.id);
@@ -302,6 +305,7 @@ describe('UsersService', () => {
     });
 
     it('should throw NotFoundError when user not found', async () => {
+      mockUnitOfWork.users.findById.mockResolvedValue(null);
       mockUnitOfWork.users.setActive.mockResolvedValue(false);
 
       await expect(service.activateUser('nonexistent-id')).rejects.toThrow(NotFoundError);
@@ -310,6 +314,7 @@ describe('UsersService', () => {
 
   describe('deactivateUser', () => {
     it('should deactivate a user', async () => {
+      mockUnitOfWork.users.findById.mockResolvedValue(mockUser);
       mockUnitOfWork.users.setActive.mockResolvedValue(true);
 
       const result = await service.deactivateUser(mockUser.id);
@@ -318,6 +323,7 @@ describe('UsersService', () => {
     });
 
     it('should throw NotFoundError when user not found', async () => {
+      mockUnitOfWork.users.findById.mockResolvedValue(null);
       mockUnitOfWork.users.setActive.mockResolvedValue(false);
 
       await expect(service.deactivateUser('nonexistent-id')).rejects.toThrow(NotFoundError);
@@ -326,6 +332,8 @@ describe('UsersService', () => {
 
   describe('restoreUser', () => {
     it('should restore a user', async () => {
+      const deletedUser = { ...mockUser, deletedAt: new Date() };
+      mockUnitOfWork.users.findById.mockResolvedValue(deletedUser);
       mockUnitOfWork.users.restore.mockResolvedValue(true);
 
       const result = await service.restoreUser(mockUser.id);
@@ -334,6 +342,7 @@ describe('UsersService', () => {
     });
 
     it('should throw NotFoundError when user not found', async () => {
+      mockUnitOfWork.users.findById.mockResolvedValue(null);
       mockUnitOfWork.users.restore.mockResolvedValue(false);
 
       await expect(service.restoreUser('nonexistent-id')).rejects.toThrow(NotFoundError);

@@ -163,7 +163,7 @@ export class ProductsController {
     }
   }
 
-  async updateStock(id: string, stock: number, authContext: AuthContext) {
+  async updateStock(id: string, stock: number, authContext: AuthContext, variantId?: string) {
     if (!authContext.user) {
       throw new UnauthorizedError('Authentication required');
     }
@@ -172,6 +172,7 @@ export class ProductsController {
       return await this.productsService.updateStock({
         id,
         stock,
+        variantId,
         currentUserId: authContext.user.id,
         isAdmin: authContext.user.role === 'ADMIN',
         performedBy: authContext.user.id,

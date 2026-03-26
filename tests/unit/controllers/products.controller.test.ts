@@ -6,6 +6,7 @@
 /* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { describe, it, expect, beforeEach, jest } from 'bun:test';
 import { ProductsController } from '../../../src/controllers/products.controller';
 import type { ProductsService } from '../../../src/services/products.service';
@@ -146,12 +147,23 @@ describe('ProductsController', () => {
 
   describe('updateStock', () => {
     it('should update product stock', async () => {
-      const updatedProduct = { ...mockProduct, stock: 20 };
+      const updatedProduct = { id: mockProduct.id, stock: 20 };
       mockProductsService.updateStock.mockResolvedValue(updatedProduct);
 
       const result = await controller.updateStock(mockProduct.id, 20, mockAuthContext);
 
       expect(result.stock).toBe(20);
+    });
+
+    it('should update variant stock when variantId is provided', async () => {
+      const updateResult = { id: mockProduct.id, stock: 50, variantId: 'variant-123', variantStock: 15 };
+      mockProductsService.updateStock.mockResolvedValue(updateResult);
+
+      const result = await controller.updateStock(mockProduct.id, 15, mockAuthContext, 'variant-123');
+
+      expect(result.variantId).toBe('variant-123');
+      expect(result.variantStock).toBe(15);
+      expect(result.stock).toBe(50);
     });
 
     it('should throw UnauthorizedError when user is null', async () => {

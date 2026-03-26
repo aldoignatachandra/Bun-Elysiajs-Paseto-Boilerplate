@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { ProductsService } from '../../../src/services/products.service';
 import { BadRequestError, ForbiddenError } from '../../../src/core/errors/app-error';
@@ -275,6 +276,69 @@ describe('ProductsService', () => {
           currentUserId: 'different-user-id',
         })
       ).rejects.toThrow(ForbiddenError);
+    });
+
+    it('should throw BadRequestError when product has variants and no variantId is provided', async () => {
+      const productWithVariants = { ...mockDbProduct, hasVariant: true };
+      mockUnitOfWork.products.findById = async () => productWithVariants;
+
+      await expect(
+        service.updateStock({
+          id: mockProduct.id,
+          stock: 20,
+          currentUserId: mockProduct.ownerId,
+        })
+      ).rejects.toThrow(BadRequestError);
+    });
+
+    it('should update variant stock when variantId is provided', async () => {
+      const productWithVariants = { ...mockDbProduct, hasVariant: true };
+      mockUnitOfWork.products.findById = async () => productWithVariants;
+      mockUnitOfWork.products.updateVariantStock = async () => ({
+        variant: { id: 'variant-123', stockQuantity: 15 },
+        product: { id: mockProduct.id, stock: 50 },
+      });
+
+      const result = await service.updateStock({
+        id: mockProduct.id,
+        stock: 15,
+        variantId: 'variant-123',
+        currentUserId: mockProduct.ownerId,
+      });
+
+      expect(result.variantId).toBe('variant-123');
+      expect(result.variantStock).toBe(15);
+      expect(result.stock).toBe(50); // Parent product stock updated
+    });
+
+    it('should throw ForbiddenError when variant does not belong to product (IDOR prevention)', async () => {
+      const productWithVariants = { ...mockDbProduct, hasVariant: true };
+      mockUnitOfWork.products.findById = async () => productWithVariants;
+      mockUnitOfWork.products.updateVariantStock = async () => {
+        throw new Error('Variant not found or does not belong to this product');
+      };
+
+      await expect(
+        service.updateStock({
+          id: mockProduct.id,
+          stock: 15,
+          variantId: 'variant-from-other-product',
+          currentUserId: mockProduct.ownerId,
+        })
+      ).rejects.toThrow(ForbiddenError);
+    });
+
+    it('should throw BadRequestError when trying to update variant stock for product without variants', async () => {
+      mockUnitOfWork.products.findById = async () => mockDbProduct; // hasVariant: false
+
+      await expect(
+        service.updateStock({
+          id: mockProduct.id,
+          stock: 15,
+          variantId: 'some-variant-id',
+          currentUserId: mockProduct.ownerId,
+        })
+      ).rejects.toThrow(BadRequestError);
     });
   });
 });

@@ -116,6 +116,14 @@ export interface UpdateStockInput {
   currentUserId?: string;
   isAdmin?: boolean;
   stock: number;
+  variantId?: string;
+}
+
+export interface UpdateStockOutput {
+  id: string;
+  stock: number;
+  variantId?: string;
+  variantStock?: number;
 }
 
 export interface IProductsService {
@@ -125,5 +133,5 @@ export interface IProductsService {
   update(input: UpdateProductInput): Promise<ProductDTO>;
   delete(id: string, force?: boolean): Promise<{ message: string }>;
   restore(id: string): Promise<ProductDTO>;
-  updateStock(input: UpdateStockInput): Promise<{ id: string; stock: number }>;
+  updateStock(input: UpdateStockInput): Promise<UpdateStockOutput>;
 }

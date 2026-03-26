@@ -14,9 +14,10 @@ export type ActivityAction =
   | 'product.updated'
   | 'product.deleted'
   | 'product.restored'
-  | 'product.stock_updated';
+  | 'product.stock_updated'
+  | 'product.variant_stock_updated';
 
-export type ActivityEntity = 'users' | 'products' | 'sessions';
+export type ActivityEntity = 'users' | 'products' | 'sessions' | 'product_variants';
 
 export interface LogActivityInput {
   userId: string;

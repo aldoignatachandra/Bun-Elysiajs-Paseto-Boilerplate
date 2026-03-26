@@ -78,6 +78,11 @@ export interface IProductRepository {
   update(id: string, data: Partial<Product>): Promise<Product | null>;
   updateWithVariants(id: string, data: ProductUpdateWithVariantsInput): Promise<ProductView | null>;
   updateStock(id: string, stock: number): Promise<Product | null>;
+  updateVariantStock(
+    productId: string,
+    variantId: string,
+    stock: number
+  ): Promise<{ variant: { id: string; stockQuantity: number }; product: { id: string; stock: number } } | null>;
   softDelete(id: string): Promise<boolean>;
   restore(id: string): Promise<boolean>;
   delete(id: string): Promise<boolean>;

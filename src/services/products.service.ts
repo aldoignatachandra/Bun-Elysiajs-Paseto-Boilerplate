@@ -305,7 +305,9 @@ export class ProductsService implements IProductsService {
     };
   }
 
-  async updateStock(input: UpdateStockInput & ProductActivityContext): Promise<{ id: string; stock: number }> {
+  async updateStock(
+    input: UpdateStockInput & ProductActivityContext
+  ): Promise<{ id: string; stock: number; variantId?: string; variantStock?: number }> {
     if (input.stock < 0) {
       throw new BadRequestError('Stock cannot be negative');
     }
@@ -318,8 +320,53 @@ export class ProductsService implements IProductsService {
 
     this.checkOwnership(existing.ownerId, input.currentUserId || '', input.isAdmin);
 
+    // If variantId is provided, update variant stock
+    if (input.variantId) {
+      if (!existing.hasVariant) {
+        throw new BadRequestError('Cannot update variant stock for a product without variants');
+      }
+
+      try {
+        const result = await this.unitOfWork.products.updateVariantStock(input.id, input.variantId, input.stock);
+
+        if (!result) {
+          throw new NotFoundError('Failed to update variant stock');
+        }
+
+        await this.logActivity({
+          userId: existing.ownerId,
+          action: 'product.variant_stock_updated',
+          entity: 'product_variants',
+          entityId: input.variantId,
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+          details: {
+            performedBy: input.performedBy,
+            productId: input.id,
+            variantId: input.variantId,
+            newVariantStock: input.stock,
+            newParentStock: result.product.stock,
+          },
+        });
+
+        return {
+          id: result.product.id,
+          stock: result.product.stock,
+          variantId: result.variant.id,
+          variantStock: result.variant.stockQuantity,
+        };
+      } catch (error) {
+        // Catch repository error about variant not belonging to product
+        if (error instanceof Error && error.message.includes('does not belong to this product')) {
+          throw new ForbiddenError('Variant does not belong to this product');
+        }
+        throw error;
+      }
+    }
+
+    // If no variantId, update product stock directly (only for products without variants)
     if (existing.hasVariant) {
-      throw new BadRequestError('Cannot update stock directly for products with variants');
+      throw new BadRequestError('Cannot update stock directly for products with variants. Please specify a variantId to update variant stock.');
     }
 
     const updated = await this.unitOfWork.products.updateStock(input.id, input.stock);
