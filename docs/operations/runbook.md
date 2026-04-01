@@ -272,7 +272,7 @@ This runbook contains operational procedures for managing the Bun Elysia PASETO 
    ```bash
    # Tag with version
    VERSION=$(date +%Y%m%d-%H%M%S)
-   docker build -f infra/docker/production.dockerfile \
+   docker build -f docker/dockerfiles/Dockerfile.prod \
      -t your-registry/bun-elysia-paseto-api:$VERSION \
      -t your-registry/bun-elysia-paseto-api:latest .
 

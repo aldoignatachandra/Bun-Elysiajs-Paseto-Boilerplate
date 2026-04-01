@@ -1,0 +1,36 @@
+# Recording Rules
+# Purpose: Pre-compute frequently used queries for better performance
+
+groups:
+  - name: api_http_recording_rules
+    interval: 30s
+    rules:
+      # Request rate per second (1m window)
+      - record: api:http_requests:rate1m
+        expr: sum(rate(http_requests_total[1m])) by (method, route, status_class)
+
+      # Request rate per second (5m window)
+      - record: api:http_requests:rate5m
+        expr: sum(rate(http_requests_total[5m])) by (method, route, status_class)
+
+      # P95 latency
+      - record: api:http_request_duration:p95
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, method, route))
+
+      # P99 latency
+      - record: api:http_request_duration:p99
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, method, route))
+
+      # Error rate
+      - record: api:http_errors:rate5m
+        expr: sum(rate(http_requests_total{status_class="5xx"}[5m])) by (method, route)
+
+  - name: api_availability_recording_rules
+    interval: 30s
+    rules:
+      # Availability percentage
+      - record: api:availability:ratio5m
+        expr: |
+          sum(rate(http_requests_total{status_class!~"5.."}[5m])) by (method, route)
+          /
+          sum(rate(http_requests_total[5m])) by (method, route)

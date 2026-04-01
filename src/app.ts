@@ -3,6 +3,7 @@ import { cors } from '@elysiajs/cors';
 import { createOpenApiConfig } from './core/openapi';
 import { logger } from './core/logging/logger';
 import { loggingPlugin } from './core/logging/middleware';
+import { telemetryMiddleware } from './core/telemetry';
 import { getConnection } from './database/connection';
 import { UnitOfWork } from './repositories/unit-of-work';
 import { PasswordService } from './core/crypto/password.service';
@@ -48,6 +49,7 @@ export function createApp() {
     )
     .use(requestId())
     .use(loggingPlugin)
+    .use(telemetryMiddleware())
     .use(registerPlugins)
     .onError(ctx => {
       const { error, set, request } = ctx;

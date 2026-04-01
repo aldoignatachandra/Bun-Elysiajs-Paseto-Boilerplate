@@ -16,6 +16,7 @@
 import { logger } from '../logging/logger';
 import { closeConnection as closeDatabaseConnection } from '@database/connection';
 import { closeRedisConnection } from '@core/redis/connection';
+import { shutdownTracer } from '@core/telemetry';
 
 /**
  * Shutdown configuration options
@@ -205,7 +206,7 @@ export class ShutdownManager {
   }
 
   /**
-   * Close database and Redis connections
+   * Close database, Redis, and telemetry connections
    *
    * Attempts to gracefully close all connections.
    * Logs any errors but continues to ensure best-effort cleanup.
@@ -227,6 +228,14 @@ export class ShutdownManager {
       logger.info('Redis closed');
     } catch (error) {
       logger.error('Error closing Redis', error);
+    }
+
+    // Shutdown OpenTelemetry tracer
+    try {
+      await shutdownTracer();
+      logger.info('Telemetry shutdown complete');
+    } catch (error) {
+      logger.error('Error shutting down telemetry', error);
     }
   }
 

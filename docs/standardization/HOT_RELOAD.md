@@ -199,7 +199,7 @@ CMD ["bun", "run", "--watch", "src/server.ts"]
 
 1. Verify volume mounts are correct:
    ```bash
-   docker-compose -f docker-compose.dev.yaml config
+   docker-compose -f docker/compose/docker-compose.dev.yaml config
    ```
 2. Check file permissions:
    ```bash

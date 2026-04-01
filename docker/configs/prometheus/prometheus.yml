@@ -1,0 +1,50 @@
+# Prometheus Configuration
+# Purpose: Scrape configuration for Bun Elysia PASETO API
+
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'bun-elysia-monitor'
+    environment: 'development'
+
+# Alertmanager configuration (future)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+      # - alertmanager:9093
+
+# Rule files
+rule_files:
+  - '/etc/prometheus/recording-rules.yml'
+  - '/etc/prometheus/alerting-rules.yml'
+
+# Scrape configurations
+scrape_configs:
+  # ===========================================
+  # PROMETHEUS SELF-MONITORING
+  # ===========================================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # ===========================================
+  # BUN ELYSIA API
+  # ===========================================
+  - job_name: 'bun-elysia-api'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['api:3000']
+        labels:
+          service: 'api'
+          application: 'bun-elysia-paseto'
+    relabel_configs:
+      # Add environment label
+      - target_label: environment
+        replacement: development

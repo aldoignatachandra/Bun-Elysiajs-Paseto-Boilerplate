@@ -1,0 +1,16 @@
+# Grafana Dashboard Provisioning
+# Purpose: Auto-load dashboards from filesystem
+
+apiVersion: 1
+
+providers:
+  - name: 'Bun Elysia Dashboards'
+    orgId: 1
+    folder: 'Bun Elysia'
+    folderUid: 'bun-elysia'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/dashboards

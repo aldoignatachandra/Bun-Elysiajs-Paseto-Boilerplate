@@ -1,0 +1,62 @@
+# Alerting Rules
+# Purpose: Basic alerts for API health monitoring
+
+groups:
+  - name: api_alerts
+    interval: 30s
+    rules:
+      # High error rate alert
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status_class="5xx"}[5m])) by (method, route)
+          /
+          sum(rate(http_requests_total[5m])) by (method, route) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'High error rate on {{ $labels.method }} {{ $labels.route }}'
+          description: 'Error rate is {{ $value | humanizePercentage }} for the last 5 minutes'
+
+      # High latency alert
+      - alert: HighLatency
+        expr: api:http_request_duration:p95 > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'High latency on {{ $labels.method }} {{ $labels.route }}'
+          description: 'P95 latency is {{ $value | humanizeDuration }} for the last 10 minutes'
+
+      # API down alert
+      - alert: APIDown
+        expr: up{job="bun-elysia-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'API is down'
+          description: 'The Bun Elysia API has been unreachable for more than 1 minute'
+
+      # Low availability alert
+      - alert: LowAvailability
+        expr: api:availability:ratio5m < 0.99
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Low availability on {{ $labels.method }} {{ $labels.route }}'
+          description: 'Availability is {{ $value | humanizePercentage }} for the last 5 minutes'
+
+  - name: observability_stack_alerts
+    interval: 30s
+    rules:
+      # Prometheus self-monitoring
+      - alert: PrometheusNotConnectedToAlertmanager
+        expr: absent(up{job="prometheus"})
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Prometheus is not monitoring itself'
+          description: 'Prometheus self-monitoring is not working'

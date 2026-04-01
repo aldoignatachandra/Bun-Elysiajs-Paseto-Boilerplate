@@ -1,3 +1,7 @@
+# Docker Compose Production Configuration
+# Purpose: Production deployment for Bun Elysia PASETO API
+# Usage: docker-compose -f docker/compose/docker-compose.prod.yaml up -d
+
 version: '3.8'
 
 services:
@@ -39,8 +43,8 @@ services:
 
   api:
     build:
-      context: ..
-      dockerfile: infra/docker/production.dockerfile
+      context: ../..
+      dockerfile: docker/dockerfiles/Dockerfile.prod
     container_name: bun-elysia-paseto-api
     environment:
       NODE_ENV: production
@@ -92,7 +96,7 @@ services:
     ports:
       - '80:80'
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../configs/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - api
     networks:

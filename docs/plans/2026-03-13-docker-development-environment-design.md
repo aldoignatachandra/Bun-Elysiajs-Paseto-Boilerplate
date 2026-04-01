@@ -282,7 +282,7 @@ Docker build ignore patterns.
 ```yaml
 # Docker Compose Development Configuration
 # Purpose: Complete development environment for Bun Elysia PASETO API
-# Usage: docker-compose -f docker-compose.dev.yaml up
+# Usage: docker-compose -f docker/compose/docker-compose.dev.yaml up
 
 version: '3.9'
 
@@ -520,7 +520,7 @@ services:
 ```dockerfile
 # Development Dockerfile for Bun Elysia PASETO API
 # Purpose: Development environment with hot reload capabilities
-# Usage: docker-compose -f docker-compose.dev.yaml build api
+# Usage: docker-compose -f docker/compose/docker-compose.dev.yaml build api
 
 # Base image - Alpine Linux with Bun runtime
 FROM oven/bun:1.0.0-alpine AS base
@@ -1203,16 +1203,16 @@ bun run generate:paseto-keys
 # REDIS_COMMANDER_PORT=8081
 
 # 6. Start services
-docker-compose -f docker-compose.dev.yaml up -d
+docker-compose -f docker/compose/docker-compose.dev.yaml up -d
 
 # 7. Wait for services to be healthy (check with docker-compose ps)
-docker-compose -f docker-compose.dev.yaml ps
+docker-compose -f docker/compose/docker-compose.dev.yaml ps
 
 # 8. Run database migrations
-docker-compose -f docker-compose.dev.yaml exec api bun run db:migrate
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:migrate
 
 # 9. Seed database (optional)
-docker-compose -f docker-compose.dev.yaml exec api bun run db:seed
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:seed
 
 # 10. Verify services are running
 curl http://localhost:3000/health
@@ -1224,28 +1224,28 @@ curl http://localhost:3000/health
 
 ```bash
 # Start all services in detached mode
-docker-compose -f docker-compose.dev.yaml up -d
+docker-compose -f docker/compose/docker-compose.dev.yaml up -d
 ```
 
 #### Start Specific Services
 
 ```bash
 # Start only API and database
-docker-compose -f docker-compose.dev.yaml up -d api postgres redis
+docker-compose -f docker/compose/docker-compose.dev.yaml up -d api postgres redis
 
 # Start with fresh database (warning: destroys data)
-docker-compose -f docker-compose.dev.yaml down -v
-docker-compose -f docker-compose.dev.yaml up -d
+docker-compose -f docker/compose/docker-compose.dev.yaml down -v
+docker-compose -f docker/compose/docker-compose.dev.yaml up -d
 ```
 
 #### Start with Logs
 
 ```bash
 # Start and follow logs
-docker-compose -f docker-compose.dev.yaml up
+docker-compose -f docker/compose/docker-compose.dev.yaml up
 
 # Start specific service and follow logs
-docker-compose -f docker-compose.dev.yaml up api
+docker-compose -f docker/compose/docker-compose.dev.yaml up api
 ```
 
 ### 6.3 Stopping Services
@@ -1254,23 +1254,23 @@ docker-compose -f docker-compose.dev.yaml up api
 
 ```bash
 # Stop all services gracefully
-docker-compose -f docker-compose.dev.yaml stop
+docker-compose -f docker/compose/docker-compose.dev.yaml stop
 
 # Stop and remove containers
-docker-compose -f docker-compose.dev.yaml down
+docker-compose -f docker/compose/docker-compose.dev.yaml down
 
 # Stop and remove containers, volumes, and orphaned containers
-docker-compose -f docker-compose.dev.yaml down -v --remove-orphans
+docker-compose -f docker/compose/docker-compose.dev.yaml down -v --remove-orphans
 ```
 
 #### Stop Specific Services
 
 ```bash
 # Stop API service
-docker-compose -f docker-compose.dev.yaml stop api
+docker-compose -f docker/compose/docker-compose.dev.yaml stop api
 
 # Stop database services
-docker-compose -f docker-compose.dev.yaml stop postgres redis
+docker-compose -f docker/compose/docker-compose.dev.yaml stop postgres redis
 ```
 
 ### 6.4 Viewing Logs
@@ -1279,42 +1279,42 @@ docker-compose -f docker-compose.dev.yaml stop postgres redis
 
 ```bash
 # Follow all logs
-docker-compose -f docker-compose.dev.yaml logs -f
+docker-compose -f docker/compose/docker-compose.dev.yaml logs -f
 
 # View last 100 lines
-docker-compose -f docker-compose.dev.yaml logs --tail=100
+docker-compose -f docker/compose/docker-compose.dev.yaml logs --tail=100
 
 # View logs with timestamps
-docker-compose -f docker-compose.dev.yaml logs -f --timestamps
+docker-compose -f docker/compose/docker-compose.dev.yaml logs -f --timestamps
 ```
 
 #### View Service-Specific Logs
 
 ```bash
 # API logs
-docker-compose -f docker-compose.dev.yaml logs -f api
+docker-compose -f docker/compose/docker-compose.dev.yaml logs -f api
 
 # PostgreSQL logs
-docker-compose -f docker-compose.dev.yaml logs -f postgres
+docker-compose -f docker/compose/docker-compose.dev.yaml logs -f postgres
 
 # Redis logs
-docker-compose -f docker-compose.dev.yaml logs -f redis
+docker-compose -f docker/compose/docker-compose.dev.yaml logs -f redis
 
 # Multiple services
-docker-compose -f docker-compose.dev.yaml logs -f api postgres redis
+docker-compose -f docker/compose/docker-compose.dev.yaml logs -f api postgres redis
 ```
 
 #### Filter Logs
 
 ```bash
 # Show logs since specific time
-docker-compose -f docker-compose.dev.yaml logs --since="2024-01-01T00:00:00"
+docker-compose -f docker/compose/docker-compose.dev.yaml logs --since="2024-01-01T00:00:00"
 
 # Show logs from last 10 minutes
-docker-compose -f docker-compose.dev.yaml logs --since=10m
+docker-compose -f docker/compose/docker-compose.dev.yaml logs --since=10m
 
 # Show logs until specific time
-docker-compose -f docker-compose.dev.yaml logs --until="2024-01-01T01:00:00"
+docker-compose -f docker/compose/docker-compose.dev.yaml logs --until="2024-01-01T01:00:00"
 ```
 
 ### 6.5 Accessing Services
@@ -1361,35 +1361,35 @@ open http://localhost:8081
 
 ```bash
 # Access API container shell
-docker-compose -f docker-compose.dev.yaml exec api sh
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api sh
 
 # Run database migrations
-docker-compose -f docker-compose.dev.yaml exec api bun run db:migrate
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:migrate
 
 # Run tests
-docker-compose -f docker-compose.dev.yaml exec api bun run test:unit
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run test:unit
 
 # Generate new migration
-docker-compose -f docker-compose.dev.yaml exec api bun run db:generate
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:generate
 
 # Access PostgreSQL CLI
-docker-compose -f docker-compose.dev.yaml exec postgres psql -U postgres -d bun_elysia_paseto
+docker-compose -f docker/compose/docker-compose.dev.yaml exec postgres psql -U postgres -d bun_elysia_paseto
 
 # Access Redis CLI
-docker-compose -f docker-compose.dev.yaml exec redis redis-cli
+docker-compose -f docker/compose/docker-compose.dev.yaml exec redis redis-cli
 ```
 
 #### Interactive Sessions
 
 ```bash
 # Start interactive shell in API container
-docker-compose -f docker-compose.dev.yaml run --rm api sh
+docker-compose -f docker/compose/docker-compose.dev.yaml run --rm api sh
 
 # Start interactive shell in PostgreSQL container
-docker-compose -f docker-compose.dev.yaml run --rm postgres sh
+docker-compose -f docker/compose/docker-compose.dev.yaml run --rm postgres sh
 
 # Start interactive shell in Redis container
-docker-compose -f docker-compose.dev.yaml run --rm redis sh
+docker-compose -f docker/compose/docker-compose.dev.yaml run --rm redis sh
 ```
 
 ### 6.7 Development Workflow with Hot Reload
@@ -1405,7 +1405,7 @@ docker-compose -f docker-compose.dev.yaml run --rm redis sh
 
 ```bash
 # Terminal 1: Start services with logs
-docker-compose -f docker-compose.dev.yaml up
+docker-compose -f docker/compose/docker-compose.dev.yaml up
 
 # Terminal 2: Make code changes
 # Edit src/routes/users.routes.ts
@@ -1423,33 +1423,33 @@ curl http://localhost:3000/api/v1/users
 
 ```bash
 # Generate new migration
-docker-compose -f docker-compose.dev.yaml exec api bun run db:generate
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:generate
 
 # Apply migrations
-docker-compose -f docker-compose.dev.yaml exec api bun run db:migrate
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:migrate
 
 # Check migration status
-docker-compose -f docker-compose.dev.yaml exec api bun run db:check
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:check
 ```
 
 #### Seeding Database
 
 ```bash
 # Run seed script
-docker-compose -f docker-compose.dev.yaml exec api bun run db:seed
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:seed
 
 # Reset database (drop, create, migrate, seed)
-docker-compose -f docker-compose.dev.yaml exec api bun run db:reset
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:reset
 ```
 
 #### Database Backup
 
 ```bash
 # Backup database
-docker-compose -f docker-compose.dev.yaml exec postgres pg_dump -U postgres bun_elysia_paseto > backup.sql
+docker-compose -f docker/compose/docker-compose.dev.yaml exec postgres pg_dump -U postgres bun_elysia_paseto > backup.sql
 
 # Restore database
-cat backup.sql | docker-compose -f docker-compose.dev.yaml exec -T postgres psql -U postgres bun_elysia_paseto
+cat backup.sql | docker-compose -f docker/compose/docker-compose.dev.yaml exec -T postgres psql -U postgres bun_elysia_paseto
 ```
 
 ### 6.9 Monitoring and Debugging
@@ -1458,7 +1458,7 @@ cat backup.sql | docker-compose -f docker-compose.dev.yaml exec -T postgres psql
 
 ```bash
 # Check all services
-docker-compose -f docker-compose.dev.yaml ps
+docker-compose -f docker/compose/docker-compose.dev.yaml ps
 
 # Check detailed service info
 docker inspect bun-elysia-paseto-api-dev
@@ -1481,10 +1481,10 @@ docker stats bun-elysia-paseto-api-dev
 curl http://localhost:3000/health
 
 # Check PostgreSQL health
-docker-compose -f docker-compose.dev.yaml exec postgres pg_isready
+docker-compose -f docker/compose/docker-compose.dev.yaml exec postgres pg_isready
 
 # Check Redis health
-docker-compose -f docker-compose.dev.yaml exec redis redis-cli ping
+docker-compose -f docker/compose/docker-compose.dev.yaml exec redis redis-cli ping
 ```
 
 ---
@@ -1633,13 +1633,13 @@ postgres (health check)┘
 
 ```bash
 # Run all unit tests
-docker-compose -f docker-compose.dev.yaml exec api bun run test:unit
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run test:unit
 
 # Run with coverage
-docker-compose -f docker-compose.dev.yaml exec api bun run test:coverage
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run test:coverage
 
 # Run specific test file
-docker-compose -f docker-compose.dev.yaml exec api bun test tests/unit/services/auth.service.test.ts
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun test tests/unit/services/auth.service.test.ts
 ```
 
 ### 8.2 Integration Testing
@@ -1648,10 +1648,10 @@ docker-compose -f docker-compose.dev.yaml exec api bun test tests/unit/services/
 
 ```bash
 # Run all integration tests
-docker-compose -f docker-compose.dev.yaml exec api bun run test:integration
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run test:integration
 
 # Run with specific database
-docker-compose -f docker-compose.dev.yaml exec -e DATABASE_URL="..." api bun run test:integration
+docker-compose -f docker/compose/docker-compose.dev.yaml exec -e DATABASE_URL="..." api bun run test:integration
 ```
 
 ### 8.3 End-to-End Testing
@@ -1660,7 +1660,7 @@ docker-compose -f docker-compose.dev.yaml exec -e DATABASE_URL="..." api bun run
 
 ```bash
 # Run E2E tests against running services
-docker-compose -f docker-compose.dev.yaml exec api bun run test:e2e
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run test:e2e
 
 # Run E2E tests from host
 npm run test:e2e
@@ -1686,10 +1686,10 @@ curl http://localhost:3000/health \
 
 ```bash
 # PostgreSQL health
-docker-compose -f docker-compose.dev.yaml exec postgres pg_isready -U postgres
+docker-compose -f docker/compose/docker-compose.dev.yaml exec postgres pg_isready -U postgres
 
 # Redis health
-docker-compose -f docker-compose.dev.yaml exec redis redis-cli ping
+docker-compose -f docker/compose/docker-compose.dev.yaml exec redis redis-cli ping
 ```
 
 ### 8.5 Performance Testing
@@ -1715,13 +1715,13 @@ bombardier -c 10 -d 30s -l \
 
 ```bash
 # Validate schema
-docker-compose -f docker-compose.dev.yaml exec api bun run db:check
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:check
 
 # Generate migration
-docker-compose -f docker-compose.dev.yaml exec api bun run db:generate
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:generate
 
 # Apply migration
-docker-compose -f docker-compose.dev.yaml exec api bun run db:migrate
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:migrate
 ```
 
 ### 8.7 Container Testing
@@ -1730,13 +1730,13 @@ docker-compose -f docker-compose.dev.yaml exec api bun run db:migrate
 
 ```bash
 # Check container status
-docker-compose -f docker-compose.dev.yaml ps
+docker-compose -f docker/compose/docker-compose.dev.yaml ps
 
 # Check container health
 docker inspect bun-elysia-paseto-api-dev | jq '.[0].State.Health'
 
 # Check container logs for errors
-docker-compose -f docker-compose.dev.yaml logs --tail=100 api | grep -i error
+docker-compose -f docker/compose/docker-compose.dev.yaml logs --tail=100 api | grep -i error
 ```
 
 ---
@@ -1749,48 +1749,48 @@ docker-compose -f docker-compose.dev.yaml logs --tail=100 api | grep -i error
 
 ```bash
 # Start all services
-docker-compose -f docker-compose.dev.yaml up -d
+docker-compose -f docker/compose/docker-compose.dev.yaml up -d
 
 # Verify services are healthy
-docker-compose -f docker-compose.dev.yaml ps
+docker-compose -f docker/compose/docker-compose.dev.yaml ps
 
 # View logs
-docker-compose -f docker-compose.dev.yaml logs -f
+docker-compose -f docker/compose/docker-compose.dev.yaml logs -f
 ```
 
 #### Reset Database
 
 ```bash
 # Stop services
-docker-compose -f docker-compose.dev.yaml down
+docker-compose -f docker/compose/docker-compose.dev.yaml down
 
 # Remove volumes
-docker-compose -f docker-compose.dev.yaml down -v
+docker-compose -f docker/compose/docker-compose.dev.yaml down -v
 
 # Start fresh
-docker-compose -f docker-compose.dev.yaml up -d
+docker-compose -f docker/compose/docker-compose.dev.yaml up -d
 
 # Run migrations
-docker-compose -f docker-compose.dev.yaml exec api bun run db:migrate
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:migrate
 
 # Seed database
-docker-compose -f docker-compose.dev.yaml exec api bun run db:seed
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:seed
 ```
 
 #### Debug API Issues
 
 ```bash
 # View API logs
-docker-compose -f docker-compose.dev.yaml logs -f api
+docker-compose -f docker/compose/docker-compose.dev.yaml logs -f api
 
 # Access API container
-docker-compose -f docker-compose.dev.yaml exec api sh
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api sh
 
 # Check environment variables
-docker-compose -f docker-compose.dev.yaml exec api env | grep -E 'DATABASE|REDIS|PASETO'
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api env | grep -E 'DATABASE|REDIS|PASETO'
 
 # Test database connection
-docker-compose -f docker-compose.dev.yaml exec api bun run -e "console.log('Testing DB...')"
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run -e "console.log('Testing DB...')"
 ```
 
 ### 9.2 Database Management Examples
@@ -1799,7 +1799,7 @@ docker-compose -f docker-compose.dev.yaml exec api bun run -e "console.log('Test
 
 ```bash
 # Create backup
-docker-compose -f docker-compose.dev.yaml exec postgres pg_dump -U postgres bun_elysia_paseto > backup_$(date +%Y%m%d_%H%M%S).sql
+docker-compose -f docker/compose/docker-compose.dev.yaml exec postgres pg_dump -U postgres bun_elysia_paseto > backup_$(date +%Y%m%d_%H%M%S).sql
 
 # Compress backup
 gzip backup_$(date +%Y%m%d_%H%M%S).sql
@@ -1812,20 +1812,20 @@ gzip backup_$(date +%Y%m%d_%H%M%S).sql
 gunzip backup_20240101_120000.sql.gz
 
 # Restore database
-cat backup_20240101_120000.sql | docker-compose -f docker-compose.dev.yaml exec -T postgres psql -U postgres bun_elysia_paseto
+cat backup_20240101_120000.sql | docker-compose -f docker/compose/docker-compose.dev.yaml exec -T postgres psql -U postgres bun_elysia_paseto
 ```
 
 #### Access PostgreSQL CLI
 
 ```bash
 # Access psql
-docker-compose -f docker-compose.dev.yaml exec postgres psql -U postgres -d bun_elysia_paseto
+docker-compose -f docker/compose/docker-compose.dev.yaml exec postgres psql -U postgres -d bun_elysia_paseto
 
 # Run query from host
-docker-compose -f docker-compose.dev.yaml exec postgres psql -U postgres -d bun_elysia_paseto -c "SELECT * FROM users;"
+docker-compose -f docker/compose/docker-compose.dev.yaml exec postgres psql -U postgres -d bun_elysia_paseto -c "SELECT * FROM users;"
 
 # Run SQL file
-docker-compose -f docker-compose.dev.yaml exec -T postgres psql -U postgres -d bun_elysia_paseto < query.sql
+docker-compose -f docker/compose/docker-compose.dev.yaml exec -T postgres psql -U postgres -d bun_elysia_paseto < query.sql
 ```
 
 ### 9.3 Redis Management Examples
@@ -1834,26 +1834,26 @@ docker-compose -f docker-compose.dev.yaml exec -T postgres psql -U postgres -d b
 
 ```bash
 # Access redis-cli
-docker-compose -f docker-compose.dev.yaml exec redis redis-cli
+docker-compose -f docker/compose/docker-compose.dev.yaml exec redis redis-cli
 
 # Monitor commands
-docker-compose -f docker-compose.dev.yaml exec redis redis-cli MONITOR
+docker-compose -f docker/compose/docker-compose.dev.yaml exec redis redis-cli MONITOR
 
 # Check memory usage
-docker-compose -f docker-compose.dev.yaml exec redis redis-cli INFO memory
+docker-compose -f docker/compose/docker-compose.dev.yaml exec redis redis-cli INFO memory
 ```
 
 #### Clear Cache
 
 ```bash
 # Clear all keys
-docker-compose -f docker-compose.dev.yaml exec redis redis-cli FLUSHALL
+docker-compose -f docker/compose/docker-compose.dev.yaml exec redis redis-cli FLUSHALL
 
 # Clear current database
-docker-compose -f docker-compose.dev.yaml exec redis redis-cli FLUSHDB
+docker-compose -f docker/compose/docker-compose.dev.yaml exec redis redis-cli FLUSHDB
 
 # Delete specific pattern
-docker-compose -f docker-compose.dev.yaml exec redis redis-cli --scan --pattern "session:*" | xargs docker-compose -f docker-compose.dev.yaml exec -T redis redis-cli DEL
+docker-compose -f docker/compose/docker-compose.dev.yaml exec redis redis-cli --scan --pattern "session:*" | xargs docker-compose -f docker/compose/docker-compose.dev.yaml exec -T redis redis-cli DEL
 ```
 
 ### 9.4 Testing Examples
@@ -1862,13 +1862,13 @@ docker-compose -f docker-compose.dev.yaml exec redis redis-cli --scan --pattern 
 
 ```bash
 # Run all tests
-docker-compose -f docker-compose.dev.yaml exec api bun run test
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run test
 
 # Run with coverage
-docker-compose -f docker-compose.dev.yaml exec api bun run test:coverage
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run test:coverage
 
 # Run specific test suite
-docker-compose -f docker-compose.dev.yaml exec api bun test tests/unit/services
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun test tests/unit/services
 ```
 
 #### Test API Endpoints
@@ -1895,32 +1895,32 @@ curl http://localhost:3000/api/v1/users \
 
 ```bash
 # Check logs
-docker-compose -f docker-compose.dev.yaml logs api
+docker-compose -f docker/compose/docker-compose.dev.yaml logs api
 
 # Check container status
-docker-compose -f docker-compose.dev.yaml ps
+docker-compose -f docker/compose/docker-compose.dev.yaml ps
 
 # Inspect container
 docker inspect bun-elysia-paseto-api-dev
 
 # Restart service
-docker-compose -f docker-compose.dev.yaml restart api
+docker-compose -f docker/compose/docker-compose.dev.yaml restart api
 ```
 
 #### Database Connection Issues
 
 ```bash
 # Check PostgreSQL logs
-docker-compose -f docker-compose.dev.yaml logs postgres
+docker-compose -f docker/compose/docker-compose.dev.yaml logs postgres
 
 # Verify PostgreSQL is running
-docker-compose -f docker-compose.dev.yaml exec postgres pg_isready
+docker-compose -f docker/compose/docker-compose.dev.yaml exec postgres pg_isready
 
 # Test connection from API container
-docker-compose -f docker-compose.dev.yaml exec api sh -c "nc -zv postgres 5432"
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api sh -c "nc -zv postgres 5432"
 
 # Check environment variables
-docker-compose -f docker-compose.dev.yaml exec api env | grep DATABASE
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api env | grep DATABASE
 ```
 
 #### Hot Reload Not Working
@@ -1933,10 +1933,10 @@ docker inspect bun-elysia-paseto-api-dev | jq '.[0].Mounts'
 ls -la src/
 
 # Restart API service
-docker-compose -f docker-compose.dev.yaml restart api
+docker-compose -f docker/compose/docker-compose.dev.yaml restart api
 
 # View API logs for reload events
-docker-compose -f docker-compose.dev.yaml logs -f api | grep -i reload
+docker-compose -f docker/compose/docker-compose.dev.yaml logs -f api | grep -i reload
 ```
 
 ---
@@ -1972,7 +1972,7 @@ REDIS_PORT=6380
 2. **Remove old containers:**
 
 ```bash
-docker-compose -f docker-compose.dev.yaml down -v --remove-orphans
+docker-compose -f docker/compose/docker-compose.dev.yaml down -v --remove-orphans
 docker system prune -a
 ```
 
@@ -2019,13 +2019,13 @@ ls -la src/
 3. **Restart container:**
 
 ```bash
-docker-compose -f docker-compose.dev.yaml restart api
+docker-compose -f docker/compose/docker-compose.dev.yaml restart api
 ```
 
 4. **Check Bun watch mode logs:**
 
 ```bash
-docker-compose -f docker-compose.dev.yaml logs -f api | grep -i "watch\|reload"
+docker-compose -f docker/compose/docker-compose.dev.yaml logs -f api | grep -i "watch\|reload"
 ```
 
 #### Issue: Database connection refused
@@ -2041,20 +2041,20 @@ docker-compose -f docker-compose.dev.yaml logs -f api | grep -i "watch\|reload"
 1. **Verify PostgreSQL is healthy:**
 
 ```bash
-docker-compose -f docker-compose.dev.yaml ps postgres
-docker-compose -f docker-compose.dev.yaml logs postgres
+docker-compose -f docker/compose/docker-compose.dev.yaml ps postgres
+docker-compose -f docker/compose/docker-compose.dev.yaml logs postgres
 ```
 
 2. **Test connection:**
 
 ```bash
-docker-compose -f docker-compose.dev.yaml exec api sh -c "nc -zv postgres 5432"
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api sh -c "nc -zv postgres 5432"
 ```
 
 3. **Check environment variables:**
 
 ```bash
-docker-compose -f docker-compose.dev.yaml exec api env | grep DATABASE
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api env | grep DATABASE
 ```
 
 4. **Verify network:**
@@ -2066,8 +2066,8 @@ docker network inspect bun-elysia-paseto-dev
 5. **Reset database:**
 
 ```bash
-docker-compose -f docker-compose.dev.yaml down -v
-docker-compose -f docker-compose.dev.yaml up -d
+docker-compose -f docker/compose/docker-compose.dev.yaml down -v
+docker-compose -f docker/compose/docker-compose.dev.yaml up -d
 ```
 
 #### Issue: Redis connection problems
@@ -2083,26 +2083,26 @@ docker-compose -f docker-compose.dev.yaml up -d
 1. **Verify Redis is healthy:**
 
 ```bash
-docker-compose -f docker-compose.dev.yaml ps redis
-docker-compose -f docker-compose.dev.yaml logs redis
+docker-compose -f docker/compose/docker-compose.dev.yaml ps redis
+docker-compose -f docker/compose/docker-compose.dev.yaml logs redis
 ```
 
 2. **Test connection:**
 
 ```bash
-docker-compose -f docker-compose.dev.yaml exec api sh -c "nc -zv redis 6379"
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api sh -c "nc -zv redis 6379"
 ```
 
 3. **Check Redis from container:**
 
 ```bash
-docker-compose -f docker-compose.dev.yaml exec redis redis-cli ping
+docker-compose -f docker/compose/docker-compose.dev.yaml exec redis redis-cli ping
 ```
 
 4. **Verify configuration:**
 
 ```bash
-docker-compose -f docker-compose.dev.yaml exec api env | grep REDIS
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api env | grep REDIS
 ```
 
 #### Issue: pgAdmin can't connect to PostgreSQL
@@ -2125,13 +2125,13 @@ docker-compose -f docker-compose.dev.yaml exec api env | grep REDIS
 2. **Verify both services are running:**
 
 ```bash
-docker-compose -f docker-compose.dev.yaml ps postgres pgadmin
+docker-compose -f docker/compose/docker-compose.dev.yaml ps postgres pgadmin
 ```
 
 3. **Test connection from pgAdmin container:**
 
 ```bash
-docker-compose -f docker-compose.dev.yaml exec pgadmin sh -c "nc -zv postgres 5432"
+docker-compose -f docker/compose/docker-compose.dev.yaml exec pgadmin sh -c "nc -zv postgres 5432"
 ```
 
 #### Issue: Out of memory errors
@@ -2197,7 +2197,7 @@ docker volume prune
 
 ```bash
 # Check all container status
-docker-compose -f docker-compose.dev.yaml ps
+docker-compose -f docker/compose/docker-compose.dev.yaml ps
 
 # Check detailed health
 docker inspect bun-elysia-paseto-api-dev | jq '.[0].State.Health'
@@ -2210,10 +2210,10 @@ docker stats --no-stream
 
 ```bash
 # Test DNS resolution
-docker-compose -f docker-compose.dev.yaml exec api nslookup postgres
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api nslookup postgres
 
 # Test connectivity
-docker-compose -f docker-compose.dev.yaml exec api sh -c "nc -zv postgres 5432"
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api sh -c "nc -zv postgres 5432"
 
 # Check network
 docker network inspect bun-elysia-paseto-dev
@@ -2236,16 +2236,16 @@ docker system df
 
 ```bash
 # Recent errors
-docker-compose -f docker-compose.dev.yaml logs --tail=100 | grep -i error
+docker-compose -f docker/compose/docker-compose.dev.yaml logs --tail=100 | grep -i error
 
 # All errors
-docker-compose -f docker-compose.dev.yaml logs | grep -i error
+docker-compose -f docker/compose/docker-compose.dev.yaml logs | grep -i error
 
 # Warnings
-docker-compose -f docker-compose.dev.yaml logs | grep -i warn
+docker-compose -f docker/compose/docker-compose.dev.yaml logs | grep -i warn
 
 # Specific service
-docker-compose -f docker-compose.dev.yaml logs --tail=100 api
+docker-compose -f docker/compose/docker-compose.dev.yaml logs --tail=100 api
 ```
 
 ### 10.3 Recovery Procedures
@@ -2254,35 +2254,35 @@ docker-compose -f docker-compose.dev.yaml logs --tail=100 api
 
 ```bash
 # Stop all services
-docker-compose -f docker-compose.dev.yaml down
+docker-compose -f docker/compose/docker-compose.dev.yaml down
 
 # Remove volumes (DELETES ALL DATA)
-docker-compose -f docker-compose.dev.yaml down -v
+docker-compose -f docker/compose/docker-compose.dev.yaml down -v
 
 # Remove orphaned containers
-docker-compose -f docker-compose.dev.yaml down --remove-orphans
+docker-compose -f docker/compose/docker-compose.dev.yaml down --remove-orphans
 
 # Clean up Docker system
 docker system prune -a
 
 # Restart
-docker-compose -f docker-compose.dev.yaml up -d
+docker-compose -f docker/compose/docker-compose.dev.yaml up -d
 
 # Run migrations
-docker-compose -f docker-compose.dev.yaml exec api bun run db:migrate
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:migrate
 
 # Seed database
-docker-compose -f docker-compose.dev.yaml exec api bun run db:seed
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api bun run db:seed
 ```
 
 #### Partial Reset
 
 ```bash
 # Reset specific service
-docker-compose -f docker-compose.dev.yaml stop postgres
-docker-compose -f docker-compose.dev.yaml rm -f postgres
+docker-compose -f docker/compose/docker-compose.dev.yaml stop postgres
+docker-compose -f docker/compose/docker-compose.dev.yaml rm -f postgres
 docker volume rm bun-elysia-paseto-postgres-data
-docker-compose -f docker-compose.dev.yaml up -d postgres
+docker-compose -f docker/compose/docker-compose.dev.yaml up -d postgres
 ```
 
 ---
@@ -2692,25 +2692,25 @@ depends_on:
 
 ```bash
 # Start services
-docker-compose -f docker-compose.dev.yaml up -d
+docker-compose -f docker/compose/docker-compose.dev.yaml up -d
 
 # Stop services
-docker-compose -f docker-compose.dev.yaml down
+docker-compose -f docker/compose/docker-compose.dev.yaml down
 
 # View logs
-docker-compose -f docker-compose.dev.yaml logs -f
+docker-compose -f docker/compose/docker-compose.dev.yaml logs -f
 
 # Restart service
-docker-compose -f docker-compose.dev.yaml restart api
+docker-compose -f docker/compose/docker-compose.dev.yaml restart api
 
 # Execute command
-docker-compose -f docker-compose.dev.yaml exec api sh
+docker-compose -f docker/compose/docker-compose.dev.yaml exec api sh
 
 # Remove volumes
-docker-compose -f docker-compose.dev.yaml down -v
+docker-compose -f docker/compose/docker-compose.dev.yaml down -v
 
 # Rebuild image
-docker-compose -f docker-compose.dev.yaml build api
+docker-compose -f docker/compose/docker-compose.dev.yaml build api
 ```
 
 ### A.2 URLs

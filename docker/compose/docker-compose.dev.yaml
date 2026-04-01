@@ -1,6 +1,6 @@
 # Docker Compose Development Configuration
 # Purpose: Complete development environment for Bun Elysia PASETO API
-# Usage: docker-compose -f docker-compose.dev.yaml up
+# Usage: docker-compose -f docker/compose/docker-compose.dev.yaml up
 
 version: '3.9'
 
@@ -34,8 +34,8 @@ services:
   # API Service
   api:
     build:
-      context: .
-      dockerfile: docker/api/Dockerfile.dev
+      context: ../..
+      dockerfile: docker/dockerfiles/Dockerfile.dev
     container_name: bun-elysia-paseto-api-dev
     restart: unless-stopped
     ports:
@@ -87,11 +87,11 @@ services:
       - BCRYPT_ROUNDS=${BCRYPT_ROUNDS:-12}
     volumes:
       # Source code mount for hot reload
-      - ./src:/app/src:ro
+      - ../../src:/app/src:ro
       # Environment file
-      - ./.env:/app/.env:ro
+      - ../../.env:/app/.env:ro
       # Migration files
-      - ./src/database/migrations:/app/migrations:ro
+      - ../../src/database/migrations:/app/migrations:ro
       # Node modules (use container's node_modules)
       - /app/node_modules
     networks:
@@ -126,7 +126,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - postgres_config:/etc/postgresql
-      - ./docker/postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+      - ../configs/postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
     networks:
       - app-network
     healthcheck:

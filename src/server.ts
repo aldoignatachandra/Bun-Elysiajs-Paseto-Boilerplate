@@ -20,6 +20,7 @@ import { logger } from './core/logging/logger';
 import { getConfig } from './config';
 import { ShutdownManager, createShutdownConfig } from './core/shutdown';
 import { connectRedis, getRedisConnectionInfo, stopRedisReconnection } from './core/redis/connection';
+import { initializeTracer, getTelemetryConfig } from './core/telemetry';
 
 // Get configuration
 const config = getConfig();
@@ -34,6 +35,16 @@ const shutdownManager = new ShutdownManager(
 
 // Initialize signal handlers (SIGTERM, SIGINT)
 shutdownManager.initialize();
+
+// Initialize OpenTelemetry tracer (optional - only if enabled)
+const telemetryConfig = getTelemetryConfig();
+try {
+  initializeTracer(telemetryConfig);
+} catch (error) {
+  logger.warn('OpenTelemetry initialization failed (non-fatal)', {
+    error: error instanceof Error ? error.message : String(error),
+  });
+}
 
 // Create and configure the application (initializes database)
 const app = createApp();

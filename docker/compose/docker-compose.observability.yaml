@@ -1,0 +1,166 @@
+# Docker Compose Observability Configuration
+# Purpose: Optional observability stack with Prometheus, Grafana, and Jaeger
+# Usage: docker-compose -f docker/compose/docker-compose.observability.yaml up -d
+# Or with main stack: docker-compose -f docker/compose/docker-compose.dev.yaml -f docker/compose/docker-compose.observability.yaml up -d
+
+version: '3.9'
+
+# Network configuration
+networks:
+  observability-network:
+    name: bun-elysia-observability
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.22.0.0/16
+
+# Volume configuration
+volumes:
+  prometheus_data:
+    name: bun-elysia-paseto-prometheus-data
+    driver: local
+  grafana_data:
+    name: bun-elysia-paseto-grafana-data
+    driver: local
+
+# Service definitions
+services:
+  # ===========================================
+  # PROMETHEUS - Metrics Collection & Storage
+  # ===========================================
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: bun-elysia-paseto-prometheus
+    restart: unless-stopped
+    ports:
+      - '${PROMETHEUS_PORT:-9090}:9090'
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--web.external-url=http://localhost:9090'
+    volumes:
+      - ../configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../configs/prometheus/alerting-rules.yml:/etc/prometheus/alerting-rules.yml:ro
+      - ../configs/prometheus/recording-rules.yml:/etc/prometheus/recording-rules.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - observability-network
+      - bun-elysia-paseto-dev
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:9090/-/healthy']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    labels:
+      - 'prometheus.io/scrape=false'
+
+  # ===========================================
+  # GRAFANA - Visualization & Dashboards
+  # ===========================================
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: bun-elysia-paseto-grafana
+    restart: unless-stopped
+    ports:
+      - '${GRAFANA_PORT:-3001}:3000'
+    environment:
+      # Server settings
+      - GF_SERVER_ROOT_URL=http://localhost:3001
+      - GF_SERVER_DOMAIN=localhost
+
+      # Security settings
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_SECURITY_DISABLE_INITIAL_ADMIN_CREATION=false
+
+      # Anonymous access (for development)
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+
+      # Plugin settings
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-piechart-panel
+
+      # Dashboard settings
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/dashboards/api-overview.json
+
+      # Database (use embedded SQLite for simplicity)
+      - GF_DATABASE_TYPE=sqlite3
+      - GF_DATABASE_PATH=/var/lib/grafana/grafana.db
+
+      # Logging
+      - GF_LOG_MODE=console
+      - GF_LOG_LEVEL=${GRAFANA_LOG_LEVEL:-info}
+    volumes:
+      - ../configs/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - observability-network
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3000/api/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+
+  # ===========================================
+  # JAEGER - Distributed Tracing
+  # ===========================================
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: bun-elysia-paseto-jaeger
+    restart: unless-stopped
+    ports:
+      # Jaeger UI
+      - '${JAEGER_UI_PORT:-16686}:16686'
+      # OTLP gRPC receiver
+      - '${JAEGER_OTLP_GRPC_PORT:-4317}:4317'
+      # OTLP HTTP receiver
+      - '${JAEGER_OTLP_HTTP_PORT:-4318}:4318'
+    environment:
+      # Memory storage for development (use Badger/Cassandra/Elasticsearch for production)
+      - SPAN_STORAGE_TYPE=memory
+      - MEMORY_MAX_TRACES=100000
+
+      # OTLP enabled
+      - COLLECTOR_OTLP_ENABLED=true
+
+      # Logging
+      - LOG_LEVEL=${JAEGER_LOG_LEVEL:-info}
+    networks:
+      - observability-network
+      - bun-elysia-paseto-dev
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:16687']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M

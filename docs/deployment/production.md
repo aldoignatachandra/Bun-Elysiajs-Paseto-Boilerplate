@@ -162,7 +162,7 @@ CORS_CREDENTIALS=true
 ```bash
 # Build using production Dockerfile
 docker build \
-  -f infra/docker/production.dockerfile \
+  -f docker/dockerfiles/Dockerfile.prod \
   -t your-registry/bun-elysia-paseto-api:v1.0.0 \
   --build-arg NODE_ENV=production \
   .
