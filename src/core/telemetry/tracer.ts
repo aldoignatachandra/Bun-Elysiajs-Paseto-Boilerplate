@@ -37,6 +37,7 @@ export function initializeTracer(config: TelemetryConfig): void {
     });
 
     // Create SDK with auto-instrumentations
+    // Note: Some instrumentations are disabled because Bun doesn't support certain Node.js APIs
     sdk = new NodeSDK({
       serviceName: config.serviceName,
       spanProcessor: new BatchSpanProcessor(traceExporter),
@@ -48,6 +49,10 @@ export function initializeTracer(config: TelemetryConfig): void {
           },
           '@opentelemetry/instrumentation-http': {
             enabled: config.traceHTTP,
+          },
+          // Disable runtime node instrumentation - Bun doesn't support getHeapSpaceStatistics
+          '@opentelemetry/instrumentation-runtime-node': {
+            enabled: false,
           },
         }),
       ],

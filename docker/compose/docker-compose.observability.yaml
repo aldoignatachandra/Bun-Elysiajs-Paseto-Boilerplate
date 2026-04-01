@@ -1,19 +1,13 @@
 # Docker Compose Observability Configuration
 # Purpose: Optional observability stack with Prometheus, Grafana, and Jaeger
-# Usage: docker-compose -f docker/compose/docker-compose.observability.yaml up -d
-# Or with main stack: docker-compose -f docker/compose/docker-compose.dev.yaml -f docker/compose/docker-compose.observability.yaml up -d
-
-version: '3.9'
+# Usage: docker compose -f docker/compose/docker-compose.observability.yaml up -d
+# Or with main stack: docker compose -f docker/compose/docker-compose.dev.yaml -f docker/compose/docker-compose.observability.yaml up -d
 
 # Network configuration
 networks:
   observability-network:
     name: bun-elysia-observability
     driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.22.0.0/16
 
 # Volume configuration
 volumes:
@@ -52,7 +46,8 @@ services:
       - prometheus_data:/prometheus
     networks:
       - observability-network
-      - bun-elysia-paseto-dev
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:9090/-/healthy']
       interval: 30s
@@ -151,7 +146,6 @@ services:
       - LOG_LEVEL=${JAEGER_LOG_LEVEL:-info}
     networks:
       - observability-network
-      - bun-elysia-paseto-dev
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:16687']
       interval: 30s

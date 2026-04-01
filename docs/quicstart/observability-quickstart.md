@@ -6,7 +6,8 @@ This guide explains how to set up and use the observability stack (Prometheus, G
 
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
-- [Step-by-Step Setup](#step-by-step-setup)
+- [Architecture Overview](#architecture-overview)
+- [Environment Variables](#environment-variables)
 - [Verifying Services](#verifying-services)
 - [Troubleshooting](#troubleshooting)
 
@@ -26,80 +27,70 @@ This guide explains how to set up and use the observability stack (Prometheus, G
 # 1. Start the observability stack (Prometheus, Grafana, Jaeger)
 bun run observability:up
 
-# 2. Start the API with OpenTelemetry enabled
-OTEL_ENABLED=true bun run dev
+# 2. Start the API with BOTH metrics AND tracing enabled
+METRICS_ENABLED=true OTEL_ENABLED=true bun run dev
 
 # 3. Access the services:
 # - API:            http://localhost:3000
-# - Grafana:        http://localhost:3001
+# - Grafana:        http://localhost:3001  (admin/admin)
 # - Prometheus:     http://localhost:9090
 # - Jaeger UI:      http://localhost:16686
 ```
 
+> **Important:** You need BOTH `METRICS_ENABLED=true` (for Prometheus/Grafana dashboards) AND `OTEL_ENABLED=true` (for Jaeger distributed tracing). These are separate features.
+
 ---
 
-## Step-by-Step Setup
+## Architecture Overview
 
-### Step 1: Start the Observability Stack
-
-The observability stack runs separately from your application. Start it first:
-
-```bash
-# Start Prometheus, Grafana, and Jaeger
-bun run observability:up
-
-# Or using docker-compose directly:
-docker-compose -f docker/compose/docker-compose.observability.yaml up -d
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        Your Application                          │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │  API (Port 3000)                                            │ │
+│  │  - /metrics → Prometheus format                             │ │
+│  │  - OpenTelemetry SDK → OTLP traces                          │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              │                               │
+              ▼                               ▼
+┌─────────────────────────┐     ┌─────────────────────────┐
+│      Prometheus         │     │        Jaeger           │
+│      (Port 9090)        │     │    (OTLP Port 4318)     │
+│                         │     │    (UI Port 16686)      │
+│  - Pulls /metrics       │     │  - Receives traces      │
+│    every 10s            │     │    via OTLP             │
+│  - Stores time series   │     │  - Displays traces      │
+└───────────┬─────────────┘     └─────────────────────────┘
+            │                                │
+            │                                │
+            │                                ▼
+            │                   ┌─────────────────────────┐
+            │                   │        Grafana          │
+            │                   │      (Port 3001)        │
+            │                   │                         │
+            │                   │  - Queries Prometheus   │
+            │                   │  - Displays dashboards  │
+            │                   └─────────────────────────┘
+            └────────────────────────────────┘
 ```
 
-**What this starts:**
-| Service | Port | Purpose |
-|---------|------|---------|
-| Prometheus | 9090 | Metrics collection and storage |
-| Grafana | 3001 | Visualization and dashboards |
-| Jaeger | 16686 | Distributed tracing UI |
-| Jaeger OTLP | 4318 | OpenTelemetry trace receiver |
+---
 
-### Step 2: Start the API with OpenTelemetry
+## Environment Variables
 
-Enable OpenTelemetry in your application:
-
-```bash
-# Enable OpenTelemetry and start the dev server
-OTEL_ENABLED=true bun run dev
-```
-
-**Environment Variables:**
-
-```bash
-# Required
-OTEL_ENABLED=true                    # Enable OpenTelemetry
-
-# Optional (defaults shown)
-OTEL_SERVICE_NAME=bun-elysia-api     # Service name in traces
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318  # Jaeger OTLP endpoint
-OTEL_TRACE_HTTP=true                 # Trace HTTP requests
-OTEL_TRACE_DATABASE=false            # Trace database queries
-OTEL_TRACE_REDIS=false               # Trace Redis operations
-OTEL_SAMPLE_RATE=1.0                 # Sample rate (1.0 = 100%)
-```
-
-### Step 3: Generate Some Traffic
-
-Make some API requests to generate traces and metrics:
-
-```bash
-# Health check
-curl http://localhost:3000/health
-
-# API endpoints (requires authentication for most)
-curl http://localhost:3000/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"Password123!","name":"Test User"}'
-
-# Check metrics endpoint
-curl http://localhost:3000/metrics
-```
+| Variable                      | Purpose                      | Default                       |
+| ----------------------------- | ---------------------------- | ----------------------------- |
+| `METRICS_ENABLED`             | Expose `/metrics` endpoint   | `true` (dev) / `false` (prod) |
+| `OTEL_ENABLED`                | Enable OpenTelemetry tracing | `false`                       |
+| `OTEL_SERVICE_NAME`           | Service name in traces       | `bun-elysia-api`              |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Jaeger OTLP endpoint         | `http://localhost:4318`       |
+| `OTEL_TRACE_HTTP`             | Trace HTTP requests          | `true`                        |
+| `OTEL_TRACE_DATABASE`         | Trace database queries       | `false`                       |
+| `OTEL_TRACE_REDIS`            | Trace Redis operations       | `false`                       |
+| `OTEL_SAMPLE_RATE`            | Sample rate (1.0 = 100%)     | `1.0`                         |
 
 ---
 
@@ -184,26 +175,20 @@ curl http://localhost:16686/api/services
 # Should return JSON with service names
 ```
 
-### 4. Check OpenTelemetry Connection
-
-**Verify traces are being sent:**
+### 4. Quick Health Check Commands
 
 ```bash
-# Start the app with OTEL_ENABLED=true
-OTEL_ENABLED=true bun run dev
-
-# You should see this log message:
-# [Telemetry] OpenTelemetry initialized successfully
-```
-
-**Make a request and check Jaeger:**
-
-```bash
-# Make a request
+# Check API is running
 curl http://localhost:3000/health
 
-# Check Jaeger for the trace
-curl http://localhost:16686/api/traces?service=bun-elysia-api
+# Check metrics endpoint (should return Prometheus-formatted data)
+curl http://localhost:3000/metrics
+
+# Check Prometheus is healthy
+curl http://localhost:9090/-/healthy
+
+# Check Jaeger is running
+curl http://localhost:16686/api/services
 ```
 
 ---
@@ -216,70 +201,6 @@ curl http://localhost:16686/api/traces?service=bun-elysia-api
 | Prometheus | http://localhost:9090  | -        | -        |
 | Grafana    | http://localhost:3001  | admin    | admin    |
 | Jaeger UI  | http://localhost:16686 | -        | -        |
-
----
-
-## Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Your Application                          │
-│  ┌─────────────────────────────────────────────────────────────┐ │
-│  │  API (Port 3000)                                            │ │
-│  │  - /metrics → Prometheus format                             │ │
-│  │  - OpenTelemetry SDK → OTLP traces                          │ │
-│  └─────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-              ┌───────────────┴───────────────┐
-              │                               │
-              ▼                               ▼
-┌─────────────────────────┐     ┌─────────────────────────┐
-│      Prometheus         │     │        Jaeger           │
-│      (Port 9090)        │     │    (OTLP Port 4318)     │
-│                         │     │    (UI Port 16686)      │
-│  - Pulls /metrics       │     │  - Receives traces      │
-│    every 10s            │     │    via OTLP             │
-│  - Stores time series   │     │  - Displays traces      │
-└───────────┬─────────────┘     └─────────────────────────┘
-            │
-            ▼
-┌─────────────────────────┐
-│        Grafana          │
-│      (Port 3001)        │
-│                         │
-│  - Queries Prometheus   │
-│  - Displays dashboards  │
-└─────────────────────────┘
-```
-
----
-
-## Common Commands
-
-```bash
-# Start observability stack
-bun run observability:up
-
-# View observability logs
-bun run observability:logs
-
-# Stop observability stack
-bun run observability:down
-
-# Start API with tracing
-OTEL_ENABLED=true bun run dev
-
-# Start API without tracing (default)
-bun run dev
-
-# Start everything together (separate terminals)
-# Terminal 1:
-bun run observability:up
-
-# Terminal 2:
-OTEL_ENABLED=true bun run dev
-```
 
 ---
 
@@ -317,16 +238,25 @@ curl http://localhost:3000/health
 curl http://localhost:3000/api/v1/...
 ```
 
-### Grafana dashboards are empty
+### Grafana dashboards show "No Data"
 
-**Cause:** No data yet or Prometheus isn't scraping.
+**Cause:** No metrics data yet, Prometheus isn't scraping, or time range is wrong.
 
 **Solution:**
 
-1. Wait 1-2 minutes for data to accumulate
-2. Generate some API traffic
-3. Check Prometheus targets are UP
-4. Verify time range in Grafana (top-right corner)
+1. **Make sure metrics are enabled:** `METRICS_ENABLED=true`
+2. **Verify the `/metrics` endpoint returns data:**
+   ```bash
+   curl http://localhost:3000/metrics
+   # Should return Prometheus-formatted metrics like:
+   # HELP http_requests_total Total HTTP requests
+   # TYPE http_requests_total counter
+   http_requests_total{method="GET",route="/health",status="2xx"} 1
+   ```
+3. **Check Prometheus targets are UP:** Go to http://localhost:9090 → Status → Targets
+4. **Check the time range** in Grafana (top-right corner) - set to "Last 5 minutes"
+5. **Wait for data:** Prometheus scrapes every 10 seconds, so wait at least 30 seconds
+6. **Generate traffic:** Make some API requests after starting everything
 
 ### Port conflicts
 
@@ -347,9 +277,9 @@ JAEGER_OTLP_HTTP_PORT=4319
 bun run observability:logs
 
 # Or specific service
-docker-compose -f docker/compose/docker-compose.observability.yaml logs prometheus
-docker-compose -f docker/compose/docker-compose.observability.yaml logs grafana
-docker-compose -f docker/compose/docker-compose.observability.yaml logs jaeger
+docker compose -f docker/compose/docker-compose.observability.yaml logs prometheus
+docker compose -f docker/compose/docker-compose.observability.yaml logs grafana
+docker compose -f docker/compose/docker-compose.observability.yaml logs jaeger
 ```
 
 ---
@@ -366,7 +296,7 @@ bun run dev
 OTEL_ENABLED=false bun run dev
 ```
 
-The application works perfectly without the observability stack. Zero overhead when disabled.
+This application works perfectly without the observability stack. Zero overhead when disabled.
 
 ---
 
