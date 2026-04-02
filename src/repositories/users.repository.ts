@@ -47,7 +47,7 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
         query = query.offset(options.offset);
       }
 
-      return await query;
+      return await this.trackQuery('users.findAll', () => query);
     } catch (error) {
       this.logError('findAll', error);
       return [];
@@ -61,11 +61,13 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
         conditions.push(isNull(users.deletedAt));
       }
 
-      const result = await this.db
-        .select()
-        .from(users)
-        .where(and(...conditions))
-        .limit(1);
+      const result = await this.trackQuery('users.findById', () =>
+        this.db
+          .select()
+          .from(users)
+          .where(and(...conditions))
+          .limit(1)
+      );
 
       return result[0] || null;
     } catch (error) {
@@ -76,7 +78,7 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async findByEmail(email: string): Promise<User | null> {
     try {
-      const result = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
+      const result = await this.trackQuery('users.findByEmail', () => this.db.select().from(users).where(eq(users.email, email)).limit(1));
       return result[0] || null;
     } catch (error) {
       this.logError('findByEmail', error);
@@ -86,7 +88,7 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async findByUsername(username: string): Promise<User | null> {
     try {
-      const result = await this.db.select().from(users).where(eq(users.username, username)).limit(1);
+      const result = await this.trackQuery('users.findByUsername', () => this.db.select().from(users).where(eq(users.username, username)).limit(1));
       return result[0] || null;
     } catch (error) {
       this.logError('findByUsername', error);
@@ -96,9 +98,11 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async count(includeDeleted = false): Promise<number> {
     try {
-      const result = includeDeleted
-        ? await this.db.select({ count: count() }).from(users)
-        : await this.db.select({ count: count() }).from(users).where(isNull(users.deletedAt));
+      const result = await this.trackQuery('users.count', () =>
+        includeDeleted
+          ? this.db.select({ count: count() }).from(users)
+          : this.db.select({ count: count() }).from(users).where(isNull(users.deletedAt))
+      );
       return result[0]?.count ?? 0;
     } catch (error) {
       this.logError('count', error);
@@ -108,10 +112,12 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async countSince(date: Date): Promise<number> {
     try {
-      const result = await this.db
-        .select({ count: count() })
-        .from(users)
-        .where(and(isNull(users.deletedAt), gte(users.createdAt, date)));
+      const result = await this.trackQuery('users.countSince', () =>
+        this.db
+          .select({ count: count() })
+          .from(users)
+          .where(and(isNull(users.deletedAt), gte(users.createdAt, date)))
+      );
       return result[0]?.count ?? 0;
     } catch (error) {
       this.logError('countSince', error);
@@ -121,7 +127,7 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async create(data: NewUser): Promise<User> {
     try {
-      const result = await this.db.insert(users).values(data).returning();
+      const result = await this.trackQuery('users.create', () => this.db.insert(users).values(data).returning());
       return result[0];
     } catch (error) {
       this.logError('create', error);
@@ -131,11 +137,13 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async update(id: string, data: Partial<User>): Promise<User | null> {
     try {
-      const result = await this.db
-        .update(users)
-        .set({ ...data, updatedAt: new Date() })
-        .where(eq(users.id, id))
-        .returning();
+      const result = await this.trackQuery('users.update', () =>
+        this.db
+          .update(users)
+          .set({ ...data, updatedAt: new Date() })
+          .where(eq(users.id, id))
+          .returning()
+      );
       return result[0] || null;
     } catch (error) {
       this.logError('update', error);
@@ -145,11 +153,13 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async setActive(id: string, active: boolean): Promise<boolean> {
     try {
-      const result = await this.db
-        .update(users)
-        .set({ deletedAt: active ? null : new Date(), updatedAt: new Date() })
-        .where(eq(users.id, id))
-        .returning();
+      const result = await this.trackQuery('users.setActive', () =>
+        this.db
+          .update(users)
+          .set({ deletedAt: active ? null : new Date(), updatedAt: new Date() })
+          .where(eq(users.id, id))
+          .returning()
+      );
 
       return result.length > 0;
     } catch (error) {
@@ -160,11 +170,13 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async softDelete(id: string): Promise<boolean> {
     try {
-      const result = await this.db
-        .update(users)
-        .set({ deletedAt: new Date(), updatedAt: new Date() })
-        .where(and(eq(users.id, id), isNull(users.deletedAt)))
-        .returning();
+      const result = await this.trackQuery('users.softDelete', () =>
+        this.db
+          .update(users)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(and(eq(users.id, id), isNull(users.deletedAt)))
+          .returning()
+      );
 
       return result.length > 0;
     } catch (error) {
@@ -175,7 +187,9 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async restore(id: string): Promise<boolean> {
     try {
-      const result = await this.db.update(users).set({ deletedAt: null, updatedAt: new Date() }).where(eq(users.id, id)).returning();
+      const result = await this.trackQuery('users.restore', () =>
+        this.db.update(users).set({ deletedAt: null, updatedAt: new Date() }).where(eq(users.id, id)).returning()
+      );
 
       return result.length > 0;
     } catch (error) {
@@ -186,7 +200,7 @@ export class UserRepository extends CRUDRepository<User, string> implements IUse
 
   async delete(id: string): Promise<boolean> {
     try {
-      const result = await this.db.delete(users).where(eq(users.id, id)).returning();
+      const result = await this.trackQuery('users.delete', () => this.db.delete(users).where(eq(users.id, id)).returning());
       return result.length > 0;
     } catch (error) {
       this.logError('delete', error);

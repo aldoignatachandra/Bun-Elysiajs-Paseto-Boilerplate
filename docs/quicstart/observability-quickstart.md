@@ -27,8 +27,8 @@ This guide explains how to set up and use the observability stack (Prometheus, G
 # 1. Start the observability stack (Prometheus, Grafana, Jaeger)
 bun run observability:up
 
-# 2. Start the API with BOTH metrics AND tracing enabled
-METRICS_ENABLED=true OTEL_ENABLED=true bun run dev
+# 2. Start the API with metrics, system metrics, and tracing enabled
+METRICS_ENABLED=true SYSTEM_METRICS_ENABLED=true OTEL_ENABLED=true bun run dev
 
 # 3. Access the services:
 # - API:            http://localhost:3000
@@ -37,7 +37,13 @@ METRICS_ENABLED=true OTEL_ENABLED=true bun run dev
 # - Jaeger UI:      http://localhost:16686
 ```
 
-> **Important:** You need BOTH `METRICS_ENABLED=true` (for Prometheus/Grafana dashboards) AND `OTEL_ENABLED=true` (for Jaeger distributed tracing). These are separate features.
+> **Important:**
+>
+> - `METRICS_ENABLED=true` — enables `/metrics` endpoint + HTTP metrics (required for Prometheus/Grafana)
+> - `SYSTEM_METRICS_ENABLED=true` — enables memory, event loop, and database metrics (required for Infrastructure dashboard)
+> - `OTEL_ENABLED=true` — enables distributed tracing via OpenTelemetry (required for Jaeger)
+>
+> These are separate features. Use what you need.
 
 ---
 
@@ -84,6 +90,8 @@ METRICS_ENABLED=true OTEL_ENABLED=true bun run dev
 | Variable                      | Purpose                      | Default                       |
 | ----------------------------- | ---------------------------- | ----------------------------- |
 | `METRICS_ENABLED`             | Expose `/metrics` endpoint   | `true` (dev) / `false` (prod) |
+| `SYSTEM_METRICS_ENABLED`      | System & database metrics    | `false`                       |
+| `SYSTEM_METRICS_INTERVAL_MS`  | Collection interval (ms)     | `10000` (10s)                 |
 | `OTEL_ENABLED`                | Enable OpenTelemetry tracing | `false`                       |
 | `OTEL_SERVICE_NAME`           | Service name in traces       | `bun-elysia-api`              |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Jaeger OTLP endpoint         | `http://localhost:4318`       |
@@ -245,7 +253,8 @@ curl http://localhost:3000/api/v1/...
 **Solution:**
 
 1. **Make sure metrics are enabled:** `METRICS_ENABLED=true`
-2. **Verify the `/metrics` endpoint returns data:**
+2. **For Infrastructure dashboard:** Also set `SYSTEM_METRICS_ENABLED=true`
+3. **Verify the `/metrics` endpoint returns data:**
    ```bash
    curl http://localhost:3000/metrics
    # Should return Prometheus-formatted metrics like:
@@ -253,10 +262,10 @@ curl http://localhost:3000/api/v1/...
    # TYPE http_requests_total counter
    http_requests_total{method="GET",route="/health",status="2xx"} 1
    ```
-3. **Check Prometheus targets are UP:** Go to http://localhost:9090 → Status → Targets
-4. **Check the time range** in Grafana (top-right corner) - set to "Last 5 minutes"
-5. **Wait for data:** Prometheus scrapes every 10 seconds, so wait at least 30 seconds
-6. **Generate traffic:** Make some API requests after starting everything
+4. **Check Prometheus targets are UP:** Go to http://localhost:9090 → Status → Targets
+5. **Check the time range** in Grafana (top-right corner) - set to "Last 5 minutes"
+6. **Wait for data:** Prometheus scrapes every 10 seconds, so wait at least 30 seconds
+7. **Generate traffic:** Make some API requests after starting everything
 
 ### Port conflicts
 
@@ -302,10 +311,9 @@ This application works perfectly without the observability stack. Zero overhead 
 
 ## Next Steps
 
-- Explore the pre-built Grafana dashboards
+- Explore the pre-built Grafana dashboards (API Overview + Infrastructure)
 - Create custom dashboards for your specific metrics
 - Set up alerting rules in Prometheus
-- Integrate traceDatabaseOperation() in your repositories
 - Add custom spans for business-critical operations
 
 For more details, see the full design document:

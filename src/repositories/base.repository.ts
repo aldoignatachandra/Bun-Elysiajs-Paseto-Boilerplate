@@ -1,5 +1,6 @@
 import type { SQL } from 'drizzle-orm';
 import { logger } from '../core/logging/logger';
+import { trackDatabaseQuery } from '../core/metrics/system-collector';
 
 export type Database = ReturnType<typeof import('../database/connection').getConnection>;
 
@@ -32,6 +33,20 @@ export abstract class BaseRepository {
   protected handleRepositoryError<T>(operation: string, error: unknown, defaultValue: T): T {
     this.logError(operation, error);
     return defaultValue;
+  }
+
+  /**
+   * Track database query with metrics
+   *
+   * Wraps a database operation with timing and error tracking.
+   * Zero overhead when SYSTEM_METRICS_ENABLED is not 'true'.
+   * Never throws due to metrics failures - only the query itself can throw.
+   *
+   * @param operation - Operation identifier (e.g., 'users.findById')
+   * @param fn - Database query to execute and track
+   */
+  protected async trackQuery<T>(operation: string, fn: () => Promise<T>): Promise<T> {
+    return trackDatabaseQuery(operation, fn);
   }
 }
 

@@ -7,6 +7,7 @@ import pg from 'pg';
 import { getConfig } from '@config/index';
 import * as schema from './schema';
 import { logger } from '@/core/logging/logger';
+import { updateDatabasePoolMetrics } from '@/core/metrics/system-collector';
 
 const { Pool } = pg;
 
@@ -75,6 +76,10 @@ function setupPoolEventListeners(poolInstance: pg.Pool): void {
 
     const stats = getPoolStats(poolInstance);
 
+    // Update connection pool metrics (non-critical)
+    const active = stats.totalCount - stats.idleCount;
+    updateDatabasePoolMetrics(active, stats.idleCount);
+
     logger.debug('Database client connected', {
       activeConnections: stats.totalCount,
       idleConnections: stats.idleCount,
@@ -87,6 +92,10 @@ function setupPoolEventListeners(poolInstance: pg.Pool): void {
     if (isShuttingDown) return;
 
     const stats = getPoolStats(poolInstance);
+
+    // Update connection pool metrics (non-critical)
+    const active = stats.totalCount - stats.idleCount;
+    updateDatabasePoolMetrics(active, stats.idleCount);
 
     logger.debug('Database client removed', {
       activeConnections: stats.totalCount,

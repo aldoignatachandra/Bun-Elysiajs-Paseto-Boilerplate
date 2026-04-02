@@ -26,7 +26,7 @@ export class ActivityLogRepository extends BaseRepository implements IActivityLo
 
   async create(data: NewUserActivityLog): Promise<UserActivityLog> {
     try {
-      const result = await this.db.insert(userActivityLogs).values(data).returning();
+      const result = await this.trackQuery('activityLogs.create', () => this.db.insert(userActivityLogs).values(data).returning());
       return result[0];
     } catch (error) {
       this.logError('create', error);
@@ -36,7 +36,9 @@ export class ActivityLogRepository extends BaseRepository implements IActivityLo
 
   async findById(id: string): Promise<UserActivityLog | null> {
     try {
-      const result = await this.db.select().from(userActivityLogs).where(eq(userActivityLogs.id, id)).limit(1);
+      const result = await this.trackQuery('activityLogs.findById', () =>
+        this.db.select().from(userActivityLogs).where(eq(userActivityLogs.id, id)).limit(1)
+      );
       return result[0] || null;
     } catch (error) {
       this.logError('findById', error);
@@ -53,14 +55,16 @@ export class ActivityLogRepository extends BaseRepository implements IActivityLo
         .where(and(...conditions));
 
       if (options?.limit && options?.offset) {
-        return await baseQuery.orderBy(desc(userActivityLogs.createdAt)).limit(options.limit).offset(options.offset);
+        return await this.trackQuery('activityLogs.findByUserId', () =>
+          baseQuery.orderBy(desc(userActivityLogs.createdAt)).limit(options.limit!).offset(options.offset!)
+        );
       }
 
       if (options?.limit) {
-        return await baseQuery.orderBy(desc(userActivityLogs.createdAt)).limit(options.limit);
+        return await this.trackQuery('activityLogs.findByUserId', () => baseQuery.orderBy(desc(userActivityLogs.createdAt)).limit(options.limit!));
       }
 
-      return await baseQuery.orderBy(desc(userActivityLogs.createdAt));
+      return await this.trackQuery('activityLogs.findByUserId', () => baseQuery.orderBy(desc(userActivityLogs.createdAt)));
     } catch (error) {
       this.logError('findByUserId', error);
       return [];
@@ -98,14 +102,16 @@ export class ActivityLogRepository extends BaseRepository implements IActivityLo
           : this.db.select().from(userActivityLogs);
 
       if (options.limit && options.offset) {
-        return await baseQuery.orderBy(desc(userActivityLogs.createdAt)).limit(options.limit).offset(options.offset);
+        return await this.trackQuery('activityLogs.findAll', () =>
+          baseQuery.orderBy(desc(userActivityLogs.createdAt)).limit(options.limit!).offset(options.offset!)
+        );
       }
 
       if (options.limit) {
-        return await baseQuery.orderBy(desc(userActivityLogs.createdAt)).limit(options.limit);
+        return await this.trackQuery('activityLogs.findAll', () => baseQuery.orderBy(desc(userActivityLogs.createdAt)).limit(options.limit!));
       }
 
-      return await baseQuery.orderBy(desc(userActivityLogs.createdAt));
+      return await this.trackQuery('activityLogs.findAll', () => baseQuery.orderBy(desc(userActivityLogs.createdAt)));
     } catch (error) {
       this.logError('findAll', error);
       return [];
@@ -114,10 +120,12 @@ export class ActivityLogRepository extends BaseRepository implements IActivityLo
 
   async deleteOlderThan(date: Date): Promise<number> {
     try {
-      const result = await this.db
-        .delete(userActivityLogs)
-        .where(sql`${userActivityLogs.createdAt} < ${date}`)
-        .returning();
+      const result = await this.trackQuery('activityLogs.deleteOlderThan', () =>
+        this.db
+          .delete(userActivityLogs)
+          .where(sql`${userActivityLogs.createdAt} < ${date}`)
+          .returning()
+      );
       return result.length;
     } catch (error) {
       this.logError('deleteOlderThan', error);

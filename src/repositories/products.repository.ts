@@ -150,7 +150,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
         query = query.offset(offset);
       }
 
-      return await query;
+      return await this.trackQuery('products.findAll', () => query);
     } catch (error) {
       this.logError('findAll', error);
       return [];
@@ -207,14 +207,18 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-      const [countResult] = await this.db
-        .select({ count: sql<number>`count(*)` })
-        .from(products)
-        .where(whereClause);
+      const [countResult] = await this.trackQuery('products.findWithFilters.count', () =>
+        this.db
+          .select({ count: sql<number>`count(*)` })
+          .from(products)
+          .where(whereClause)
+      );
 
       const total = Number(countResult?.count || 0);
 
-      const productRows = await this.db.select().from(products).where(whereClause).orderBy(desc(products.createdAt)).limit(limit).offset(offset);
+      const productRows = await this.trackQuery('products.findWithFilters.select', () =>
+        this.db.select().from(products).where(whereClause).orderBy(desc(products.createdAt)).limit(limit).offset(offset)
+      );
 
       if (includeVariants) {
         const rows: ProductView[] = [];
@@ -272,11 +276,13 @@ export class ProductRepository extends CRUDRepository<Product, string> {
         conditions.push(isNull(products.deletedAt));
       }
 
-      const result = await this.db
-        .select()
-        .from(products)
-        .where(and(...conditions))
-        .limit(1);
+      const result = await this.trackQuery('products.findById', () =>
+        this.db
+          .select()
+          .from(products)
+          .where(and(...conditions))
+          .limit(1)
+      );
 
       return result[0] || null;
     } catch (error) {
@@ -293,18 +299,20 @@ export class ProductRepository extends CRUDRepository<Product, string> {
         return null;
       }
 
-      const [attributeRows, variantRows] = await Promise.all([
-        this.db
-          .select()
-          .from(productAttributes)
-          .where(and(eq(productAttributes.productId, id), isNull(productAttributes.deletedAt)))
-          .orderBy(productAttributes.displayOrder, productAttributes.createdAt),
-        this.db
-          .select()
-          .from(productVariants)
-          .where(and(eq(productVariants.productId, id), isNull(productVariants.deletedAt)))
-          .orderBy(productVariants.createdAt),
-      ]);
+      const [attributeRows, variantRows] = await this.trackQuery('products.findByIdWithVariants.details', () =>
+        Promise.all([
+          this.db
+            .select()
+            .from(productAttributes)
+            .where(and(eq(productAttributes.productId, id), isNull(productAttributes.deletedAt)))
+            .orderBy(productAttributes.displayOrder, productAttributes.createdAt),
+          this.db
+            .select()
+            .from(productVariants)
+            .where(and(eq(productVariants.productId, id), isNull(productVariants.deletedAt)))
+            .orderBy(productVariants.createdAt),
+        ])
+      );
 
       const attributes = attributeRows.map(attribute => ({
         id: attribute.id,
@@ -336,7 +344,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
   async create(data: NewProduct): Promise<Product> {
     try {
-      const result = await this.db.insert(products).values(data).returning();
+      const result = await this.trackQuery('products.create', () => this.db.insert(products).values(data).returning());
       return result[0];
     } catch (error) {
       this.logError('create', error);
@@ -346,92 +354,94 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
   async createWithVariants(data: ProductCreateWithVariantsInput): Promise<ProductView> {
     try {
-      return await this.db.transaction(async tx => {
-        if (data.price <= 0) {
-          throw new Error('Product price must be greater than 0');
-        }
-
-        const [product] = await tx
-          .insert(products)
-          .values({
-            ownerId: data.ownerId,
-            name: data.name,
-            price: toDecimal(data.price),
-            stock: data.stock ?? 0,
-            hasVariant: Boolean(data.variants && data.variants.length > 0),
-          })
-          .returning();
-
-        let attributes: ProductView['attributes'] = [];
-
-        if (data.attributes && data.attributes.length > 0) {
-          const inserted = await tx
-            .insert(productAttributes)
-            .values(
-              data.attributes.map((attribute, index) => ({
-                productId: product.id,
-                name: attribute.name,
-                values: attribute.values,
-                displayOrder: attribute.displayOrder ?? index,
-              }))
-            )
-            .returning();
-
-          attributes = inserted.map(attribute => ({
-            id: attribute.id,
-            name: attribute.name,
-            values: attribute.values as string[],
-            displayOrder: attribute.displayOrder,
-          }));
-        }
-
-        let variants: ProductView['variants'] = [];
-
-        if (data.variants && data.variants.length > 0) {
-          for (const variant of data.variants) {
-            if (variant.price !== undefined && variant.price !== null && variant.price <= 0) {
-              throw new Error('Variant price must be greater than 0');
-            }
+      return await this.trackQuery('products.createWithVariants', () =>
+        this.db.transaction(async tx => {
+          if (data.price <= 0) {
+            throw new Error('Product price must be greater than 0');
           }
 
-          const inserted = await tx
-            .insert(productVariants)
-            .values(
-              data.variants.map(variant => ({
-                name: variant.name,
-                productId: product.id,
-                sku: variant.sku,
-                price: variant.price === undefined || variant.price === null ? null : toDecimal(variant.price),
-                stockQuantity: variant.stock ?? 0,
-                isActive: variant.isActive ?? true,
-                attributeValues: variant.attributeValues,
-              }))
-            )
+          const [product] = await tx
+            .insert(products)
+            .values({
+              ownerId: data.ownerId,
+              name: data.name,
+              price: toDecimal(data.price),
+              stock: data.stock ?? 0,
+              hasVariant: Boolean(data.variants && data.variants.length > 0),
+            })
             .returning();
 
-          variants = inserted.map(variant => ({
-            id: variant.id,
-            name: variant.name,
-            sku: variant.sku,
-            price: variant.price === null ? null : toNumber(variant.price),
-            stockQuantity: variant.stockQuantity,
-            availableStock: variant.stockQuantity - variant.stockReserved,
-            isActive: variant.isActive,
-            attributeValues: variant.attributeValues as Record<string, string>,
-            images: variant.images,
-          }));
-        }
+          let attributes: ProductView['attributes'] = [];
 
-        const [updatedProduct] = await tx.select().from(products).where(eq(products.id, product.id));
+          if (data.attributes && data.attributes.length > 0) {
+            const inserted = await tx
+              .insert(productAttributes)
+              .values(
+                data.attributes.map((attribute, index) => ({
+                  productId: product.id,
+                  name: attribute.name,
+                  values: attribute.values,
+                  displayOrder: attribute.displayOrder ?? index,
+                }))
+              )
+              .returning();
 
-        if (!updatedProduct) {
-          throw new Error('Failed to load created product');
-        }
+            attributes = inserted.map(attribute => ({
+              id: attribute.id,
+              name: attribute.name,
+              values: attribute.values as string[],
+              displayOrder: attribute.displayOrder,
+            }));
+          }
 
-        const variantPrices = variants.map(variant => variant.price).filter((price): price is number => typeof price === 'number' && price > 0);
+          let variants: ProductView['variants'] = [];
 
-        return this.formatProduct(updatedProduct, attributes, variants, variantPrices);
-      });
+          if (data.variants && data.variants.length > 0) {
+            for (const variant of data.variants) {
+              if (variant.price !== undefined && variant.price !== null && variant.price <= 0) {
+                throw new Error('Variant price must be greater than 0');
+              }
+            }
+
+            const inserted = await tx
+              .insert(productVariants)
+              .values(
+                data.variants.map(variant => ({
+                  name: variant.name,
+                  productId: product.id,
+                  sku: variant.sku,
+                  price: variant.price === undefined || variant.price === null ? null : toDecimal(variant.price),
+                  stockQuantity: variant.stock ?? 0,
+                  isActive: variant.isActive ?? true,
+                  attributeValues: variant.attributeValues,
+                }))
+              )
+              .returning();
+
+            variants = inserted.map(variant => ({
+              id: variant.id,
+              name: variant.name,
+              sku: variant.sku,
+              price: variant.price === null ? null : toNumber(variant.price),
+              stockQuantity: variant.stockQuantity,
+              availableStock: variant.stockQuantity - variant.stockReserved,
+              isActive: variant.isActive,
+              attributeValues: variant.attributeValues as Record<string, string>,
+              images: variant.images,
+            }));
+          }
+
+          const [updatedProduct] = await tx.select().from(products).where(eq(products.id, product.id));
+
+          if (!updatedProduct) {
+            throw new Error('Failed to load created product');
+          }
+
+          const variantPrices = variants.map(variant => variant.price).filter((price): price is number => typeof price === 'number' && price > 0);
+
+          return this.formatProduct(updatedProduct, attributes, variants, variantPrices);
+        })
+      );
     } catch (error) {
       this.logError('createWithVariants', error);
       throw error;
@@ -440,11 +450,13 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
   async update(id: string, data: Partial<Product>): Promise<Product | null> {
     try {
-      const result = await this.db
-        .update(products)
-        .set({ ...data, updatedAt: new Date() })
-        .where(eq(products.id, id))
-        .returning();
+      const result = await this.trackQuery('products.update', () =>
+        this.db
+          .update(products)
+          .set({ ...data, updatedAt: new Date() })
+          .where(eq(products.id, id))
+          .returning()
+      );
 
       return result[0] || null;
     } catch (error) {
@@ -455,189 +467,191 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
   async updateWithVariants(id: string, data: ProductUpdateWithVariantsInput): Promise<ProductView | null> {
     try {
-      return await this.db.transaction(async tx => {
-        const [existingProduct] = await tx
-          .select()
-          .from(products)
-          .where(and(eq(products.id, id), isNull(products.deletedAt)));
+      return await this.trackQuery('products.updateWithVariants', () =>
+        this.db.transaction(async tx => {
+          const [existingProduct] = await tx
+            .select()
+            .from(products)
+            .where(and(eq(products.id, id), isNull(products.deletedAt)));
 
-        if (!existingProduct) {
-          return null;
-        }
+          if (!existingProduct) {
+            return null;
+          }
 
-        if (existingProduct.hasVariant && data.stock !== undefined) {
-          throw new Error('Cannot update stock directly for products with variants');
-        }
+          if (existingProduct.hasVariant && data.stock !== undefined) {
+            throw new Error('Cannot update stock directly for products with variants');
+          }
 
-        if (data.price !== undefined && data.price <= 0) {
-          throw new Error('Product price must be greater than 0');
-        }
+          if (data.price !== undefined && data.price <= 0) {
+            throw new Error('Product price must be greater than 0');
+          }
 
-        await tx
-          .update(products)
-          .set({
-            name: data.name ?? existingProduct.name,
-            price: data.price !== undefined ? toDecimal(data.price) : existingProduct.price,
-            stock: data.stock ?? existingProduct.stock,
-            updatedAt: new Date(),
-          })
-          .where(eq(products.id, id));
-
-        let attributes: ProductView['attributes'] = [];
-
-        if (data.attributes !== undefined) {
           await tx
-            .update(productAttributes)
-            .set({ deletedAt: new Date(), updatedAt: new Date() })
-            .where(and(eq(productAttributes.productId, id), isNull(productAttributes.deletedAt)));
+            .update(products)
+            .set({
+              name: data.name ?? existingProduct.name,
+              price: data.price !== undefined ? toDecimal(data.price) : existingProduct.price,
+              stock: data.stock ?? existingProduct.stock,
+              updatedAt: new Date(),
+            })
+            .where(eq(products.id, id));
 
-          if (data.attributes.length > 0) {
-            const insertedAttributes = await tx
-              .insert(productAttributes)
-              .values(
-                data.attributes.map((attribute, index) => ({
-                  productId: id,
-                  name: attribute.name,
-                  values: attribute.values,
-                  displayOrder: attribute.displayOrder ?? index,
-                }))
-              )
-              .returning();
+          let attributes: ProductView['attributes'] = [];
 
-            attributes = insertedAttributes.map(attribute => ({
+          if (data.attributes !== undefined) {
+            await tx
+              .update(productAttributes)
+              .set({ deletedAt: new Date(), updatedAt: new Date() })
+              .where(and(eq(productAttributes.productId, id), isNull(productAttributes.deletedAt)));
+
+            if (data.attributes.length > 0) {
+              const insertedAttributes = await tx
+                .insert(productAttributes)
+                .values(
+                  data.attributes.map((attribute, index) => ({
+                    productId: id,
+                    name: attribute.name,
+                    values: attribute.values,
+                    displayOrder: attribute.displayOrder ?? index,
+                  }))
+                )
+                .returning();
+
+              attributes = insertedAttributes.map(attribute => ({
+                id: attribute.id,
+                name: attribute.name,
+                values: attribute.values as string[],
+                displayOrder: attribute.displayOrder,
+              }));
+            }
+          } else {
+            const existingAttributes = await tx
+              .select()
+              .from(productAttributes)
+              .where(and(eq(productAttributes.productId, id), isNull(productAttributes.deletedAt)));
+
+            attributes = existingAttributes.map(attribute => ({
               id: attribute.id,
               name: attribute.name,
               values: attribute.values as string[],
               displayOrder: attribute.displayOrder,
             }));
           }
-        } else {
-          const existingAttributes = await tx
-            .select()
-            .from(productAttributes)
-            .where(and(eq(productAttributes.productId, id), isNull(productAttributes.deletedAt)));
 
-          attributes = existingAttributes.map(attribute => ({
-            id: attribute.id,
-            name: attribute.name,
-            values: attribute.values as string[],
-            displayOrder: attribute.displayOrder,
-          }));
-        }
+          let variants: ProductView['variants'] = [];
 
-        let variants: ProductView['variants'] = [];
+          if (data.variants !== undefined) {
+            const existingVariants = await tx.select().from(productVariants).where(eq(productVariants.productId, id));
 
-        if (data.variants !== undefined) {
-          const existingVariants = await tx.select().from(productVariants).where(eq(productVariants.productId, id));
+            const existingVariantMap = new Map(existingVariants.map(variant => [variant.sku, variant]));
+            const processedSkus = new Set<string>();
+            const variantsToInsert: Array<{
+              name: string;
+              productId: string;
+              sku: string;
+              price: string | null;
+              stockQuantity: number;
+              isActive: boolean;
+              attributeValues: Record<string, string>;
+            }> = [];
 
-          const existingVariantMap = new Map(existingVariants.map(variant => [variant.sku, variant]));
-          const processedSkus = new Set<string>();
-          const variantsToInsert: Array<{
-            name: string;
-            productId: string;
-            sku: string;
-            price: string | null;
-            stockQuantity: number;
-            isActive: boolean;
-            attributeValues: Record<string, string>;
-          }> = [];
+            for (const variant of data.variants) {
+              if (variant.price !== undefined && variant.price !== null && variant.price <= 0) {
+                throw new Error('Variant price must be greater than 0');
+              }
 
-          for (const variant of data.variants) {
-            if (variant.price !== undefined && variant.price !== null && variant.price <= 0) {
-              throw new Error('Variant price must be greater than 0');
-            }
+              const existing = existingVariantMap.get(variant.sku);
 
-            const existing = existingVariantMap.get(variant.sku);
+              if (existing) {
+                await tx
+                  .update(productVariants)
+                  .set({
+                    price: variant.price === undefined || variant.price === null ? null : toDecimal(variant.price),
+                    stockQuantity: variant.stock ?? 0,
+                    isActive: variant.isActive ?? true,
+                    attributeValues: variant.attributeValues,
+                    deletedAt: null,
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(productVariants.id, existing.id));
 
-            if (existing) {
-              await tx
-                .update(productVariants)
-                .set({
+                processedSkus.add(variant.sku);
+              } else {
+                variantsToInsert.push({
+                  name: variant.name,
+                  productId: id,
+                  sku: variant.sku,
                   price: variant.price === undefined || variant.price === null ? null : toDecimal(variant.price),
                   stockQuantity: variant.stock ?? 0,
                   isActive: variant.isActive ?? true,
                   attributeValues: variant.attributeValues,
-                  deletedAt: null,
-                  updatedAt: new Date(),
-                })
-                .where(eq(productVariants.id, existing.id));
+                });
 
-              processedSkus.add(variant.sku);
-            } else {
-              variantsToInsert.push({
-                name: variant.name,
-                productId: id,
-                sku: variant.sku,
-                price: variant.price === undefined || variant.price === null ? null : toDecimal(variant.price),
-                stockQuantity: variant.stock ?? 0,
-                isActive: variant.isActive ?? true,
-                attributeValues: variant.attributeValues,
-              });
-
-              processedSkus.add(variant.sku);
+                processedSkus.add(variant.sku);
+              }
             }
+
+            if (variantsToInsert.length > 0) {
+              await tx.insert(productVariants).values(variantsToInsert);
+            }
+
+            const variantsToDelete = existingVariants
+              .filter(variant => !processedSkus.has(variant.sku) && variant.deletedAt === null)
+              .map(variant => variant.id);
+
+            if (variantsToDelete.length > 0) {
+              await tx
+                .update(productVariants)
+                .set({ deletedAt: new Date(), updatedAt: new Date() })
+                .where(inArray(productVariants.id, variantsToDelete));
+            }
+
+            const finalVariants = await tx
+              .select()
+              .from(productVariants)
+              .where(and(eq(productVariants.productId, id), isNull(productVariants.deletedAt)));
+
+            variants = finalVariants.map(variant => ({
+              id: variant.id,
+              name: variant.name,
+              sku: variant.sku,
+              price: variant.price === null ? null : toNumber(variant.price),
+              stockQuantity: variant.stockQuantity,
+              availableStock: variant.stockQuantity - variant.stockReserved,
+              isActive: variant.isActive,
+              attributeValues: variant.attributeValues as Record<string, string>,
+              images: variant.images,
+            }));
+          } else {
+            const existingVariants = await tx
+              .select()
+              .from(productVariants)
+              .where(and(eq(productVariants.productId, id), isNull(productVariants.deletedAt)));
+
+            variants = existingVariants.map(variant => ({
+              id: variant.id,
+              name: variant.name,
+              sku: variant.sku,
+              price: variant.price === null ? null : toNumber(variant.price),
+              stockQuantity: variant.stockQuantity,
+              availableStock: variant.stockQuantity - variant.stockReserved,
+              isActive: variant.isActive,
+              attributeValues: variant.attributeValues as Record<string, string>,
+              images: variant.images,
+            }));
           }
 
-          if (variantsToInsert.length > 0) {
-            await tx.insert(productVariants).values(variantsToInsert);
+          const [finalProduct] = await tx.select().from(products).where(eq(products.id, id));
+
+          if (!finalProduct) {
+            throw new Error('Failed to load updated product');
           }
 
-          const variantsToDelete = existingVariants
-            .filter(variant => !processedSkus.has(variant.sku) && variant.deletedAt === null)
-            .map(variant => variant.id);
+          const variantPrices = variants.map(variant => variant.price).filter((price): price is number => typeof price === 'number' && price > 0);
 
-          if (variantsToDelete.length > 0) {
-            await tx
-              .update(productVariants)
-              .set({ deletedAt: new Date(), updatedAt: new Date() })
-              .where(inArray(productVariants.id, variantsToDelete));
-          }
-
-          const finalVariants = await tx
-            .select()
-            .from(productVariants)
-            .where(and(eq(productVariants.productId, id), isNull(productVariants.deletedAt)));
-
-          variants = finalVariants.map(variant => ({
-            id: variant.id,
-            name: variant.name,
-            sku: variant.sku,
-            price: variant.price === null ? null : toNumber(variant.price),
-            stockQuantity: variant.stockQuantity,
-            availableStock: variant.stockQuantity - variant.stockReserved,
-            isActive: variant.isActive,
-            attributeValues: variant.attributeValues as Record<string, string>,
-            images: variant.images,
-          }));
-        } else {
-          const existingVariants = await tx
-            .select()
-            .from(productVariants)
-            .where(and(eq(productVariants.productId, id), isNull(productVariants.deletedAt)));
-
-          variants = existingVariants.map(variant => ({
-            id: variant.id,
-            name: variant.name,
-            sku: variant.sku,
-            price: variant.price === null ? null : toNumber(variant.price),
-            stockQuantity: variant.stockQuantity,
-            availableStock: variant.stockQuantity - variant.stockReserved,
-            isActive: variant.isActive,
-            attributeValues: variant.attributeValues as Record<string, string>,
-            images: variant.images,
-          }));
-        }
-
-        const [finalProduct] = await tx.select().from(products).where(eq(products.id, id));
-
-        if (!finalProduct) {
-          throw new Error('Failed to load updated product');
-        }
-
-        const variantPrices = variants.map(variant => variant.price).filter((price): price is number => typeof price === 'number' && price > 0);
-
-        return this.formatProduct(finalProduct, attributes, variants, variantPrices);
-      });
+          return this.formatProduct(finalProduct, attributes, variants, variantPrices);
+        })
+      );
     } catch (error) {
       this.logError('updateWithVariants', error);
       throw error;
@@ -646,11 +660,13 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
   async softDelete(id: string): Promise<boolean> {
     try {
-      const result = await this.db
-        .update(products)
-        .set({ deletedAt: new Date(), updatedAt: new Date() })
-        .where(and(eq(products.id, id), isNull(products.deletedAt)))
-        .returning();
+      const result = await this.trackQuery('products.softDelete', () =>
+        this.db
+          .update(products)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(and(eq(products.id, id), isNull(products.deletedAt)))
+          .returning()
+      );
 
       return result.length > 0;
     } catch (error) {
@@ -661,7 +677,9 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
   async restore(id: string): Promise<boolean> {
     try {
-      const result = await this.db.update(products).set({ deletedAt: null, updatedAt: new Date() }).where(eq(products.id, id)).returning();
+      const result = await this.trackQuery('products.restore', () =>
+        this.db.update(products).set({ deletedAt: null, updatedAt: new Date() }).where(eq(products.id, id)).returning()
+      );
 
       return result.length > 0;
     } catch (error) {
@@ -672,7 +690,9 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
   async updateStock(id: string, stock: number): Promise<Product | null> {
     try {
-      const result = await this.db.update(products).set({ stock, updatedAt: new Date() }).where(eq(products.id, id)).returning();
+      const result = await this.trackQuery('products.updateStock', () =>
+        this.db.update(products).set({ stock, updatedAt: new Date() }).where(eq(products.id, id)).returning()
+      );
 
       return result[0] || null;
     } catch (error) {
@@ -697,60 +717,62 @@ export class ProductRepository extends CRUDRepository<Product, string> {
     stock: number
   ): Promise<{ variant: { id: string; stockQuantity: number }; product: { id: string; stock: number } } | null> {
     try {
-      return await this.db.transaction(async tx => {
-        // First, verify the variant belongs to the product (IDOR prevention)
-        const [variant] = await tx
-          .select()
-          .from(productVariants)
-          .where(and(eq(productVariants.id, variantId), eq(productVariants.productId, productId), isNull(productVariants.deletedAt)));
+      return await this.trackQuery('products.updateVariantStock', () =>
+        this.db.transaction(async tx => {
+          // First, verify the variant belongs to the product (IDOR prevention)
+          const [variant] = await tx
+            .select()
+            .from(productVariants)
+            .where(and(eq(productVariants.id, variantId), eq(productVariants.productId, productId), isNull(productVariants.deletedAt)));
 
-        if (!variant) {
-          throw new Error('Variant not found or does not belong to this product');
-        }
+          if (!variant) {
+            throw new Error('Variant not found or does not belong to this product');
+          }
 
-        // Update the variant stock
-        const [updatedVariant] = await tx
-          .update(productVariants)
-          .set({ stockQuantity: stock, updatedAt: new Date() })
-          .where(eq(productVariants.id, variantId))
-          .returning();
+          // Update the variant stock
+          const [updatedVariant] = await tx
+            .update(productVariants)
+            .set({ stockQuantity: stock, updatedAt: new Date() })
+            .where(eq(productVariants.id, variantId))
+            .returning();
 
-        if (!updatedVariant) {
-          throw new Error('Failed to update variant stock');
-        }
+          if (!updatedVariant) {
+            throw new Error('Failed to update variant stock');
+          }
 
-        // Recalculate parent product stock (sum of all active variant stocks)
-        const [stockAggregation] = await tx
-          .select({
-            totalStock: sql<number>`COALESCE(SUM(${productVariants.stockQuantity}), 0)`,
-          })
-          .from(productVariants)
-          .where(and(eq(productVariants.productId, productId), isNull(productVariants.deletedAt), eq(productVariants.isActive, true)));
+          // Recalculate parent product stock (sum of all active variant stocks)
+          const [stockAggregation] = await tx
+            .select({
+              totalStock: sql<number>`COALESCE(SUM(${productVariants.stockQuantity}), 0)`,
+            })
+            .from(productVariants)
+            .where(and(eq(productVariants.productId, productId), isNull(productVariants.deletedAt), eq(productVariants.isActive, true)));
 
-        const newParentStock = stockAggregation?.totalStock ?? 0;
+          const newParentStock = stockAggregation?.totalStock ?? 0;
 
-        // Update parent product stock
-        const [updatedProduct] = await tx
-          .update(products)
-          .set({ stock: newParentStock, updatedAt: new Date() })
-          .where(eq(products.id, productId))
-          .returning();
+          // Update parent product stock
+          const [updatedProduct] = await tx
+            .update(products)
+            .set({ stock: newParentStock, updatedAt: new Date() })
+            .where(eq(products.id, productId))
+            .returning();
 
-        if (!updatedProduct) {
-          throw new Error('Failed to update parent product stock');
-        }
+          if (!updatedProduct) {
+            throw new Error('Failed to update parent product stock');
+          }
 
-        return {
-          variant: {
-            id: updatedVariant.id,
-            stockQuantity: updatedVariant.stockQuantity,
-          },
-          product: {
-            id: updatedProduct.id,
-            stock: updatedProduct.stock,
-          },
-        };
-      });
+          return {
+            variant: {
+              id: updatedVariant.id,
+              stockQuantity: updatedVariant.stockQuantity,
+            },
+            product: {
+              id: updatedProduct.id,
+              stock: updatedProduct.stock,
+            },
+          };
+        })
+      );
     } catch (error) {
       this.logError('updateVariantStock', error);
       throw error;
@@ -759,7 +781,7 @@ export class ProductRepository extends CRUDRepository<Product, string> {
 
   async delete(id: string): Promise<boolean> {
     try {
-      const result = await this.db.delete(products).where(eq(products.id, id)).returning();
+      const result = await this.trackQuery('products.delete', () => this.db.delete(products).where(eq(products.id, id)).returning());
       return result.length > 0;
     } catch (error) {
       this.logError('delete', error);

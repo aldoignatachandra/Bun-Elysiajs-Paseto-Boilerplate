@@ -11,7 +11,7 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   async findById(id: string): Promise<UserSession | null> {
     try {
-      const result = await this.db.select().from(userSessions).where(eq(userSessions.id, id)).limit(1);
+      const result = await this.trackQuery('sessions.findById', () => this.db.select().from(userSessions).where(eq(userSessions.id, id)).limit(1));
       return result[0] || null;
     } catch (error) {
       this.logError('findById', error);
@@ -21,7 +21,9 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   async findByToken(token: string): Promise<UserSession | null> {
     try {
-      const result = await this.db.select().from(userSessions).where(eq(userSessions.token, token)).limit(1);
+      const result = await this.trackQuery('sessions.findByToken', () =>
+        this.db.select().from(userSessions).where(eq(userSessions.token, token)).limit(1)
+      );
       return result[0] || null;
     } catch (error) {
       this.logError('findByToken', error);
@@ -31,8 +33,9 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   async findByTokenId(tokenId: string): Promise<UserSession | null> {
     try {
-      // tokenId is stored in the token field for refresh token sessions
-      const result = await this.db.select().from(userSessions).where(eq(userSessions.token, tokenId)).limit(1);
+      const result = await this.trackQuery('sessions.findByTokenId', () =>
+        this.db.select().from(userSessions).where(eq(userSessions.token, tokenId)).limit(1)
+      );
       return result[0] || null;
     } catch (error) {
       this.logError('findByTokenId', error);
@@ -42,11 +45,13 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   async findByRefreshTokenId(refreshTokenId: string): Promise<UserSession | null> {
     try {
-      const result = await this.db
-        .select()
-        .from(userSessions)
-        .where(and(eq(userSessions.refreshTokenId, refreshTokenId), isNull(userSessions.revokedAt)))
-        .limit(1);
+      const result = await this.trackQuery('sessions.findByRefreshTokenId', () =>
+        this.db
+          .select()
+          .from(userSessions)
+          .where(and(eq(userSessions.refreshTokenId, refreshTokenId), isNull(userSessions.revokedAt)))
+          .limit(1)
+      );
       return result[0] || null;
     } catch (error) {
       this.logError('findByRefreshTokenId', error);
@@ -56,11 +61,13 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   async findActiveSessionByUserId(userId: string): Promise<UserSession | null> {
     try {
-      const result = await this.db
-        .select()
-        .from(userSessions)
-        .where(and(eq(userSessions.userId, userId), isNull(userSessions.revokedAt)))
-        .limit(1);
+      const result = await this.trackQuery('sessions.findActiveSessionByUserId', () =>
+        this.db
+          .select()
+          .from(userSessions)
+          .where(and(eq(userSessions.userId, userId), isNull(userSessions.revokedAt)))
+          .limit(1)
+      );
       return result[0] || null;
     } catch (error) {
       this.logError('findActiveSessionByUserId', error);
@@ -70,7 +77,7 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   async findByUserId(userId: string): Promise<UserSession[]> {
     try {
-      const result = await this.db.select().from(userSessions).where(eq(userSessions.userId, userId));
+      const result = await this.trackQuery('sessions.findByUserId', () => this.db.select().from(userSessions).where(eq(userSessions.userId, userId)));
       return result;
     } catch (error) {
       this.logError('findByUserId', error);
@@ -80,7 +87,7 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   async create(data: NewUserSession): Promise<UserSession> {
     try {
-      const result = await this.db.insert(userSessions).values(data).returning();
+      const result = await this.trackQuery('sessions.create', () => this.db.insert(userSessions).values(data).returning());
       return result[0];
     } catch (error) {
       this.logError('create', error);
@@ -90,11 +97,9 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   async revoke(id: string): Promise<boolean> {
     try {
-      const result = await this.db
-        .update(userSessions)
-        .set({ revokedAt: new Date(), updatedAt: new Date() })
-        .where(eq(userSessions.id, id))
-        .returning();
+      const result = await this.trackQuery('sessions.revoke', () =>
+        this.db.update(userSessions).set({ revokedAt: new Date(), updatedAt: new Date() }).where(eq(userSessions.id, id)).returning()
+      );
       return result.length > 0;
     } catch (error) {
       this.logError('revoke', error);
@@ -104,11 +109,13 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   async revokeAllForUser(userId: string): Promise<boolean> {
     try {
-      const result = await this.db
-        .update(userSessions)
-        .set({ revokedAt: new Date(), updatedAt: new Date() })
-        .where(and(eq(userSessions.userId, userId), isNull(userSessions.revokedAt)))
-        .returning();
+      const result = await this.trackQuery('sessions.revokeAllForUser', () =>
+        this.db
+          .update(userSessions)
+          .set({ revokedAt: new Date(), updatedAt: new Date() })
+          .where(and(eq(userSessions.userId, userId), isNull(userSessions.revokedAt)))
+          .returning()
+      );
       return result.length > 0;
     } catch (error) {
       this.logError('revokeAllForUser', error);
@@ -118,7 +125,9 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   async deleteByUserId(userId: string): Promise<boolean> {
     try {
-      const result = await this.db.delete(userSessions).where(eq(userSessions.userId, userId)).returning();
+      const result = await this.trackQuery('sessions.deleteByUserId', () =>
+        this.db.delete(userSessions).where(eq(userSessions.userId, userId)).returning()
+      );
       return result.length > 0;
     } catch (error) {
       this.logError('deleteByUserId', error);
@@ -128,10 +137,12 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   async deleteExpired(): Promise<number> {
     try {
-      const result = await this.db
-        .delete(userSessions)
-        .where(and(lt(userSessions.expiresAt, new Date()), isNull(userSessions.revokedAt)))
-        .returning();
+      const result = await this.trackQuery('sessions.deleteExpired', () =>
+        this.db
+          .delete(userSessions)
+          .where(and(lt(userSessions.expiresAt, new Date()), isNull(userSessions.revokedAt)))
+          .returning()
+      );
       return result.length;
     } catch (error) {
       this.logError('deleteExpired', error);
@@ -141,11 +152,13 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   async update(id: string, data: Partial<UserSession>): Promise<UserSession | null> {
     try {
-      const result = await this.db
-        .update(userSessions)
-        .set({ ...data, updatedAt: new Date() })
-        .where(eq(userSessions.id, id))
-        .returning();
+      const result = await this.trackQuery('sessions.update', () =>
+        this.db
+          .update(userSessions)
+          .set({ ...data, updatedAt: new Date() })
+          .where(eq(userSessions.id, id))
+          .returning()
+      );
       return result[0] || null;
     } catch (error) {
       this.logError('update', error);
@@ -155,7 +168,7 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   async delete(id: string): Promise<boolean> {
     try {
-      const result = await this.db.delete(userSessions).where(eq(userSessions.id, id)).returning();
+      const result = await this.trackQuery('sessions.delete', () => this.db.delete(userSessions).where(eq(userSessions.id, id)).returning());
       return result.length > 0;
     } catch (error) {
       this.logError('delete', error);
@@ -165,7 +178,7 @@ export class SessionRepository extends CRUDRepository<UserSession, string> imple
 
   protected async count(): Promise<number> {
     try {
-      const result = await this.db.select({ count: userSessions.id }).from(userSessions);
+      const result = await this.trackQuery('sessions.count', () => this.db.select({ count: userSessions.id }).from(userSessions));
       return result.length;
     } catch (error) {
       return this.handleRepositoryError('count', error, 0);

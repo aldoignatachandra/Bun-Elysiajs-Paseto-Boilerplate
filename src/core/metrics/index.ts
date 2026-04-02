@@ -10,6 +10,10 @@
  *
  * // Use plugin
  * app.use(metricsPlugin());
+ *
+ * // Track database queries (when SYSTEM_METRICS_ENABLED=true)
+ * import { trackDatabaseQuery } from '@/core/metrics';
+ * const result = await trackDatabaseQuery('select', () => db.select().from(users));
  * ```
  */
 
@@ -33,3 +37,13 @@ export type {
 
 // Middleware and plugins
 export { metricsMiddleware, metricsPlugin, getMetricsHandler, isMetricsEnabled, type MetricsMiddlewareConfig } from './middleware';
+
+// System metrics collector (opt-in via SYSTEM_METRICS_ENABLED=true)
+export {
+  getSystemMetricsCollector,
+  getSystemMetricsConfig,
+  initializeSystemMetrics,
+  shutdownSystemMetrics,
+  trackDatabaseQuery,
+  updateDatabasePoolMetrics,
+} from './system-collector';

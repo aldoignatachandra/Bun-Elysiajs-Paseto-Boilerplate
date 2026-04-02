@@ -49,7 +49,8 @@ This boilerplate implements modern authentication with **PASETO v4** tokens, pro
 - **Security baseline**: Argon2 password hashing, input validation, and authentication middleware
 - **Graceful Shutdown**: Configurable SIGTERM/SIGINT handling with graceful connection closure
 - **Request Validation**: Automatic Zod validation with detailed error responses
-- **Metrics Collection**: Prometheus-compatible metrics with `/metrics` endpoint
+- **Metrics Collection**: Prometheus-compatible metrics with `/metrics` endpoint, system metrics (memory, event loop), and database query instrumentation
+- **Observability Stack**: Optional Docker-based stack (Prometheus, Grafana, Jaeger) with pre-built dashboards
 - **Request Context**: Enhanced request metadata tracking with performance monitoring
 - **Security Headers**: OWASP-recommended security headers with CSP support
 - **Hot Reload**: Bun's native `--watch` mode for rapid development iteration
@@ -113,8 +114,10 @@ bun-elysia-paseto-boilerplate/
 │   │   ├── errors/
 │   │   ├── http/
 │   │   ├── logging/
+│   │   ├── metrics/
 │   │   ├── paseto/
 │   │   ├── redis/
+│   │   ├── telemetry/
 │   │   └── validation/
 │   ├── database/
 │   │   ├── migrations/
@@ -257,6 +260,7 @@ cp .env.example .env
 | `NODE_ENV`                 | Application environment                    | `development`                                       |
 | `PORT`                     | API server port                            | `3000`                                              |
 | `METRICS_ENABLED`          | Enable Prometheus metrics endpoint         | `true` in development/test, `false` in production   |
+| `SYSTEM_METRICS_ENABLED`   | Enable system & database metrics           | `false`                                             |
 | `SHUTDOWN_TIMEOUT_MS`      | Graceful shutdown timeout (ms)             | `30000`                                             |
 | `SHUTDOWN_GRACE_PERIOD_MS` | Grace period before force close (ms)       | `5000`                                              |
 
@@ -345,24 +349,27 @@ Interactive API documentation is available at:
 
 ## 🧰 Available Scripts
 
-| Script                         | Description                             |
-| :----------------------------- | :-------------------------------------- |
-| `bun run dev`                  | Start development server (watch mode)   |
-| `bun run start`                | Start production server                 |
-| `bun run test`                 | Run default test suite                  |
-| `bun run test:unit`            | Run unit and middleware tests           |
-| `bun run test:integration`     | Run API smoke/integration tests         |
-| `bun run test:coverage`        | Run unit coverage + print overall %     |
-| `bun run test:coverage:lcov`   | Run unit coverage with LCOV + overall % |
-| `bun run lint`                 | Lint source files                       |
-| `bun run lint:fix`             | Auto-fix lint issues                    |
-| `bun run format`               | Format repository files                 |
-| `bun run format:check`         | Check formatting                        |
-| `bun run db:generate`          | Generate Drizzle migrations             |
-| `bun run db:migrate`           | Apply migrations                        |
-| `bun run db:seed`              | Seed database                           |
-| `bun run db:studio`            | Open Drizzle Studio                     |
-| `bun run generate:paseto-keys` | Generate PASETO keys                    |
+| Script                         | Description                                             |
+| :----------------------------- | :------------------------------------------------------ |
+| `bun run dev`                  | Start development server (watch mode)                   |
+| `bun run start`                | Start production server                                 |
+| `bun run test`                 | Run default test suite                                  |
+| `bun run test:unit`            | Run unit and middleware tests                           |
+| `bun run test:integration`     | Run API smoke/integration tests                         |
+| `bun run test:coverage`        | Run unit coverage + print overall %                     |
+| `bun run test:coverage:lcov`   | Run unit coverage with LCOV + overall %                 |
+| `bun run lint`                 | Lint source files                                       |
+| `bun run lint:fix`             | Auto-fix lint issues                                    |
+| `bun run format`               | Format repository files                                 |
+| `bun run format:check`         | Check formatting                                        |
+| `bun run db:generate`          | Generate Drizzle migrations                             |
+| `bun run db:migrate`           | Apply migrations                                        |
+| `bun run db:seed`              | Seed database                                           |
+| `bun run db:studio`            | Open Drizzle Studio                                     |
+| `bun run generate:paseto-keys` | Generate PASETO keys                                    |
+| `bun run observability:up`     | Start observability stack (Prometheus, Grafana, Jaeger) |
+| `bun run observability:down`   | Stop observability stack                                |
+| `bun run observability:logs`   | View observability stack logs                           |
 
 ---
 
@@ -408,7 +415,7 @@ Base prefix: `/api/v1`
 - `GET /health/live` - Liveness probe
 - `GET /health/ready` - Readiness probe
 - `GET /swagger` - Interactive API documentation
-- `GET /metrics` - Prometheus metrics (when `METRICS_ENABLED=true`)
+- `GET /metrics` - Prometheus metrics (when `METRICS_ENABLED=true`, system metrics when `SYSTEM_METRICS_ENABLED=true`)
 
 ---
 
@@ -577,6 +584,7 @@ Example:
 - [`docs/deployment/production.md`](docs/deployment/production.md) - Production deployment guide
 - [`docs/operations/runbook.md`](docs/operations/runbook.md) - Operational runbook
 - [`docs/operations/monitoring.md`](docs/operations/monitoring.md) - Monitoring and observability
+- [`docs/quicstart/observability-quickstart.md`](docs/quicstart/observability-quickstart.md) - Observability stack quickstart
 
 ---
 

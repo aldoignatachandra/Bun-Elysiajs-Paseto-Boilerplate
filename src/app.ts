@@ -4,6 +4,7 @@ import { createOpenApiConfig } from './core/openapi';
 import { logger } from './core/logging/logger';
 import { loggingPlugin } from './core/logging/middleware';
 import { telemetryMiddleware } from './core/telemetry';
+import { metricsPlugin, isMetricsEnabled } from './core/metrics';
 import { getConnection } from './database/connection';
 import { UnitOfWork } from './repositories/unit-of-work';
 import { PasswordService } from './core/crypto/password.service';
@@ -49,7 +50,23 @@ export function createApp() {
     )
     .use(requestId())
     .use(loggingPlugin)
-    .use(telemetryMiddleware())
+    .use(telemetryMiddleware());
+
+  // Register metrics plugin (non-critical - warn on failure, never crash)
+  try {
+    if (isMetricsEnabled()) {
+      app.use(metricsPlugin());
+      logger.info('Metrics plugin registered', {
+        systemMetrics: process.env.SYSTEM_METRICS_ENABLED === 'true',
+      });
+    }
+  } catch (error) {
+    logger.warn('Failed to register metrics plugin, continuing without metrics', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  app
     .use(registerPlugins)
     .onError(ctx => {
       const { error, set, request } = ctx;

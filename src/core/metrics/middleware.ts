@@ -6,10 +6,16 @@
  * - Request count (counter)
  * - Active requests (gauge)
  * - Error tracking (counter)
+ *
+ * When SYSTEM_METRICS_ENABLED=true, also collects:
+ * - Process memory (gauge)
+ * - Event loop lag (gauge)
+ * - Database metrics (histogram, gauge, counter)
  */
 
 import type { Elysia } from 'elysia';
 import { getMetricsRegistry } from './metrics';
+import { initializeSystemMetrics, shutdownSystemMetrics } from './system-collector';
 
 /**
  * HTTP request metadata stored during request processing
@@ -290,7 +296,10 @@ export function isMetricsEnabled(): boolean {
 /**
  * Create metrics plugin with /metrics endpoint
  *
- * This plugin includes both the middleware and the /metrics endpoint
+ * This plugin includes:
+ * - HTTP request tracking middleware
+ * - /metrics endpoint for Prometheus scraping
+ * - System metrics collection (when SYSTEM_METRICS_ENABLED=true)
  *
  * @example
  * ```typescript
@@ -305,16 +314,24 @@ export function isMetricsEnabled(): boolean {
  */
 export function metricsPlugin<T extends Elysia>(config: MetricsMiddlewareConfig = {}) {
   return (app: T) => {
+    // Initialize system metrics (only if SYSTEM_METRICS_ENABLED=true)
+    initializeSystemMetrics();
+
     // First apply the middleware
     const withMiddleware = metricsMiddleware(config)(app);
 
     // Then add the /metrics endpoint
-    return withMiddleware.get('/metrics', getMetricsHandler(), {
-      detail: {
-        summary: 'Prometheus metrics endpoint',
-        description: 'Returns application metrics in Prometheus exposition format',
-        tags: ['Monitoring'],
-      },
-    });
+    return withMiddleware
+      .get('/metrics', getMetricsHandler(), {
+        detail: {
+          summary: 'Prometheus metrics endpoint',
+          description: 'Returns application metrics in Prometheus exposition format',
+          tags: ['Monitoring'],
+        },
+      })
+      .onStop(() => {
+        // Clean up system metrics collector on app shutdown
+        shutdownSystemMetrics();
+      });
   };
 }
