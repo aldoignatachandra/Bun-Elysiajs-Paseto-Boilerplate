@@ -65,10 +65,10 @@ export class ProductsService implements IProductsService {
   /**
    * Track changes between old and new values for activity logging
    */
-  private trackChanges<T extends Record<string, unknown>>(
-    oldData: T,
-    newData: Partial<T>,
-    fieldsToTrack: (keyof T)[]
+  private trackChanges(
+    oldData: Record<string, unknown>,
+    newData: Record<string, unknown>,
+    fieldsToTrack: string[]
   ): Array<{ field: string; oldValue: unknown; newValue: unknown }> {
     const changes: Array<{ field: string; oldValue: unknown; newValue: unknown }> = [];
 
@@ -211,7 +211,7 @@ export class ProductsService implements IProductsService {
       throw new BadRequestError('Stock cannot be negative');
     }
 
-    const existing = await this.unitOfWork.products.findById(input.id || '', true);
+    const existing = await this.unitOfWork.products.findByIdWithVariants(input.id || '', true);
     if (!existing) {
       throw new NotFoundError('Product not found');
     }
@@ -219,7 +219,14 @@ export class ProductsService implements IProductsService {
     this.checkOwnership(existing.ownerId, input.currentUserId || '', input.isAdmin);
 
     // Track changes for activity log
-    const changes = this.trackChanges(existing, input, ['name', 'price', 'stock', 'images', 'attributes', 'variants']);
+    const changes = this.trackChanges(existing as unknown as Record<string, unknown>, input as unknown as Record<string, unknown>, [
+      'name',
+      'price',
+      'stock',
+      'images',
+      'attributes',
+      'variants',
+    ]);
 
     // Track variant changes separately if variants are being updated
     const variantChanges: Array<{ variantName: string; changes: Array<{ field: string; oldValue: unknown; newValue: unknown }> }> = [];
@@ -227,7 +234,7 @@ export class ProductsService implements IProductsService {
       for (const newVariant of input.variants) {
         const oldVariant = existing.variants.find(v => v.sku === newVariant.sku);
         if (oldVariant) {
-          const variantDiff = this.trackChanges(oldVariant as Record<string, unknown>, newVariant as Record<string, unknown>, [
+          const variantDiff = this.trackChanges(oldVariant as unknown as Record<string, unknown>, newVariant as unknown as Record<string, unknown>, [
             'price',
             'stock',
             'isActive',
@@ -369,7 +376,7 @@ export class ProductsService implements IProductsService {
       throw new BadRequestError('Stock cannot be negative');
     }
 
-    const existing = await this.unitOfWork.products.findById(input.id, true);
+    const existing = await this.unitOfWork.products.findByIdWithVariants(input.id, true);
 
     if (!existing) {
       throw new NotFoundError('Product not found');
@@ -405,7 +412,7 @@ export class ProductsService implements IProductsService {
             performedBy: input.performedBy,
             productId: input.id,
             variantId: input.variantId,
-            variantName: result.variant.name,
+            variantName: oldVariant?.name,
             oldStock: oldVariantStock,
             newStock: input.stock,
             stockChange: input.stock - oldVariantStock,

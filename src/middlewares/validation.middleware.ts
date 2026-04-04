@@ -130,7 +130,7 @@ function parseStringifiedError(message: string): ParsedValidationError | null {
     if (parsed && typeof parsed === 'object' && parsed !== null) {
       const obj = parsed as Record<string, unknown>;
       if (obj.type === 'validation') {
-        return obj as ParsedValidationError;
+        return obj as unknown as ParsedValidationError;
       }
     }
   } catch {

@@ -34,8 +34,8 @@ export class UsersController {
       const profile = await this.usersService.updateProfile({
         userId: authContext.user.id,
         ...dto,
-        ipAddress: authContext.ipAddress as string | undefined,
-        userAgent: authContext.userAgent as string | undefined,
+        ipAddress: authContext.ipAddress,
+        userAgent: authContext.userAgent,
         performedBy: authContext.user.id,
       });
 
@@ -188,8 +188,8 @@ export class UsersController {
     try {
       const result = await this.usersService.deleteUser(id, force, {
         performedBy: authContext.user.id,
-        ipAddress: authContext.ipAddress as string | undefined,
-        userAgent: authContext.userAgent as string | undefined,
+        ipAddress: authContext.ipAddress,
+        userAgent: authContext.userAgent,
       });
 
       logger.info('User deleted', { userId: id, deletedBy: authContext.user.id, force });
@@ -212,8 +212,8 @@ export class UsersController {
     try {
       return await this.usersService.activateUser(id, {
         performedBy: authContext.user.id,
-        ipAddress: authContext.ipAddress as string | undefined,
-        userAgent: authContext.userAgent as string | undefined,
+        ipAddress: authContext.ipAddress,
+        userAgent: authContext.userAgent,
       });
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof BadRequestError) {
@@ -233,8 +233,8 @@ export class UsersController {
     try {
       return await this.usersService.deactivateUser(id, {
         performedBy: authContext.user.id,
-        ipAddress: authContext.ipAddress as string | undefined,
-        userAgent: authContext.userAgent as string | undefined,
+        ipAddress: authContext.ipAddress,
+        userAgent: authContext.userAgent,
       });
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof BadRequestError) {
@@ -254,8 +254,8 @@ export class UsersController {
     try {
       return await this.usersService.restoreUser(id, {
         performedBy: authContext.user.id,
-        ipAddress: authContext.ipAddress as string | undefined,
-        userAgent: authContext.userAgent as string | undefined,
+        ipAddress: authContext.ipAddress,
+        userAgent: authContext.userAgent,
       });
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof BadRequestError) {

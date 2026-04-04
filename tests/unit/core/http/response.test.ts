@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { describe, it, expect } from 'bun:test';
-import { buildMeta, successResponse, errorResponse, type ApiMeta, type ApiResponse } from '../../../../src/core/http/response';
+import { buildMeta, successResponse, errorResponse } from '../../../../src/core/http/response';
 
 describe('HTTP Response', () => {
   const mockRequest = new Request('http://localhost/api/test');

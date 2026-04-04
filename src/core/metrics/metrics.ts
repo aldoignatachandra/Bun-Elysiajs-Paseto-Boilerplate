@@ -414,7 +414,7 @@ export class MetricsRegistry {
   /**
    * Update summary quantiles (simplified implementation)
    */
-  private updateQuantiles(name: string, value: number, currentData: SummaryData): void {
+  private updateQuantiles(name: string, _value: number, currentData: SummaryData): void {
     // Simplified quantile calculation
     // In production, use a proper streaming quantile algorithm like t-digest
     const quantiles = this.summaryQuantiles.get(name) ?? [];

@@ -49,8 +49,9 @@ export class FieldError {
     const field = formatFieldPath(issue.path);
     const code = mapZodCodeToFieldErrorCode(issue.code);
     const message = formatFieldError(code, field, issue);
+    const received = 'received' in issue ? (issue as { received?: unknown }).received : undefined;
 
-    return new FieldError(field, message, code, issue.received, getExpectedValue(issue));
+    return new FieldError(field, message, code, received, getExpectedValue(issue));
   }
 }
 

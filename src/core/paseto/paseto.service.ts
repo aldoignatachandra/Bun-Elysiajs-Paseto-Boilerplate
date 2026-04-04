@@ -106,25 +106,6 @@ export class PasetoService {
   }
 
   /**
-   * Convert base64url string to Uint8Array
-   */
-  private base64UrlToUint8Array(base64url: string): Uint8Array {
-    // Add padding if needed
-    const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
-    const base64 = base64url + padding;
-    // Replace URL-safe characters with standard base64 characters
-    const base64Standard = base64.replace(/-/g, '+').replace(/_/g, '/');
-    // Decode to binary string
-    const binaryString = atob(base64Standard);
-    // Convert to Uint8Array
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
-  }
-
-  /**
    * Create an access token using v4.local (encrypted)
    * The payload is hidden and can only be read with the symmetric key
    */
@@ -533,7 +514,7 @@ export function getPasetoService(config?: PasetoServiceConfig): PasetoService {
 // Export a singleton instance (will be properly initialized later)
 // For now, export a placeholder that will throw if used without initialization
 export const paseto = new Proxy<PasetoService>({} as PasetoService, {
-  get(target, prop) {
+  get(_target, prop) {
     if (!pasetoInstance) {
       throw new KeyConfigError('PasetoService not initialized. Call getPasetoService() with config first.');
     }

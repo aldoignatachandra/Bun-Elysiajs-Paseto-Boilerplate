@@ -16,7 +16,6 @@ import {
   hasAllPermissions,
   hasAnyPermission,
 } from '../../../src/middlewares/auth.middleware';
-import type { AuthService } from '../../../src/services/auth.service';
 import { UnauthorizedError, InvalidTokenError } from '../../../src/core/errors/app-error';
 
 describe('Auth Middleware', () => {

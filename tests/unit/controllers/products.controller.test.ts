@@ -11,7 +11,7 @@
 import { describe, it, expect, beforeEach, jest } from 'bun:test';
 import { ProductsController } from '../../../src/controllers/products.controller';
 import type { ProductsService } from '../../../src/services/products.service';
-import { UnauthorizedError, NotFoundError, InternalServerError } from '../../../src/core/errors/app-error';
+import { UnauthorizedError } from '../../../src/core/errors/app-error';
 
 describe('ProductsController', () => {
   let controller: ProductsController;

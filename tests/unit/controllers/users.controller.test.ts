@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach, jest } from 'bun:test';
 import { UsersController } from '../../../src/controllers/users.controller';
 import type { UsersService } from '../../../src/services/users.service';
-import { UnauthorizedError, NotFoundError, InternalServerError } from '../../../src/core/errors/app-error';
+import { UnauthorizedError, NotFoundError } from '../../../src/core/errors/app-error';
 
 describe('UsersController', () => {
   let controller: UsersController;

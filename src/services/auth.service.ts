@@ -22,7 +22,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import type { TokenPayload } from '../core/paseto/token.types';
 import type { PasetoService } from '../core/paseto/paseto.service';
 import type { PasswordService } from '../core/crypto/password.service';
 import type { UnitOfWork } from '../repositories/unit-of-work';
@@ -39,7 +38,7 @@ import type {
   ValidateAccessTokenOutput,
   AuthActivityContext as AuthActivityContextType,
 } from './interfaces/auth.service.interface';
-import { ConflictError, AuthenticationError, ForbiddenError, InvalidTokenError, TokenExpiredError, NotFoundError } from '../core/errors/app-error';
+import { ConflictError, AuthenticationError, ForbiddenError, InvalidTokenError, NotFoundError, InternalServerError } from '../core/errors/app-error';
 import { ActivityService, type LogActivityInput } from './activity.service';
 
 // Re-export AuthActivityContext for backward compatibility

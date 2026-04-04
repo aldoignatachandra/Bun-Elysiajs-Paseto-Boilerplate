@@ -128,7 +128,7 @@ describe('ProductsService', () => {
 
   describe('update', () => {
     it('should update a product', async () => {
-      mockUnitOfWork.products.findById = async () => mockDbProduct;
+      mockUnitOfWork.products.findByIdWithVariants = async () => mockDbProduct;
       mockUnitOfWork.products.updateWithVariants = async () => ({ ...mockProduct, name: 'Updated Product' });
 
       const result = await service.update({
@@ -141,7 +141,7 @@ describe('ProductsService', () => {
     });
 
     it('should throw ForbiddenError when user does not have permission', async () => {
-      mockUnitOfWork.products.findById = async () => mockDbProduct;
+      mockUnitOfWork.products.findByIdWithVariants = async () => mockDbProduct;
 
       await expect(
         service.update({
@@ -153,7 +153,7 @@ describe('ProductsService', () => {
     });
 
     it('should allow admin to update any product', async () => {
-      mockUnitOfWork.products.findById = async () => mockDbProduct;
+      mockUnitOfWork.products.findByIdWithVariants = async () => mockDbProduct;
       mockUnitOfWork.products.updateWithVariants = async () => ({ ...mockProduct, name: 'Updated Product' });
 
       const result = await service.update({
@@ -254,7 +254,7 @@ describe('ProductsService', () => {
 
   describe('updateStock', () => {
     it('should update product stock', async () => {
-      mockUnitOfWork.products.findById = async () => mockDbProduct;
+      mockUnitOfWork.products.findByIdWithVariants = async () => mockDbProduct;
       mockUnitOfWork.products.updateStock = async () => ({ ...mockDbProduct, stock: 20 });
 
       const result = await service.updateStock({
@@ -267,7 +267,7 @@ describe('ProductsService', () => {
     });
 
     it('should throw ForbiddenError when user does not have permission', async () => {
-      mockUnitOfWork.products.findById = async () => mockDbProduct;
+      mockUnitOfWork.products.findByIdWithVariants = async () => mockDbProduct;
 
       await expect(
         service.updateStock({
@@ -280,7 +280,7 @@ describe('ProductsService', () => {
 
     it('should throw BadRequestError when product has variants and no variantId is provided', async () => {
       const productWithVariants = { ...mockDbProduct, hasVariant: true };
-      mockUnitOfWork.products.findById = async () => productWithVariants;
+      mockUnitOfWork.products.findByIdWithVariants = async () => productWithVariants;
 
       await expect(
         service.updateStock({
@@ -293,7 +293,7 @@ describe('ProductsService', () => {
 
     it('should update variant stock when variantId is provided', async () => {
       const productWithVariants = { ...mockDbProduct, hasVariant: true };
-      mockUnitOfWork.products.findById = async () => productWithVariants;
+      mockUnitOfWork.products.findByIdWithVariants = async () => productWithVariants;
       mockUnitOfWork.products.updateVariantStock = async () => ({
         variant: { id: 'variant-123', stockQuantity: 15 },
         product: { id: mockProduct.id, stock: 50 },
@@ -313,7 +313,7 @@ describe('ProductsService', () => {
 
     it('should throw ForbiddenError when variant does not belong to product (IDOR prevention)', async () => {
       const productWithVariants = { ...mockDbProduct, hasVariant: true };
-      mockUnitOfWork.products.findById = async () => productWithVariants;
+      mockUnitOfWork.products.findByIdWithVariants = async () => productWithVariants;
       mockUnitOfWork.products.updateVariantStock = async () => {
         throw new Error('Variant not found or does not belong to this product');
       };
@@ -329,7 +329,7 @@ describe('ProductsService', () => {
     });
 
     it('should throw BadRequestError when trying to update variant stock for product without variants', async () => {
-      mockUnitOfWork.products.findById = async () => mockDbProduct; // hasVariant: false
+      mockUnitOfWork.products.findByIdWithVariants = async () => mockDbProduct; // hasVariant: false
 
       await expect(
         service.updateStock({

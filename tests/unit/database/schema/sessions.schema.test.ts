@@ -63,6 +63,7 @@ describe('Sessions Schema', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         userId: '123e4567-e89b-12d3-a456-426614174001',
         token: 'v4.public.test_token',
+        refreshTokenId: 'refresh-token-id-123',
         expiresAt: new Date(),
         revokedAt: null,
         lastUsedAt: new Date(),
@@ -86,6 +87,7 @@ describe('Sessions Schema', () => {
       const newUserSession: NewUserSession = {
         userId: '123e4567-e89b-12d3-a456-426614174001',
         token: 'v4.public.new_test_token',
+        refreshTokenId: 'refresh-token-id-456',
         expiresAt: new Date(),
         lastUsedAt: new Date(),
         deviceType: 'mobile',

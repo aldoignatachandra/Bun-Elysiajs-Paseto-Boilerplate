@@ -10,7 +10,7 @@ export interface MockTokenPayload {
 }
 
 export class MockPasetoService {
-  private secretKey = 'mock-secret-key-for-testing';
+  private _secretKey = 'mock-secret-key-for-testing';
   private tokens: Map<string, MockTokenPayload> = new Map();
 
   generateAccessToken = vi.fn(async (payload: Omit<MockTokenPayload, 'type' | 'iat' | 'exp'>) => {
